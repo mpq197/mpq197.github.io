@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>泡藥計算器</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f4ece6;
+      font-family: 'Roboto', sans-serif;
+    }
+    h2 {
+      text-align: center;
+      color: #5d4037;
+      margin-top: 40px;
+    }
+    .container {
+      margin-top: 30px;
+      margin-bottom: 100px;
+    }
+    table {
+      background-color: white;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    thead th {
+      border: 1px solid #4f4545;
+      background-color: #6d4c41;
+      color: white;
+      padding: 10px;
+      text-align: center;
+    }
+    th, td {
+      padding: 10px;
+      text-align: center;
+      font-size: 18px;
+    }
+    input, select {
+      background-color: #f7f3f0;
+      border: none;
+      border-bottom: 2px solid #6d4c41;
+      box-shadow: none;
+      text-align: center;
+    }
+    input:focus, select:focus {
+      border-bottom: 2px solid #8d6e63;
+      box-shadow: none;
+    }
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { 
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+    label{
+      font-size: 18px;
+    }
+    .copy-button {
+      background-color: #6d4c41;
+      color: white;
+      padding: 12px 24px;
+      margin: 5px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.5s;
+      margin-left: auto;
+    }
+    .copy-button:hover {
+      background-color: #8d6e63;
+    }
+    .order-content {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #fluidTable td:last-child {
+      border-left: 1px solid #ededed; /* 設置左邊框 */
+      padding-left: 30px; /* 增加內邊距 */
+    }
+  </style>
+</head>
+<body>
+
+
+<div class="container">
+
+  <!-- 水份計算器 -->
+  <h2>水份計算器</h2>
+  <table id="fluidTable" class="highlight responsive-table">
+    <thead>
+      <tr>
+        <th style="width: 70px;">說明</th>
+        <th colspan="3">輸入</th>
+        <th style="width: 65%;">輸出</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>BW</td>
+        <td colspan="2"><input type="number" id="bwFluid" placeholder="輸入體重" oninput="updateFluid()"></td>
+        <td style="width: 100px;">kg</td>
+        <td>
+          <div class="order-content">
+            <span id="bwOutput"></span>
+            <button class="copy-button" onclick="copyToClipboard('bwOutput', this)">COPY</button>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>TDF</td>
+        <td colspan="2"><input type="number" id="tdf" placeholder="TDF" oninput="updateFluid()"></td>
+        <td>ml/kg/day</td>
+        <td>
+          <div class="order-content">
+            <span id="tdfOutput"></span>
+            <button class="copy-button" onclick="copyToClipboard('tdfOutput', this)">COPY</button>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>PO</td>
+        <td>
+          <select id="dietChoice" class="browser-default" onchange="updateFluid()">
+            <option value=""         ></option>
+            <option value="HM/16%PF" >HM/16%PF</option>
+            <option value="HM/14%RF" >HM/14%RF</option>
+            <option value="HM"       >HM</option>
+            <option value="14%RF"    >14%RF</option>
+            <option value="16%PF"    >16%PF</option>
+            <option value="HM/15%PDF">HM/15%PDF</option>
+            <option value="15%PDF"   >15%PDF</option>
+          </select>
+        </td> 
+        <td><input type="text" id="po" placeholder="PO" oninput="updateFluid()"></td>
+        <td>ml/day</td>
+        <td>
+          <div class="order-content">
+            <span id="poOutput"></span>
+            <button class="copy-button" onclick="copyToClipboard('poOutput', this)">COPY</button>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>TPN</td>
+        <td>
+          <select id="tpnAA" class="browser-default" placeholder="AA ?%" onchange="updateFluid()">
+            <option value="25%">AA 2.5</option>
+            <option value="30%">AA 3.0</option>
+          </select>
+        </td>
+        <td><input type="number" id="tpnGrams" placeholder="g/kg/day" oninput="updateFluid()"></td>
+        <td>g/kg/day</td>
+        <td>
+          <div class="order-content">
+            <span id="tpnOutput"></span>
+            <button class="copy-button" onclick="copyToClipboard('tpnOutput', this)">COPY</button>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>Lipid</td>
+        <td>
+          <select id="smofChoice" class="browser-default" onchange="updateFluid()">
+            <option value="SMOF">SMOF</option>
+            <option value="Omegaven">Omegaven</option>
+          </select>
+        </td>  
+        <td><input type="number" id="smofGrams" placeholder="g/kg/day" oninput="updateFluid()"></td>
+        <td>g/kg/day</td>
+        <td>
+          <div class="order-content">
+            <span id="smofOutput"></span>
+            <button class="copy-button" onclick="copyToClipboard('smofOutput', this)">COPY</button>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>其他 line</td>
+        <td colspan="2"><input type="number" id="mlHr" placeholder="ml/hr" oninput="updateFluid()"></td>
+        <td>ml/hr</td>
+        <td>
+          <div class="order-content">
+            <span id="mlHrOutput"></span>
+            <button class="copy-button" onclick="copyToClipboard('smofOutput', this)">COPY</button>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>入 I/O</td>
+        <td colspan="2"><input type="number" id="mlDay" placeholder="ml/day" oninput="updateFluid()"></td>
+        <td>ml/day</td>
+        <td>
+          <div class="order-content">
+            <span id="mlDayOutput"></span>
+            <button class="copy-button" onclick="copyToClipboard('mlDayOutput', this)">COPY</button>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>普通IV</td>
+        <td>
+          <select id="regularIVChoice" class="browser-default" onchange="updateFluid()">
+            <option value="D10W">D10W</option>
+            <option value="D5W">D5W</option>
+            <option value="D0.225S(500) + 2PC D50W">D0.225S(500) + 2PC D50W</option>
+            <option value="D0.225S(500)">D0.225S(500)</option>
+          </select>
+        </td> 
+        <td><input type="number" id="regularIV" placeholder="普通IV" oninput="updateFluid()"></td>
+        <td>ml/hr</td>
+        <td>
+          <div class="order-content">
+            <span id="regularIVOutput"></span>
+            <button class="copy-button" onclick="copyToClipboard('regularIVOutput', this)">COPY</button>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+
+  <!-- 藥物泡法計算器 -->
+  <h2>藥物泡法計算器</h2>
+
+  <table class="highlight responsive-table">
+    <thead>
+      <tr>
+        <th style="width: 150px;">體重 (kg)</th>
+        <th style="width: 200px;">藥物名稱</th>
+        <th style="width: 200px;">目標流速</th>
+        <th style="width: 200px;">目標濃度</th>
+        <th style="width: 200px;">最後總量</th>
+        <th style="width: 100px;">稀釋液</th>
+        <th style="width: 100px;">原液濃度</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><input type="number" id="bwDrug" placeholder="(kg)" oninput="updateDrugOrder()"></td>
+        <td>
+          <select id="drug0" class="browser-default" onchange="updateDrugOrder()">
+            <option value="Dopamine"      >Dopamine       </option>
+            <option value="Dobutamine"    >Dobutamine     </option>
+            <option value="Milrinone"     >Milrinone      </option>
+            <option value="Epinephrine"   >Epinephrine    </option>
+            <option value="Midazolam"     >Midazolam      </option>
+            <option value="Fentanyl"      >Fentanyl       </option>
+            <option value="Bumetanide"    >Bumetanide     </option>
+            <option value="Norepinephrine">Norepinephrine </option>
+            <option value="Nicardipine"   >Nicardipine    </option>
+            <option value="Nitroglycerin" >Nitroglycerin  </option>
+            <option value="Labetalol"     >Labetalol      </option>
+            <option value="PGE1"          >PGE1           </option>
+            <option value="Vasopressin"   >Vasopressin    </option>
+            <option value="Isoproterenol" >Isoproterenol  </option>
+            <option value="Rocuronium"    >Rocuronium     </option>
+            <option value="Cisatracurium" >Cisatracurium  </option>
+            <option value="Morphine"      >Morphine       </option>
+            <option value="Lorazepam"     >Lorazepam      </option>
+            <option value="Ketamine"      >Ketamine       </option>
+            <option value="Propofol"      >Propofol       </option>
+            <option value="MgSO4"         >MgSO4          </option>
+            <option value="Lidocaine"     >Lidocaine      </option>
+          </select>
+        </td>
+        <td><input type="number" id="flowRate0" placeholder="(ml/hr)" oninput="updateDrugOrder()"></td>
+        <td><input type="number" id="targetConcentration0" placeholder="(mcg/kg/min)" oninput="updateDrugOrder()"></td>
+        <td><input type="number" id="totalVolume0" placeholder="(ml)" oninput="updateDrugOrder()"></td>
+        <td>
+          <select id="diluter0" class="browser-default" onchange="updateDrugOrder()">
+            <option value="D5W" selected>D5W</option>
+            <option value="N/S">N/S</option>
+            <option value="D/W">D/W</option>
+          </select>
+        </td>
+        <td><span id="originalConcentration0"></span></td>
+      </tr>
+      <tr>
+        <td><span>醫囑</td>
+        <td colspan="6">
+          <div class="order-content">
+            <span id="orderText">醫囑</span>
+            <button class="copy-button" onclick="copyToClipboard('orderText', this)">COPY</button>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td><span>藥囑</td>
+        <td colspan="6">
+          <div class="order-content">
+            <span id="medText">藥囑</span>
+            <button class="copy-button" onclick="copyToClipboard('medText', this)">COPY</button>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td><span>Pure Line</td>
+        <td colspan="6">
+          <div class="order-content">
+            <span id="purelineOrderText">Pure Line</span>
+            <button class="copy-button" onclick="copyToClipboard('purelineOrderText', this)">COPY</button>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+
+
+<script>
+  // 更新fluid計算
+  function updateFluid() {
+    // BW 輸出示例
+    const bwFluid = parseFloat(document.getElementById('bwFluid').value)*1000 || 0;
+    document.getElementById('bwOutput').textContent = `BW: ${bwFluid} g`;
+
+    // TDF 輸出示例
+    const tdf = parseFloat(document.getElementById('tdf').value) || 0;
+    document.getElementById('tdfOutput').textContent = `TDF: ${tdf}`;
+
+    // PO 輸出示例 (假設直接輸出 PO 值)
+    const po = document.getElementById('po').value;
+    document.getElementById('poOutput').textContent = `PO: ${po}`;
+
+    // TPN 輸出示例
+    const tpnAA = document.getElementById('tpnAA').value;
+    const tpnGrams = parseFloat(document.getElementById('tpnGrams').value) || 0;
+    //const tpnSupplement = document.getElementById('tpnSupplement').checked ? '是' : '否';
+    document.getElementById('tpnOutput').textContent = `AA: ${tpnAA}, Gram: ${tpnGrams}, 補不足`;
+
+    // SMOF/Omegaven 輸出示例
+    const smofChoice = document.getElementById('smofChoice').value;
+    const smofGrams = parseFloat(document.getElementById('smofGrams').value) || 0;
+    document.getElementById('smofOutput').textContent = `${smofChoice} - Gram: ${smofGrams}`;
+
+    // ml/hr 輸出示例
+    const mlHr = parseFloat(document.getElementById('mlHr').value) || 0;
+    document.getElementById('mlHrOutput').textContent = `ml/hr: ${mlHr}`;
+
+    // ml/day 輸出示例
+    const mlDay = parseFloat(document.getElementById('mlDay').value) || 0;
+    document.getElementById('mlDayOutput').textContent = `ml/day: ${mlDay}`;
+
+    // 普通IV 輸出示例
+    const regularIV = parseFloat(document.getElementById('regularIV').value) || 0;
+    document.getElementById('regularIVOutput').textContent = `普通IV: ${regularIV}`;
+  }
+
+  // 設定藥物資料
+  const drugSpecs = {
+    'Dopamine'      : { concentration: 40     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+    'Dobutamine'    : { concentration: 12.5   , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+    'Milrinone'     : { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+    'Epinephrine'   : { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},
+    'Midazolam'     : { concentration: 5      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+    'Fentanyl'      : { concentration: 0.05   , unit: 'mg/ml' , rateUnit: 'mcg/kg/hr'  , decimalPlace: 3},
+    'Bumetanide'    : { concentration: 0.25   , unit: 'mg/ml' , rateUnit: 'mcg/kg/hr'  , decimalPlace: 1},
+    'Norepinephrine': { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},
+    'Nicardipine'   : { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+    'Nitroglycerin' : { concentration: 0.5    , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}, //小數點待確定
+    'Labetalol'     : { concentration: 5      , unit: 'mg/ml' , rateUnit: 'mg/kg/hr'   , decimalPlace: 2}, //小數點待確定
+    'PGE1'          : { concentration: 0.5    , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},
+    'Vasopressin'   : { concentration: 20     , unit: 'U/ml'  , rateUnit: 'mU/kg/min'  , decimalPlace: 0},
+    'Isoproterenol' : { concentration: 0.2    , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+    'Rocuronium'    : { concentration: 10     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+    'Cisatracurium' : { concentration: 2      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+    'Morphine'      : { concentration: 10     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}, //小數點待確定
+    'Lorazepam'     : { concentration: 2      , unit: 'mg/ml' , rateUnit: 'mg/kg/hr'   , decimalPlace: 2}, //小數點待確定
+    'Ketamine'      : { concentration: 50     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+    'Propofol'      : { concentration: 10     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}, //小數點待確定
+    'MgSO4'         : { concentration: 100    , unit: 'mg/ml' , rateUnit: 'mg/kg/hr'   , decimalPlace: 1},
+    'Lidocaine'     : { concentration: 50     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}  //小數點待確定
+  };
+
+  // 更新藥物濃度及計算抽取量
+  function updateDrugOrder() {
+    const drug = document.getElementById("drug0").value;
+    const originalConcentration = drugSpecs[drug].concentration;
+    const originalUnit = drugSpecs[drug].unit;
+    const targetRateUnit = drugSpecs[drug].rateUnit;
+    const decimal = drugSpecs[drug].decimalPlace;
+    document.getElementById("originalConcentration0").textContent = originalConcentration + " " + originalUnit;
+    document.getElementById("targetConcentration0").placeholder = `(${targetRateUnit})`;    
+
+    const bwDrug = parseFloat(document.getElementById("bwDrug").value);
+    const flowRate = parseFloat(document.getElementById("flowRate0").value);
+    const targetConcentration = parseFloat(document.getElementById("targetConcentration0").value);
+    const totalVolume = parseFloat(document.getElementById("totalVolume0").value);
+    const diluter = document.getElementById("diluter0").value;
+
+    let orderText = "醫囑";
+    let medText = "藥囑";
+    let purelineOrderText = "Pure Line";
+    
+    if (drug && bwDrug && flowRate && targetConcentration && totalVolume) {
+
+      //計算重量單位轉換
+      const unitOringinal = originalUnit.split("/")[0];
+      const unitTarget  = targetRateUnit.split("/")[0];
+      const unitComb = `${unitOringinal}-${unitTarget}`;
+      let unitConversionRatio = 1;
+      switch (unitComb) {
+        case 'mg-mcg': unitConversionRatio = 1/1000; break;
+        case 'U-mU'  : unitConversionRatio = 1/1000; break;
+        case 'mg-mg' : unitConversionRatio = 1; break;
+        default: unitConversionRatio = 1; break;
+      }
+      
+      //計算時間單位轉換
+      const timeTarget = targetRateUnit.split("/")[2];
+      let timeConversionRatio = 1;
+      if (timeTarget === 'min') timeConversionRatio = 60;
+
+      
+      const dose = roundToDecimalPlaces( targetConcentration * timeConversionRatio * bwDrug * unitConversionRatio / flowRate * totalVolume, decimal);  //計算提取量    
+      const extractedVolume = roundToDecimalPlaces( totalVolume - dose / originalConcentration, 1 ); //計算溶劑體積
+      const pureLineConcentration = roundToDecimalPlaces( 1 * originalConcentration / unitConversionRatio / bwDrug / timeConversionRatio, 1);
+
+      orderText = `${drug} ${dose+unitOringinal} in ${diluter} ${extractedVolume}ml (total ${totalVolume}ml), run ${flowRate}ml/hr = ${targetConcentration + targetRateUnit} `;
+      medText = `${drug} ${dose+unitOringinal} in ${diluter} ${extractedVolume}ml (total ${totalVolume}ml), run as order`;
+      purelineOrderText =  `${drug} 1 ml/hr = ${pureLineConcentration + " " + targetRateUnit}`;     
+    }
+
+    document.getElementById("orderText").textContent = orderText;
+    document.getElementById("medText").textContent = medText;
+    document.getElementById("purelineOrderText").textContent = purelineOrderText;
+  }
+
+  // 複製按鈕
+  function copyToClipboard(id, button) {
+    const textToCopy = document.getElementById(id).textContent;
+    const originalText = button.textContent;
+
+    navigator.clipboard.writeText(textToCopy);
+    button.textContent = "已複製！";
+    setTimeout(() => {
+      button.textContent = originalText;
+    }, 500);
+    button.blur();
+  }
+
+  // 四捨五入至小數點第幾位
+  function roundToDecimalPlaces(value, decimalPlaces) {
+    const factor = Math.pow(10, decimalPlaces); // 計算10的次方
+    return Math.round(value * factor) / factor; // 先乘以10的次方再四捨五入，然後除以10的次方
+  }
+
+  updateDrugOrder(); // 初始化選擇的藥物濃度
+  undateDrugList(); // 初始化藥物列表
+  updateFluid(); // 初始化fluid
+
+</script>
+
+</body>
+</html>
