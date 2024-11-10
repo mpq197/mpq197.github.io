@@ -132,7 +132,6 @@
             </div>
             <div class="col">
               <div class="input-group">
-                <span class="input-group-text">max</span>
                 <input type="number" id="tpnHours" class="form-control text-center" oninput="updateFluid()">
                 <span class="input-group-text">hrs</span>
               </div>
@@ -160,7 +159,6 @@
             </div>
             <div class="col">
               <div class="input-group">
-                <span class="input-group-text">max</span>
                 <input type="number" id="lipidHours" class="form-control text-center" oninput="updateFluid()">
                 <span class="input-group-text">hrs</span>
               </div>
@@ -216,7 +214,7 @@
       </tr>
       <!-- 輸出 -->
       <tr>
-        <td rowspan="8">order</td>
+        <td rowspan="8">醫囑</td>
         <td>
           <div class="order-content">
             <span id="bwOutput"></span>
@@ -244,7 +242,7 @@
         <td>
           <div class="order-content">
             <div class="input-group-text">
-              <input class="form-check-input" type="checkbox" value="" aria-label="Checkbox for following text input">
+              <input class="form-check-input" type="checkbox" id="makeUp" value="" aria-label="Checkbox for following text input">
               <span>（補）</span>
             </div>
             <span id="tpnOutput"></span>
@@ -430,13 +428,17 @@
     // TPN 輸出示例
     const tpnAA = document.getElementById('tpnAA').value;
     const tpnGrams = parseFloat(document.getElementById('tpnGrams').value) || 0;
-    
+    const tpnHours = document.getElementById('tpnHours').value || 24; 
+    const makeUp = document.getElementById('makeUp').value;
+    let tpnOutput = "";
+    let tpnTotal = 0;
+    tpnOutput += `${tpnGrams*bwFluid/1000}`;
     document.getElementById('tpnOutput').textContent = `AA: ${tpnAA}, Gram: ${tpnGrams}, 補不足`;
 
     // SMOF/Omegaven 輸出示例
     const lipidChoice = document.getElementById('lipidChoice').value;
     const lipidGrams = parseFloat(document.getElementById('lipidGrams').value) || 0;
-    let lipidHours = document.getElementById('lipidHours').value || 0;
+    let lipidHours = document.getElementById('lipidHours').value || 20;
     const lipidSpec = {
       "SMOF": {density: 1/5, unit: "g/ml"},
       "Omegaven": {density: 1/10, unit: "g/ml"}
