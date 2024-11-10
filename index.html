@@ -4,48 +4,28 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>泡藥計算器</title>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
+  <!-- 引入 Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body {
       background-color: #f4ece6;
       font-family: 'Roboto', sans-serif;
     }
+    .table-container {
+      margin-top: 30px;
+    }
     h2 {
-      text-align: center;
       color: #5d4037;
       margin-top: 40px;
-    }
-    .container {
-      margin-top: 30px;
-      margin-bottom: 100px;
-    }
-    table {
-      background-color: white;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    thead th {
-      border: 1px solid #4f4545;
-      background-color: #6d4c41;
-      color: white;
-      padding: 10px;
       text-align: center;
     }
-    th, td {
-      padding: 10px;
-      text-align: center;
-      font-size: 18px;
+    .order-content {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
-    input, select {
-      background-color: #f7f3f0;
-      border: none;
-      border-bottom: 2px solid #6d4c41;
-      box-shadow: none;
-      text-align: center;
-    }
-    input:focus, select:focus {
-      border-bottom: 2px solid #8d6e63;
-      box-shadow: none;
-    }
+
+    /*把輸入框的上下箭頭移除*/
     input[type=number]::-webkit-inner-spin-button, 
     input[type=number]::-webkit-outer-spin-button { 
       -webkit-appearance: none;
@@ -54,167 +34,253 @@
     input[type=number] {
       -moz-appearance: textfield;
     }
-    label{
-      font-size: 18px;
-    }
-    .copy-button {
-      background-color: #6d4c41;
-      color: white;
-      padding: 12px 24px;
-      margin: 5px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background-color 0.5s;
-      margin-left: auto;
-    }
-    .copy-button:hover {
-      background-color: #8d6e63;
-    }
-    .order-content {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    #fluidTable td:last-child {
-      border-left: 1px solid #ededed; /* 設置左邊框 */
-      padding-left: 30px; /* 增加內邊距 */
-    }
+
+   
   </style>
 </head>
 <body>
 
-
-<div class="container">
+<div class="container table-container text-center">
 
   <!-- 水份計算器 -->
   <h2>水份計算器</h2>
-  <table id="fluidTable" class="highlight responsive-table">
-    <thead>
+
+  <table class="table table-container table-bordered align-middle">
+    <thead class="table-dark">
       <tr>
-        <th style="width: 70px;">說明</th>
-        <th colspan="3">輸入</th>
-        <th style="width: 65%;">輸出</th>
+        <th style="width: 100px;">說明</th>
+        <th>輸入</th>
+        <!-- <th style="width: 50%;">輸出</th> -->
       </tr>
     </thead>
     <tbody>
+
+      <!--BW / TDF列-->
       <tr>
-        <td>BW</td>
-        <td colspan="2"><input type="number" id="bwFluid" placeholder="輸入體重" oninput="updateFluid()"></td>
-        <td style="width: 100px;">kg</td>
+        <td>BW / TDF</td>
         <td>
-          <div class="order-content">
-            <span id="bwOutput"></span>
-            <button class="copy-button" onclick="copyToClipboard('bwOutput', this)">COPY</button>
+          <div class="row">
+            <div class="col">
+              <div class="input-group">
+                <input type="number" id="bwFluid" class="form-control text-center" oninput="updateFluid()">
+                <span class="input-group-text">g</span>
+              </div>
+            </div>
+            <div class="col">
+              <div class="input-group">
+                <input type="number" id="tdf" class="form-control text-center" oninput="updateFluid()">
+                <span class="input-group-text">ml/kg/day</span>
+              </div>
+            </div>
           </div>
         </td>
       </tr>
-      <tr>
-        <td>TDF</td>
-        <td colspan="2"><input type="number" id="tdf" placeholder="TDF" oninput="updateFluid()"></td>
-        <td>ml/kg/day</td>
-        <td>
-          <div class="order-content">
-            <span id="tdfOutput"></span>
-            <button class="copy-button" onclick="copyToClipboard('tdfOutput', this)">COPY</button>
-          </div>
-        </td>
-      </tr>
+
+      <!--PO列-->
       <tr>
         <td>PO</td>
         <td>
-          <select id="dietChoice" class="browser-default" onchange="updateFluid()">
-            <option value=""         ></option>
-            <option value="HM/16%PF" >HM/16%PF</option>
-            <option value="HM/14%RF" >HM/14%RF</option>
-            <option value="HM"       >HM</option>
-            <option value="14%RF"    >14%RF</option>
-            <option value="16%PF"    >16%PF</option>
-            <option value="HM/15%PDF">HM/15%PDF</option>
-            <option value="15%PDF"   >15%PDF</option>
-          </select>
-        </td> 
-        <td><input type="text" id="po" placeholder="PO" oninput="updateFluid()"></td>
-        <td>ml/day</td>
-        <td>
-          <div class="order-content">
-            <span id="poOutput"></span>
-            <button class="copy-button" onclick="copyToClipboard('poOutput', this)">COPY</button>
+          <div class="row">
+            <div class="col">
+              <div class="input-group">
+                <select id="HM" class="form-select text-center" style="background-color: #f8f9fa;" onchange="updateFluid()">
+                  <option value=""></option>
+                  <option value="HM">HM</option>
+                </select> 
+                <span class="input-group-text">/</span>
+                <select id="formula" class="form-select text-center" style="background-color: #f8f9fa;" onchange="updateFluid()">
+                  <option value=""></option>
+                  <option value="16%PF">16%PF</option>
+                  <option value="15%PDF">15%PDF</option>
+                  <option value="14%RF">14%RF</option>
+                </select> 
+              </div>
+            </div>
+            <div class="col">
+              <div class="input-group">
+                <input type="text" id="po" class="form-control text-center" oninput="updateFluid()">
+                <span class="input-group-text">ml/day</span>
+              </div>    
+            </div>
           </div>
         </td>
       </tr>
+
+      <!--TPN列-->
       <tr>
         <td>TPN</td>
         <td>
-          <select id="tpnAA" class="browser-default" placeholder="AA ?%" onchange="updateFluid()">
-            <option value="25%">AA 2.5</option>
-            <option value="30%">AA 3.0</option>
-          </select>
-        </td>
-        <td><input type="number" id="tpnGrams" placeholder="g/kg/day" oninput="updateFluid()"></td>
-        <td>g/kg/day</td>
-        <td>
-          <div class="order-content">
-            <span id="tpnOutput"></span>
-            <button class="copy-button" onclick="copyToClipboard('tpnOutput', this)">COPY</button>
+          <div class="row">
+            <div class="col">
+              <div class="input-group">
+              <span class="input-group-text">AA</span>
+              <select id="tpnAA" class="form-select text-center" style="background-color: #f8f9fa;" onchange="updateFluid()">
+                <option value="25%">2.5</option>
+                <option value="30%">3.0</option>
+                <option value="33%">3.3</option>
+                <option value="35%">3.5</option>
+                <option value="40%">4.0</option>
+                <option value="50%">5.0</option>
+              </select> 
+              </div>
+            </div>
+            <div class="col">
+              <div class="input-group">
+                <input type="number" id="tpnGrams" class="form-control text-center" oninput="updateFluid()">
+                <span class="input-group-text">g/kg/day</span>
+              </div>
+            </div>
+            <div class="col">
+              <div class="input-group">
+                <span class="input-group-text">max</span>
+                <input type="number" id="tpnHours" class="form-control text-center" oninput="updateFluid()">
+                <span class="input-group-text">hrs</span>
+              </div>
+            </div>
           </div>
         </td>
       </tr>
+
+      <!--LIPID列-->
       <tr>
         <td>Lipid</td>
         <td>
-          <select id="smofChoice" class="browser-default" onchange="updateFluid()">
-            <option value="SMOF">SMOF</option>
-            <option value="Omegaven">Omegaven</option>
-          </select>
-        </td>  
-        <td><input type="number" id="smofGrams" placeholder="g/kg/day" oninput="updateFluid()"></td>
-        <td>g/kg/day</td>
-        <td>
-          <div class="order-content">
-            <span id="smofOutput"></span>
-            <button class="copy-button" onclick="copyToClipboard('smofOutput', this)">COPY</button>
+          <div class="row">
+            <div class="col">
+              <select id="lipidChoice" class="form-select text-center" style="background-color: #f8f9fa;" onchange="updateFluid()">
+                <option value="smof">SMOF</option>
+                <option value="Omegaven">Omegaven</option>
+              </select>             
+            </div>
+            <div class="col">
+              <div class="input-group">
+                <input type="number" id="lipidGrams" class="form-control text-center" oninput="updateFluid()">
+                <span class="input-group-text">g/kg/day</span>
+              </div>      
+            </div>
+            <div class="col">
+              <div class="input-group">
+                <span class="input-group-text">max</span>
+                <input type="number" id="lipidHours" class="form-control text-center" oninput="updateFluid()">
+                <span class="input-group-text">hrs</span>
+              </div>
+            </div>
           </div>
         </td>
       </tr>
+
+      <!--other-->
       <tr>
-        <td>其他 line</td>
-        <td colspan="2"><input type="number" id="mlHr" placeholder="ml/hr" oninput="updateFluid()"></td>
-        <td>ml/hr</td>
+        <td>其他</td>
         <td>
-          <div class="order-content">
-            <span id="mlHrOutput"></span>
-            <button class="copy-button" onclick="copyToClipboard('smofOutput', this)">COPY</button>
+          <div class="row">
+            <div class="col">
+              <div class="input-group">
+                <input type="number" id="mlHr" class="form-control text-center" oninput="updateFluid()">
+                <span class="input-group-text">ml/hr</span>
+              </div>
+            </div>
+            <div class="col">
+              <div class="input-group">
+                <input type="number" id="mlDay" class="form-control text-center" oninput="updateFluid()">
+                <span class="input-group-text">ml/day</span>
+              </div>    
+            </div>
           </div>
         </td>
       </tr>
-      <tr>
-        <td>入 I/O</td>
-        <td colspan="2"><input type="number" id="mlDay" placeholder="ml/day" oninput="updateFluid()"></td>
-        <td>ml/day</td>
-        <td>
-          <div class="order-content">
-            <span id="mlDayOutput"></span>
-            <button class="copy-button" onclick="copyToClipboard('mlDayOutput', this)">COPY</button>
-          </div>
-        </td>
-      </tr>
+
+
+      <!--普通IV列-->
       <tr>
         <td>普通IV</td>
         <td>
-          <select id="regularIVChoice" class="browser-default" onchange="updateFluid()">
-            <option value="D10W">D10W</option>
-            <option value="D5W">D5W</option>
-            <option value="D0.225S(500) + 2PC D50W">D0.225S(500) + 2PC D50W</option>
-            <option value="D0.225S(500)">D0.225S(500)</option>
-          </select>
-        </td> 
-        <td><input type="number" id="regularIV" placeholder="普通IV" oninput="updateFluid()"></td>
-        <td>ml/hr</td>
+          <div class="row">
+            <div class="col">
+              <select id="regularIVChoice" class="form-select text-center" onchange="updateFluid()">
+                <option value=""></option>
+                <option value="D10W">D10W</option>
+                <option value="D5W">D5W</option>
+                <option value="D0.225S(500) + 2PC D50W">D0.225S(500) + 2PC D50W</option>
+                <option value="D0.225S(500)">D0.225S(500)</option>
+              </select>    
+            </div>
+            <div class="col">
+              <div class="input-group">
+                <input type="number" id="regularIV" class="form-control text-center" oninput="updateFluid()">
+                <span class="input-group-text">ml/hr</span>
+              </div>      
+            </div>
+          </div>
+        </td>
+      </tr>
+      <!-- 輸出 -->
+      <tr>
+        <td rowspan="8">order</td>
+        <td>
+          <div class="order-content">
+            <span id="bwOutput"></span>
+            <button class="btn btn-dark" style="margin-left: auto; " tabindex="999" onclick="copyToClipboard('bwOutput', this)">Copy</button>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="order-content">
+            <span id="tdfOutput"></span>
+            <button class="btn btn-dark" style="margin-left: auto; " tabindex="999" onclick="copyToClipboard('tdfOutput', this)">Copy</button>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="order-content">
+            <span id="poOutput"></span>
+            <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('poOutput', this)">Copy</button>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="order-content">
+            <div class="input-group-text">
+              <input class="form-check-input" type="checkbox" value="" aria-label="Checkbox for following text input">
+              <span>（補）</span>
+            </div>
+            <span id="tpnOutput"></span>
+            <button class="btn btn-dark" style="margin-left: auto; " tabindex="999" onclick="copyToClipboard('tpnOutput', this)">Copy</button>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="order-content">
+            <span id="lipidOutput"></span>
+            <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('lipidOutput', this)">Copy</button>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="order-content">
+            <span id="mlHrOutput"></span>
+            <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('mlHrOutput', this)">Copy</button>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="order-content">
+            <span id="mlDayOutput"></span>
+            <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('mlDayOutput', this)">Copy</button>
+          </div>
+        </td>
+      </tr>
+      <tr>
         <td>
           <div class="order-content">
             <span id="regularIVOutput"></span>
-            <button class="copy-button" onclick="copyToClipboard('regularIVOutput', this)">COPY</button>
+            <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('regularIVOutput', this)">Copy</button>
           </div>
         </td>
       </tr>
@@ -225,23 +291,29 @@
   <!-- 藥物泡法計算器 -->
   <h2>藥物泡法計算器</h2>
 
-  <table class="highlight responsive-table">
-    <thead>
+
+  <table class="table align-middle table-container table-bordered">
+    <thead class="table-dark">
       <tr>
-        <th style="width: 150px;">體重 (kg)</th>
-        <th style="width: 200px;">藥物名稱</th>
-        <th style="width: 200px;">目標流速</th>
-        <th style="width: 200px;">目標濃度</th>
-        <th style="width: 200px;">最後總量</th>
-        <th style="width: 100px;">稀釋液</th>
-        <th style="width: 100px;">原液濃度</th>
+        <th style="width: 15%;">體重</th>
+        <th style="width: 18%;">藥物名稱</th>
+        <th style="width: 15%;">目標流速</th>
+        <th style="width: 17%;">目標濃度</th>
+        <th style="width: 10%;">最後總量</th>
+        <th style="width: 15%;">稀釋液</th>
+        <th style="width: 10%">原液濃度</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><input type="number" id="bwDrug" placeholder="(kg)" oninput="updateDrugOrder()"></td>
         <td>
-          <select id="drug0" class="browser-default" onchange="updateDrugOrder()">
+          <div class="input-group">
+            <input type="number" id="bwDrug" class="form-control text-center" oninput="updateDrugOrder()">
+            <span class="input-group-text">kg</span>
+          </div>
+        </td>
+        <td>
+          <select id="drug0" class="form-select text-center" onchange="updateDrugOrder()">
             <option value="Dopamine"      >Dopamine       </option>
             <option value="Dobutamine"    >Dobutamine     </option>
             <option value="Milrinone"     >Milrinone      </option>
@@ -264,78 +336,113 @@
             <option value="Propofol"      >Propofol       </option>
             <option value="MgSO4"         >MgSO4          </option>
             <option value="Lidocaine"     >Lidocaine      </option>
+            <!-- More options -->
           </select>
         </td>
-        <td><input type="number" id="flowRate0" placeholder="(ml/hr)" oninput="updateDrugOrder()"></td>
-        <td><input type="number" id="targetConcentration0" placeholder="(mcg/kg/min)" oninput="updateDrugOrder()"></td>
-        <td><input type="number" id="totalVolume0" placeholder="(ml)" oninput="updateDrugOrder()"></td>
         <td>
-          <select id="diluter0" class="browser-default" onchange="updateDrugOrder()">
-            <option value="D5W" selected>D5W</option>
+          <div class="input-group">
+            <input type="number" id="flowRate0" class="form-control text-center" oninput="updateDrugOrder()">
+            <span class="input-group-text">ml/hr</span>
+          </div>
+        </td>
+        <td>
+          <div class="input-group">
+            <input type="number" id="targetConcentration0" class="form-control text-center" oninput="updateDrugOrder()">
+            <span id="rateUnit" class="input-group-text">mcg/kg/min</span>
+          </div>
+        </td>
+        <td>
+          <div class="input-group">
+            <input type="number" id="totalVolume0" class="form-control text-center" oninput="updateDrugOrder()">
+            <span class="input-group-text">ml</span>
+          </div>
+        </td>
+        <td>
+          <select id="diluter0" class="form-select text-center" onchange="updateDrugOrder()">
+            <option value="D5W">D5W</option>
             <option value="N/S">N/S</option>
             <option value="D/W">D/W</option>
           </select>
         </td>
         <td><span id="originalConcentration0"></span></td>
       </tr>
+
+      <!-- 醫囑 output -->
       <tr>
         <td><span>醫囑</td>
         <td colspan="6">
           <div class="order-content">
             <span id="orderText">醫囑</span>
-            <button class="copy-button" onclick="copyToClipboard('orderText', this)">COPY</button>
+            <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('orderText', this)">COPY</button>
           </div>
         </td>
       </tr>
+
+      <!-- 藥囑 output -->
       <tr>
         <td><span>藥囑</td>
         <td colspan="6">
           <div class="order-content">
             <span id="medText">藥囑</span>
-            <button class="copy-button" onclick="copyToClipboard('medText', this)">COPY</button>
+            <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('medText', this)">COPY</button>
           </div>
         </td>
       </tr>
+
+      <!-- PURE LINE output -->
       <tr>
         <td><span>Pure Line</td>
         <td colspan="6">
           <div class="order-content">
             <span id="purelineOrderText">Pure Line</span>
-            <button class="copy-button" onclick="copyToClipboard('purelineOrderText', this)">COPY</button>
+            <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('purelineOrderText', this)">COPY</button>
           </div>
         </td>
       </tr>
+
     </tbody>
   </table>
 </div>
 
-
+<!-- 引入 math.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.4.0/math.js"></script>
 
 <script>
   // 更新fluid計算
   function updateFluid() {
-    // BW 輸出示例
-    const bwFluid = parseFloat(document.getElementById('bwFluid').value)*1000 || 0;
+
+    // BW 輸出
+    const bwFluid = parseFloat(document.getElementById('bwFluid').value) || 0;
     document.getElementById('bwOutput').textContent = `BW: ${bwFluid} g`;
 
-    // TDF 輸出示例
+    // TDF 輸出
     const tdf = parseFloat(document.getElementById('tdf').value) || 0;
-    document.getElementById('tdfOutput').textContent = `TDF: ${tdf}`;
+    let totalTDF = roundToDecimalPlaces(tdf*bwFluid/1000, 1);
+    document.getElementById('tdfOutput').textContent = `Total daily fluid: ${tdf} ml/kg/day = total ${totalTDF} ml/day`;
 
-    // PO 輸出示例 (假設直接輸出 PO 值)
+    // PO 輸出 (假設直接輸出 PO 值)
     const po = document.getElementById('po').value;
-    document.getElementById('poOutput').textContent = `PO: ${po}`;
+    const HM = document.getElementById('HM').value;
+    const formula = document.getElementById('formula').value;
+    let parseResult = parsePO(po, HM, formula);
+    document.getElementById('poOutput').textContent = parseResult;
 
     // TPN 輸出示例
     const tpnAA = document.getElementById('tpnAA').value;
     const tpnGrams = parseFloat(document.getElementById('tpnGrams').value) || 0;
-    //const tpnSupplement = document.getElementById('tpnSupplement').checked ? '是' : '否';
+    
     document.getElementById('tpnOutput').textContent = `AA: ${tpnAA}, Gram: ${tpnGrams}, 補不足`;
 
     // SMOF/Omegaven 輸出示例
-    const smofChoice = document.getElementById('smofChoice').value;
-    const smofGrams = parseFloat(document.getElementById('smofGrams').value) || 0;
-    document.getElementById('smofOutput').textContent = `${smofChoice} - Gram: ${smofGrams}`;
+    const lipidChoice = document.getElementById('lipidChoice').value;
+    const lipidGrams = parseFloat(document.getElementById('lipidGrams').value) || 0;
+    let lipidHours = document.getElementById('lipidHours').value || 0;
+    const lipidSpec = {
+      "SMOF": {density: 1/5, unit: "g/ml"},
+      "Omegaven": {density: 1/10, unit: "g/ml"}
+    }
+    document.getElementById('lipidOutput').textContent = `${lipidChoice} - Gram: ${lipidGrams}`;
+
 
     // ml/hr 輸出示例
     const mlHr = parseFloat(document.getElementById('mlHr').value) || 0;
@@ -348,7 +455,7 @@
     // 普通IV 輸出示例
     const regularIV = parseFloat(document.getElementById('regularIV').value) || 0;
     document.getElementById('regularIVOutput').textContent = `普通IV: ${regularIV}`;
-  }
+  };
 
   // 設定藥物資料
   const drugSpecs = {
@@ -384,7 +491,7 @@
     const targetRateUnit = drugSpecs[drug].rateUnit;
     const decimal = drugSpecs[drug].decimalPlace;
     document.getElementById("originalConcentration0").textContent = originalConcentration + " " + originalUnit;
-    document.getElementById("targetConcentration0").placeholder = `(${targetRateUnit})`;    
+    document.getElementById("rateUnit").textContent = `(${targetRateUnit})`;    
 
     const bwDrug = parseFloat(document.getElementById("bwDrug").value);
     const flowRate = parseFloat(document.getElementById("flowRate0").value);
@@ -436,7 +543,7 @@
     const originalText = button.textContent;
 
     navigator.clipboard.writeText(textToCopy);
-    button.textContent = "已複製！";
+    button.textContent = "Copied";
     setTimeout(() => {
       button.textContent = originalText;
     }, 500);
@@ -449,11 +556,85 @@
     return Math.round(value * factor) / factor; // 先乘以10的次方再四捨五入，然後除以10的次方
   }
 
-  updateDrugOrder(); // 初始化選擇的藥物濃度
-  undateDrugList(); // 初始化藥物列表
-  updateFluid(); // 初始化fluid
+
+  // 加減乘除
+  function calculateExpression(expression) {
+    // 移除掉多餘的空格
+    expression = expression.replace(/\s+/g, "");
+
+    try {
+        // 使用 math.js 的 evaluate 方法計算表達式
+        let result = math.evaluate(expression); // 評估數學表達式
+        return result;
+    } catch (error) {
+        console.error("表達式錯誤:", error);
+        return null; // 若計算過程中有錯誤，返回 null
+    }
+  }
+
+  // 解析PO
+  function parsePO(expression, HM, formula) {
+    const regex = /^(\d+\s*\*\s*\d+)(\s*\+\s*\d+\s*\*\s*\d+)*$/;
+    const matchPattern = /(\d+)\s*\*\s*(\d+)/g;
+    const poOutputDiv = document.getElementById("poOutput");
+    
+    let poOutput = [];
+    let poResult = "";
+    let warning = "";
+
+    // 先檢查是否符合 A*B (+ C*D + E*F ...) 格式
+    if (!regex.test(expression)) {
+        warning = "格式錯誤: 請輸入 3*2 (+ 6*2 + 9*4 ...)";
+        poOutputDiv.innerHTML = warning;
+        return warning; // 若格式不正確，提前返回
+    }
+
+    // 使用正則表達式解析 "數字 * 數字" 格式
+    let match;
+    while ((match = matchPattern.exec(expression)) !== null) {
+        const [_, base, multiplier] = match;
+        poOutput.push({ base: parseInt(base), multiplier: parseInt(multiplier) });
+    }
+
+    // 計算 multiplier 的總和
+    const multiplierSum = poOutput.reduce((sum, item) => sum + item.multiplier, 0);
+    // 檢查 multiplierSum 是否能被 24 整除
+    if (24 % multiplierSum !== 0) {
+        warning = `格式錯誤: 總共${multiplierSum}餐無法整除24小時`;
+        return warning;
+    }
+
+    // 生成結果描述
+    poResult = poOutput.map((result) => `${result.base} ml * ${result.multiplier} meals`).join(" then ");
+    // 移除最後一個元素 (最後一個*幾餐)
+    let poResultArray = poResult.split(" * ");
+    poResultArray.pop(); 
+    poResult = poResultArray.join(" * ");
+ 
+    // 加上餵食頻率
+    poResult += ` / Q${24/multiplierSum}H`;
+
+    // 加上奶品
+    let diet = HM && formula ? `${HM}/${formula}` : HM || formula || '';
+    poResult =  diet ? `${diet}  ${poResult}` : poResult;
+
+    // 加上總量 = total ml/day
+    let totalIntake = calculateExpression(expression);
+    poResult = `Diet: ${poResult} (= total ${totalIntake} ml/day)`;
+    
+
+    return poResult;
+  }
+
+
+  // 在 DOM 加載完成後調用函數
+  document.addEventListener("DOMContentLoaded", function() {
+    updateDrugOrder(); // 初始化選擇的藥物濃度
+    undateDrugList(); // 初始化藥物列表
+    updateFluid(); // 初始化fluid
+  });
+
 
 </script>
-
 </body>
 </html>
