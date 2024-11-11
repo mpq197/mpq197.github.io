@@ -94,10 +94,6 @@
                   <option value="15%PDF">15%PDF</option>
                   <option value="14%RF">14%RF</option>
                 </select> 
-              </div>
-            </div>
-            <div class="col">
-              <div class="input-group">
                 <input type="text" id="po" class="form-control text-center" oninput="updateFluid()">
                 <span class="input-group-text">ml/day</span>
               </div>    
@@ -113,25 +109,16 @@
           <div class="row">
             <div class="col">
               <div class="input-group">
-              <span class="input-group-text">AA</span>
-              <select id="tpnAA" class="form-select text-center" style="background-color: #f8f9fa;" onchange="updateFluid()">
-                <option value="25%">2.5</option>
-                <option value="30%">3.0</option>
-                <option value="33%">3.3</option>
-                <option value="35%">3.5</option>
-                <option value="40%">4.0</option>
-                <option value="50%">5.0</option>
-              </select> 
-              </div>
-            </div>
-            <div class="col">
-              <div class="input-group">
+                <select id="tpnAA" class="form-select text-center" style="background-color: #f8f9fa;" onchange="updateFluid()">
+                  <option value="0.025">AA 2.5</option>
+                  <option value="0.030">AA 3.0</option>
+                  <option value="0.033">AA 3.3</option>
+                  <option value="0.035">AA 3.5</option>
+                  <option value="0.040">AA 4.0</option>
+                  <option value="0.050">AA 5.0</option>
+                </select> 
                 <input type="number" id="tpnGrams" class="form-control text-center" oninput="updateFluid()">
                 <span class="input-group-text">g/kg/day</span>
-              </div>
-            </div>
-            <div class="col">
-              <div class="input-group">
                 <input type="number" id="tpnHours" class="form-control text-center" oninput="updateFluid()">
                 <span class="input-group-text">hrs</span>
               </div>
@@ -146,19 +133,13 @@
         <td>
           <div class="row">
             <div class="col">
-              <select id="lipidChoice" class="form-select text-center" style="background-color: #f8f9fa;" onchange="updateFluid()">
-                <option value="smof">SMOF</option>
-                <option value="Omegaven">Omegaven</option>
-              </select>             
-            </div>
-            <div class="col">
               <div class="input-group">
+                <select id="lipidChoice" class="form-select text-center" style="background-color: #f8f9fa;" onchange="updateFluid()">
+                  <option value="SMOF">SMOF</option>
+                  <option value="Omegaven">Omegaven</option>
+                </select>             
                 <input type="number" id="lipidGrams" class="form-control text-center" oninput="updateFluid()">
                 <span class="input-group-text">g/kg/day</span>
-              </div>      
-            </div>
-            <div class="col">
-              <div class="input-group">
                 <input type="number" id="lipidHours" class="form-control text-center" oninput="updateFluid()">
                 <span class="input-group-text">hrs</span>
               </div>
@@ -215,6 +196,7 @@
       <!-- 輸出 -->
       <tr>
         <td rowspan="8">醫囑</td>
+        </td>
         <td>
           <div class="order-content">
             <span id="bwOutput"></span>
@@ -241,10 +223,6 @@
       <tr>
         <td>
           <div class="order-content">
-            <div class="input-group-text">
-              <input class="form-check-input" type="checkbox" id="makeUp" value="" aria-label="Checkbox for following text input">
-              <span>（補）</span>
-            </div>
             <span id="tpnOutput"></span>
             <button class="btn btn-dark" style="margin-left: auto; " tabindex="999" onclick="copyToClipboard('tpnOutput', this)">Copy</button>
           </div>
@@ -293,81 +271,90 @@
   <table class="table align-middle table-container table-bordered">
     <thead class="table-dark">
       <tr>
-        <th style="width: 15%;">體重</th>
-        <th style="width: 18%;">藥物名稱</th>
-        <th style="width: 15%;">目標流速</th>
-        <th style="width: 17%;">目標濃度</th>
-        <th style="width: 10%;">最後總量</th>
-        <th style="width: 15%;">稀釋液</th>
-        <th style="width: 10%">原液濃度</th>
+        <th>藥物泡法計算器</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td>
-          <div class="input-group">
-            <input type="number" id="bwDrug" class="form-control text-center" oninput="updateDrugOrder()">
-            <span class="input-group-text">kg</span>
+          <div class="row">
+            <div class="col">
+              <div class="input-group">
+                <input type="number" id="bwDrug" class="form-control text-center" oninput="updateDrugOrder()">
+                <span class="input-group-text">kg</span>
+              </div>
+            </div>
+            <div class="col">
+              <div class="input-group">
+                <select id="drug0" class="form-select text-center" onchange="updateDrugOrder()">
+                  <option value="Dopamine"      >Dopamine       </option>
+                  <option value="Dobutamine"    >Dobutamine     </option>
+                  <option value="Milrinone"     >Milrinone      </option>
+                  <option value="Epinephrine"   >Epinephrine    </option>
+                  <option value="Midazolam"     >Midazolam      </option>
+                  <option value="Fentanyl"      >Fentanyl       </option>
+                  <option value="Bumetanide"    >Bumetanide     </option>
+                  <option value="Norepinephrine">Norepinephrine </option>
+                  <option value="Nicardipine"   >Nicardipine    </option>
+                  <option value="Nitroglycerin" >Nitroglycerin  </option>
+                  <option value="Labetalol"     >Labetalol      </option>
+                  <option value="PGE1"          >PGE1           </option>
+                  <option value="Vasopressin"   >Vasopressin    </option>
+                  <option value="Isoproterenol" >Isoproterenol  </option>
+                  <option value="Rocuronium"    >Rocuronium     </option>
+                  <option value="Cisatracurium" >Cisatracurium  </option>
+                  <option value="Morphine"      >Morphine       </option>
+                  <option value="Lorazepam"     >Lorazepam      </option>
+                  <option value="Ketamine"      >Ketamine       </option>
+                  <option value="Propofol"      >Propofol       </option>
+                  <option value="MgSO4"         >MgSO4          </option>
+                  <option value="Lidocaine"     >Lidocaine      </option>
+                  <!-- More options -->
+                </select>
+                <span class="input-group-text" id="originalConcentration0"></span>
+              </div> 
+            </div> 
           </div>
         </td>
+      </tr>
+      <tr>
         <td>
-          <select id="drug0" class="form-select text-center" onchange="updateDrugOrder()">
-            <option value="Dopamine"      >Dopamine       </option>
-            <option value="Dobutamine"    >Dobutamine     </option>
-            <option value="Milrinone"     >Milrinone      </option>
-            <option value="Epinephrine"   >Epinephrine    </option>
-            <option value="Midazolam"     >Midazolam      </option>
-            <option value="Fentanyl"      >Fentanyl       </option>
-            <option value="Bumetanide"    >Bumetanide     </option>
-            <option value="Norepinephrine">Norepinephrine </option>
-            <option value="Nicardipine"   >Nicardipine    </option>
-            <option value="Nitroglycerin" >Nitroglycerin  </option>
-            <option value="Labetalol"     >Labetalol      </option>
-            <option value="PGE1"          >PGE1           </option>
-            <option value="Vasopressin"   >Vasopressin    </option>
-            <option value="Isoproterenol" >Isoproterenol  </option>
-            <option value="Rocuronium"    >Rocuronium     </option>
-            <option value="Cisatracurium" >Cisatracurium  </option>
-            <option value="Morphine"      >Morphine       </option>
-            <option value="Lorazepam"     >Lorazepam      </option>
-            <option value="Ketamine"      >Ketamine       </option>
-            <option value="Propofol"      >Propofol       </option>
-            <option value="MgSO4"         >MgSO4          </option>
-            <option value="Lidocaine"     >Lidocaine      </option>
-            <!-- More options -->
-          </select>
-        </td>
-        <td>
-          <div class="input-group">
-            <input type="number" id="flowRate0" class="form-control text-center" oninput="updateDrugOrder()">
-            <span class="input-group-text">ml/hr</span>
+          <div class="row">
+            <div class="col">
+              <div class="input-group">
+                <span class="input-group-text">in</span>
+                <select id="diluter0" class="form-select text-center" onchange="updateDrugOrder()">
+                  <option value="D5W">D5W</option>
+                  <option value="N/S">N/S</option>
+                  <option value="D/W">D/W</option>
+                </select>  
+                <span class="input-group-text">total</span>
+                <input type="number" id="totalVolume0" class="form-control text-center" oninput="updateDrugOrder()">
+                <span class="input-group-text">ml</span>
+              </div>
+            </div>
           </div>
         </td>
+      </tr>
+      <tr>
         <td>
-          <div class="input-group">
-            <input type="number" id="targetConcentration0" class="form-control text-center" oninput="updateDrugOrder()">
-            <span id="rateUnit" class="input-group-text">mcg/kg/min</span>
+          <div class="row">
+            <div class="col">
+              <div class="input-group">
+                <span class="input-group-text">run</span> 
+                <input type="number" id="flowRate0" class="form-control text-center" oninput="updateDrugOrder()">
+                <span class="input-group-text">ml/hr</span>
+                <span class="input-group-text">=</span> 
+                <input type="number" id="targetConcentration0" class="form-control text-center" oninput="updateDrugOrder()">
+                <span id="rateUnit" class="input-group-text">mcg/kg/min</span>
+              </div>    
+            </div>
           </div>
         </td>
-        <td>
-          <div class="input-group">
-            <input type="number" id="totalVolume0" class="form-control text-center" oninput="updateDrugOrder()">
-            <span class="input-group-text">ml</span>
-          </div>
-        </td>
-        <td>
-          <select id="diluter0" class="form-select text-center" onchange="updateDrugOrder()">
-            <option value="D5W">D5W</option>
-            <option value="N/S">N/S</option>
-            <option value="D/W">D/W</option>
-          </select>
-        </td>
-        <td><span id="originalConcentration0"></span></td>
       </tr>
 
       <!-- 醫囑 output -->
       <tr>
-        <td><span>醫囑</td>
         <td colspan="6">
           <div class="order-content">
             <span id="orderText">醫囑</span>
@@ -378,7 +365,6 @@
 
       <!-- 藥囑 output -->
       <tr>
-        <td><span>藥囑</td>
         <td colspan="6">
           <div class="order-content">
             <span id="medText">藥囑</span>
@@ -389,7 +375,6 @@
 
       <!-- PURE LINE output -->
       <tr>
-        <td><span>Pure Line</td>
         <td colspan="6">
           <div class="order-content">
             <span id="purelineOrderText">Pure Line</span>
@@ -422,18 +407,20 @@
     const po = document.getElementById('po').value;
     const HM = document.getElementById('HM').value;
     const formula = document.getElementById('formula').value;
-    let parseResult = parsePO(po, HM, formula);
+    let [parseResult, poTotal] = parsePO(po, HM, formula);
     document.getElementById('poOutput').textContent = parseResult;
 
     // TPN 輸出示例
     const tpnAA = document.getElementById('tpnAA').value;
     const tpnGrams = parseFloat(document.getElementById('tpnGrams').value) || 0;
     const tpnHours = document.getElementById('tpnHours').value || 24; 
-    const makeUp = document.getElementById('makeUp').value;
-    let tpnOutput = "";
+    let tpnRate = 0;
     let tpnTotal = 0;
-    tpnOutput += `${tpnGrams*bwFluid/1000}`;
-    document.getElementById('tpnOutput').textContent = `AA: ${tpnAA}, Gram: ${tpnGrams}, 補不足`;
+    let tpnOutput = "";
+    tpnRate = roundToDecimalPlaces(tpnGrams*bwFluid/1000/tpnAA/tpnHours, 1);
+    tpnTotal = tpnRate*tpnHours;
+    tpnOutput += `TPN [AA ${tpnAA*100}] ${tpnGrams}g/kg/day = ${tpnRate}ml/hr run ${tpnHours} hrs`;
+    document.getElementById('tpnOutput').textContent = `${tpnOutput}`;
 
     // SMOF/Omegaven 輸出示例
     const lipidChoice = document.getElementById('lipidChoice').value;
@@ -443,20 +430,48 @@
       "SMOF": {density: 1/5, unit: "g/ml"},
       "Omegaven": {density: 1/10, unit: "g/ml"}
     }
-    document.getElementById('lipidOutput').textContent = `${lipidChoice} - Gram: ${lipidGrams}`;
+    let lipidRate = 0;
+    let lipidTotal = 0;
+    let lipidOutput = "";
+    let minDiff = 1000;
+    let closestHour = 16;
+    let targetLipidAmount = lipidGrams*bwFluid/1000/lipidSpec[lipidChoice].density;
+    for (let i=16; i<=lipidHours; i+=0.5){
+      lipidRate = roundToDecimalPlaces(targetLipidAmount/i, 1);
+      lipidTotal = lipidRate*i;
+      const diff = Math.abs(lipidTotal-targetLipidAmount);
+      if (diff<minDiff){
+        minDiff=diff;
+        closestHour=i;
+      }
+      // console.log(`target ${targetLipidAmount}, current ${lipidTotal}, current hr ${i}`);
+      // console.log(`minDiff ${minDiff}, closestHour = ${closestHour}`);
+    }
+    lipidRate = roundToDecimalPlaces(lipidGrams*bwFluid/1000/lipidSpec[lipidChoice].density/closestHour, 1);
+    lipidTotal = lipidRate*closestHour;
+    lipidOutput = `${lipidChoice} ${lipidGrams}g/kg/day = ${lipidRate} ml/hr run ${closestHour} hrs`;
+    document.getElementById('lipidOutput').textContent = `${lipidOutput}`;
 
 
     // ml/hr 輸出示例
     const mlHr = parseFloat(document.getElementById('mlHr').value) || 0;
-    document.getElementById('mlHrOutput').textContent = `ml/hr: ${mlHr}`;
+    let mlHrTotal = mlHr*24;
+    document.getElementById('mlHrOutput').textContent = `other line: ${mlHr}ml/hr = total ${mlHrTotal}ml/day`;
 
     // ml/day 輸出示例
     const mlDay = parseFloat(document.getElementById('mlDay').value) || 0;
-    document.getElementById('mlDayOutput').textContent = `ml/day: ${mlDay}`;
+    document.getElementById('mlDayOutput').textContent = `other in I/O = ${mlDay}ml/day`;
 
     // 普通IV 輸出示例
     const regularIV = parseFloat(document.getElementById('regularIV').value) || 0;
-    document.getElementById('regularIVOutput').textContent = `普通IV: ${regularIV}`;
+    const regularIVChoice = document.getElementById('regularIVChoice').value || "普通IV";
+    let regularIVRate = 0;
+    let regularIVTotal = 0;
+    let regularIVOutput = "";
+    
+    regularIVRate = roundToDecimalPlaces((totalTDF-poTotal-tpnTotal-lipidTotal-mlHrTotal-mlDay)/24, 1);
+    regularIVOutput += `${regularIVChoice} run ${regularIVRate}ml/hr`;
+    document.getElementById('regularIVOutput').textContent = regularIVOutput;
   };
 
   // 設定藥物資料
@@ -625,14 +640,13 @@
     poResult = `Diet: ${poResult} (= total ${totalIntake} ml/day)`;
     
 
-    return poResult;
+    return [poResult, totalIntake];
   }
 
 
   // 在 DOM 加載完成後調用函數
   document.addEventListener("DOMContentLoaded", function() {
     updateDrugOrder(); // 初始化選擇的藥物濃度
-    undateDrugList(); // 初始化藥物列表
     updateFluid(); // 初始化fluid
   });
 
