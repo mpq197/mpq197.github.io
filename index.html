@@ -523,31 +523,33 @@
 
       regularIVRate = roundToDecimalPlaces((totalTDF-poTotal-tpnTotal-lipidTotal-mlHrTotal-mlDay)/24, 1);
       regularIVOutput += `${regularIVChoice} run ${regularIVRate}ml/hr`;
+      regularIVOutput = regularIVRate==0? "":regularIVOutput;
 
     } else{
       //未設定tpn gram數，表示補不足，先計算普通IV流速再計算TPN
       regularIVTotal = roundToDecimalPlaces(regularIVRate*24, 1);
       regularIVOutput += `${regularIVChoice} run ${regularIVRate}ml/hr`;
+      regularIVOutput = regularIVRate==0? "":regularIVOutput;
 
       tpnTotal = totalTDF-poTotal-lipidTotal-mlHrTotal-mlDay-regularIVTotal;
       tpnRate = roundToDecimalPlaces(tpnTotal/tpnHours, 1);
-      tpnGrams = roundToDecimalPlaces(tpnRate*24*tpnAA/(bwFluid/1000), 1);
+      tpnGrams = roundToDecimalPlaces(tpnRate*24*tpnAA/(bwFluid/1000), 2);
       tpnHoursOutput = tpnHours===24? "":` run ${tpnHours} hrs`;
       tpnOutput += `${tpnMap[tpnAA]} (補) ${tpnGrams}g/kg/day = ${tpnRate}ml/hr${tpnHoursOutput}`;
-      tpnOutput = tpnGrams==0 ? "" : tpnOutput ;
+      tpnOutput = tpnRate==0 ? "" : tpnOutput ;
       
     }
 
 
     //輸出 order
-    document.getElementById('bwOutput').textContent = bwOutput;
-    document.getElementById('tdfOutput').textContent = tdfOutput;
-    document.getElementById('poOutput').textContent = parseResult;
-    document.getElementById('tpnOutput').textContent = `${tpnOutput}`;
-    document.getElementById('lipidOutput').textContent = `${lipidOutput}`;
-    document.getElementById('mlHrOutput').textContent = mlhrOutput;
-    document.getElementById('mlDayOutput').textContent = mlDayOutput; 
-    document.getElementById('regularIVOutput').textContent = regularIVOutput;
+    updateOutput('bwOutput', bwOutput);
+    updateOutput('tdfOutput', tdfOutput);
+    updateOutput('poOutput', parseResult);
+    updateOutput('tpnOutput', tpnOutput);
+    updateOutput('lipidOutput', lipidOutput);
+    updateOutput('mlHrOutput', mlhrOutput);
+    updateOutput('mlDayOutput', mlDayOutput);
+    updateOutput('regularIVOutput', regularIVOutput);
   };
 
   // 設定藥物資料
@@ -741,11 +743,24 @@
   }
 
 
+  // Function to update text content and hide the element if it's empty
+  function updateOutput(id, value) {
+    const element = document.getElementById(id);
+    if (value === "") {
+        element.style.display = "none"; // Hide the element if value is an empty string
+    } else {
+        element.style.display = "block"; // Show the element if value is not empty
+        element.textContent = value; // Update the text content
+    }
+  }
+
   // 在 DOM 加載完成後調用函數
   document.addEventListener("DOMContentLoaded", function() {
     updateDrugOrder(); // 初始化選擇的藥物濃度
     updateFluid(); // 初始化fluid
   });
+
+
 
 
 </script>
