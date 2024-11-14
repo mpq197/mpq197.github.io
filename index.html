@@ -42,7 +42,10 @@
       display: block; /* 顯示選擇的表格 */
     }
 
-   
+    .nav-item {
+      border-bottom: 1px solid #6c757d; /* 灰色分行線，可根據需求調整顏色 */
+    }
+
   </style>
 </head>
 <body>
@@ -59,6 +62,12 @@
             <li class="nav-item">
               <button class="nav-link btn btn-dark text-start text-white w-100" onclick="showTable('drugTable')">藥物泡法</button>
             </li>
+            <li class="nav-item">
+              <button class="nav-link btn btn-dark text-start text-white w-100" onclick="showTable('measurements')">三圍測量</button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link btn btn-dark text-start text-white w-100" onclick="showTable('')">ＮＢ常用</button>
+            </li>
           </ul>
         </div>
       </nav>
@@ -66,7 +75,7 @@
   </div>
 
 
-  <div style="margin-left: 100px; display: flex; justify-content: center;">
+  <div class="text-center" style="margin-left: 100px; display: flex; justify-content: center;">
 
     <!-- 水份計算器 -->
     <div id="fluidTable" class="table-container active">
@@ -408,10 +417,79 @@
         </tbody>
       </table>
     </div>
+
+    <!-- 三圍測量 -->
+    <div id="measurements" class="table-container">
+      <table class="table align-middle table-bordered">
+        <thead class="table-dark">
+          <tr>
+            <th>三圍測量</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="row">
+                <div class="col">
+                  <div class="input-group">
+                    <input type="number" id="gestationalAgebyWeek" class="form-control text-center" oninput="measurementsOfPreterms()">
+                    <span class="input-group-text">weeks</span>
+                    <input type="number" id="gestationalAgePlusDay" class="form-control text-center" oninput="measurementsOfPreterms()">
+                    <span class="input-group-text">days</span>
+                  </div>
+                </div>
+              <div class="col">
+                <div class="input-group">
+                  <span class="input-group-text">sex: </span>
+                  <select id="sex" class="form-select text-center" onchange="measurementsOfPreterms()">
+                    <option value="" selected></option>
+                    <option value="male">boy</option>
+                    <option value="female">female</option>
+                  </select>  
+                </div>
+              </div>
+            </td>
+          </tr>      
+          <tr>
+            <td>
+              <div class="row">
+                <div class="col">
+                  <div class="input-group">
+                    <span class="input-group-text">體重</span>
+                    <input type="text" id="birthWeight" class="form-control text-center" oninput="measurementsOfPreterms()">
+                  </div>
+                </div>
+              <div class="col">
+                <div class="input-group">
+                  <span class="input-group-text">身長</span>
+                  <input type="text" id="birthHeight" class="form-control text-center" oninput="measurementsOfPreterms()">
+                </div>
+              </div>
+              <div class="col">
+                <div class="input-group">
+                  <span class="input-group-text">頭圍</span>
+                  <input type="text" id="birthHeadCircumference" class="form-control text-center" oninput="measurementsOfPreterms()">
+                </div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <div class="order-content">
+                <div id="measurementsOfPretermsOutput" style="text-align: left;"></div>
+                <button class="btn btn-dark" style="margin-left: auto; " onclick="copyToClipboard('measurementsOfPretermsOutput', this)">Copy</button>
+              </div>
+            </td>
+          </tr>            
+        </tbody>
+      </table>
+    </div>
+
   </div>
 
-<!-- 引入 math.js -->
+<!-- 引入script -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.4.0/math.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jstat@1.9.2/dist/jstat.min.js"></script>
 
 <script>
   // 更新fluid計算
@@ -456,6 +534,19 @@
       "0.040": "TPN [AA 4.0]",
       "0.050": "TPN [N0]"
     };
+
+    // 當 A 有值時，禁用 B；當 B 有值時，禁用 A；如果兩者都沒有值，兩者都啟用
+    const regularIVInputDiv = document.getElementById('regularIV');
+    const tpnGramsInputDiv = document.getElementById('tpnGrams');
+    if (regularIVInputDiv.value !== "") {
+      tpnGramsInputDiv.disabled = true;
+    } else if (tpnGramsInputDiv.value !== "") {
+      regularIVInputDiv.disabled = true;
+    } else {
+      regularIVInputDiv.disabled = false;
+      tpnGramsInputDiv.disabled = false;
+    }
+
 
 
     // BW 輸出
@@ -742,7 +833,6 @@
     document.getElementById(tableId).classList.add('active');
   }
 
-
   // Function to update text content and hide the element if it's empty
   function updateOutput(id, value) {
     const element = document.getElementById(id);
@@ -754,6 +844,198 @@
       element.textContent = value; // Update the text content
     }
   }
+
+  // lmsData
+  const lmsData = {
+    weight: {
+      male: {
+        22: { L:-0.755953407, M: 530.1154226, S: 0.141652576 },
+        23: { L:-0.074464904, M: 610.9099705, S: 0.149190147 },
+        24: { L: 0.431861373, M: 689.5811815, S: 0.174089005 },
+        25: { L: 0.991497710, M: 787.7101879, S: 0.182199955 },
+        26: { L: 1.323627868, M: 897.0961540, S: 0.193464095 },
+        27: { L: 1.274190118, M: 1006.511469, S: 0.213362183 },
+        28: { L: 1.435348746, M: 1143.735488, S: 0.214355725 },
+        29: { L: 1.454713458, M: 1295.951136, S: 0.214277713 },
+        30: { L: 1.396333880, M: 1467.198255, S: 0.211167622 },
+        31: { L: 1.278306515, M: 1661.188028, S: 0.199703163 },
+        32: { L: 0.929091680, M: 1870.555980, S: 0.199936913 },
+        33: { L: 0.716984947, M: 2101.892339, S: 0.193538581 },
+        34: { L: 0.779071820, M: 2333.515062, S: 0.180026726 },
+        35: { L: 0.657925397, M: 2579.510762, S: 0.167138235 },
+        36: { L: 0.643494506, M: 2821.492694, S: 0.159081045 },
+        37: { L: 0.668274630, M: 3073.423768, S: 0.147723537 },
+        38: { L: 0.627021832, M: 3295.608549, S: 0.135359387 },
+        39: { L: 0.565241004, M: 3458.449323, S: 0.127043913 },
+        40: { L: 0.546911777, M: 3599.565118, S: 0.122473966 },
+        41: { L: 0.616423228, M: 3714.438447, S: 0.122400699 },
+        42: { L: 0.245915643, M: 3852.950164, S: 0.134222378 }
+      },
+      female: {
+        22: { L:-0.886345270, M: 507.3307933, S: 0.142653625 },
+        23: { L: 0.454039089, M: 580.7209355, S: 0.156682720 },
+        24: { L: 0.862900143, M: 652.8216851, S: 0.168345977 },
+        25: { L: 1.112510495, M: 739.1095964, S: 0.184759842 },
+        26: { L: 1.107355797, M: 835.4943365, S: 0.204119931 },
+        27: { L: 1.104384524, M: 938.3878352, S: 0.215558250 },
+        28: { L: 1.132526014, M: 1061.034710, S: 0.226213796 },
+        29: { L: 1.118384940, M: 1208.484054, S: 0.226911791 },
+        30: { L: 1.034718230, M: 1376.789485, S: 0.225178618 },
+        31: { L: 0.908447817, M: 1559.379859, S: 0.222750345 },
+        32: { L: 0.641022313, M: 1767.438850, S: 0.213734926 },
+        33: { L: 0.636298644, M: 1999.089294, S: 0.201871901 },
+        34: { L: 0.570814688, M: 2235.605393, S: 0.193375219 },
+        35: { L: 0.443011479, M: 2481.651752, S: 0.177131829 },
+        36: { L: 0.518444042, M: 2716.707484, S: 0.164975077 },
+        37: { L: 0.596838806, M: 2952.265984, S: 0.151862958 },
+        38: { L: 0.512234438, M: 3163.279351, S: 0.137613068 },
+        39: { L: 0.524544941, M: 3321.845285, S: 0.127578988 },
+        40: { L: 0.483229197, M: 3454.044614, S: 0.122494620 },
+        41: { L: 0.574914171, M: 3562.223503, S: 0.122537208 },
+        42: { L: 0.464359380, M: 3717.383553, S: 0.128053272 }
+      }
+    },
+    height: {
+      male: {
+        23: { L: 0.999989111, M: 30.22445034, S: 0.062854811 },
+        24: { L: 1.527085787, M: 31.38058091, S: 0.061433566 },
+        25: { L: 1.925809718, M: 32.72749581, S: 0.063105729 },
+        26: { L: 1.780178036, M: 34.07061545, S: 0.064767334 },
+        27: { L: 2.004030544, M: 35.49301546, S: 0.064927872 },
+        28: { L: 2.014131536, M: 36.92946259, S: 0.065155241 },
+        29: { L: 2.053415552, M: 38.35521825, S: 0.064553339 },
+        30: { L: 2.157378604, M: 39.81172011, S: 0.063218115 },
+        31: { L: 2.321362942, M: 41.27753253, S: 0.061568192 },
+        32: { L: 2.286798508, M: 42.71347367, S: 0.059038221 },
+        33: { L: 2.387785986, M: 44.12218273, S: 0.056975367 },
+        34: { L: 2.288699529, M: 45.47464736, S: 0.055564925 },
+        35: { L: 2.336685220, M: 46.71543002, S: 0.054604986 },
+        36: { L: 2.134679021, M: 47.92466222, S: 0.053612604 },
+        37: { L: 2.194118692, M: 49.08183085, S: 0.050989838 },
+        38: { L: 1.785224367, M: 49.99882808, S: 0.048308563 },
+        39: { L: 2.011969769, M: 50.77584429, S: 0.045815790 },
+        40: { L: 1.782110632, M: 51.35901820, S: 0.043702835 },
+        41: { L: 2.115671062, M: 51.98674072, S: 0.043090981 }
+      },
+      female: {
+        23: { L: 0.999989111, M: 29.59185830, S: 0.060939875 },
+        24: { L: 1.848686645, M: 30.93998386, S: 0.060721271 },
+        25: { L: 1.807795445, M: 32.16320404, S: 0.063579149 },
+        26: { L: 2.001930760, M: 33.43566793, S: 0.065184225 },
+        27: { L: 2.086941903, M: 34.83266413, S: 0.066594155 },
+        28: { L: 2.119052411, M: 36.26314995, S: 0.067011748 },
+        29: { L: 1.999289870, M: 37.74465778, S: 0.066223642 },
+        30: { L: 1.869037253, M: 39.18689590, S: 0.064640686 },
+        31: { L: 2.227456982, M: 40.68223972, S: 0.061992986 },
+        32: { L: 2.048249910, M: 42.04385483, S: 0.060124544 },
+        33: { L: 1.975649713, M: 43.43684138, S: 0.057796661 },
+        34: { L: 1.936374544, M: 44.73845511, S: 0.056650809 },
+        35: { L: 2.017111480, M: 45.98487035, S: 0.055693310 },
+        36: { L: 2.037112755, M: 47.19602982, S: 0.054695434 },
+        37: { L: 1.987759096, M: 48.29412603, S: 0.052430974 },
+        38: { L: 2.099842979, M: 49.27293489, S: 0.048912164 },
+        39: { L: 2.173856758, M: 49.96512881, S: 0.046196730 },
+        40: { L: 2.238231008, M: 50.55782288, S: 0.043772492 },
+        41: { L: 2.410795033, M: 51.12226629, S: 0.042687983 }
+      }
+    },
+    HC: {  // Head Circumference
+      male: {
+        23: { L: 0.999989112, M: 21.25674010, S: 0.057928432 },
+        24: { L: 0.995699867, M: 22.13591905, S: 0.052643104 },
+        25: { L: 1.803529402, M: 23.11591705, S: 0.052155227 },
+        26: { L: 1.481059984, M: 24.06383761, S: 0.052742926 },
+        27: { L: 1.704786152, M: 25.06791771, S: 0.053364633 },
+        28: { L: 1.404828860, M: 26.00470659, S: 0.053542663 },
+        29: { L: 1.870192611, M: 26.97265794, S: 0.052574759 },
+        30: { L: 2.024238614, M: 27.91067996, S: 0.052318761 },
+        31: { L: 1.721460470, M: 28.84007822, S: 0.051638997 },
+        32: { L: 1.906679307, M: 29.81100388, S: 0.050809820 },
+        33: { L: 1.941174590, M: 30.72788556, S: 0.050112166 },
+        34: { L: 1.407726305, M: 31.55571923, S: 0.049672593 },
+        35: { L: 1.611413486, M: 32.39637793, S: 0.049193188 },
+        36: { L: 1.833738659, M: 33.16040584, S: 0.048266967 },
+        37: { L: 2.079738970, M: 33.84369053, S: 0.046281492 },
+        38: { L: 2.055819989, M: 34.32445990, S: 0.044201534 },
+        39: { L: 1.607507747, M: 34.60471876, S: 0.043641827 },
+        40: { L: 1.737040718, M: 34.86169525, S: 0.042412469 },
+        41: { L: 1.862585010, M: 35.01818156, S: 0.042034156 }
+      },
+      female: {
+        23: { L: 0.999989112, M: 20.87742697, S: 0.056647814 },
+        24: { L: 1.631013724, M: 21.74150208, S: 0.053900367 },
+        25: { L: 1.635352272, M: 22.62311597, S: 0.053735828 },
+        26: { L: 1.250248039, M: 23.52694627, S: 0.054174138 },
+        27: { L: 1.430400757, M: 24.45958191, S: 0.055683715 },
+        28: { L: 1.713355307, M: 25.43865041, S: 0.056214724 },
+        29: { L: 1.671996931, M: 26.43806978, S: 0.055892820 },
+        30: { L: 1.765441141, M: 27.41617792, S: 0.054147856 },
+        31: { L: 1.708648235, M: 28.33907345, S: 0.052556499 },
+        32: { L: 1.515694818, M: 29.25088465, S: 0.050341635 },
+        33: { L: 1.537525317, M: 30.16380997, S: 0.049659077 },
+        34: { L: 1.509013603, M: 31.06136625, S: 0.049296998 },
+        35: { L: 1.594224733, M: 31.86654136, S: 0.049186593 },
+        36: { L: 1.819098791, M: 32.63190372, S: 0.049065069 },
+        37: { L: 1.783655602, M: 33.23581132, S: 0.046876116 },
+        38: { L: 1.225021206, M: 33.66685444, S: 0.044271311 },
+        39: { L: 1.229086755, M: 33.97449579, S: 0.042696891 },
+        40: { L: 1.796207986, M: 34.23342510, S: 0.040860035 },
+        41: { L: 1.892851996, M: 34.47350971, S: 0.040136918 }
+      }
+    }
+  };
+
+
+  // 獲取 LMS 參數並計算 Z-Score
+  function getZScore(parameter, sex, gestationalAge, value) {
+    const lms = lmsData[parameter][sex][gestationalAge];
+    if (lms) {
+      const { L, M, S } = lms;
+      if (L === 0) {
+        return Math.log(value / M) / S;  //L趨近於0時使用極限公式
+      } else {
+        return ((Math.pow(value / M, L) - 1) / (S * L));  //常規公式
+      }
+    } else {
+      return null;  // 沒有對應的數據
+    }
+  }
+
+  // 處理數字後綴
+  function getOrdinalSuffix(number) {
+    const suffixes = ["th", "st", "nd", "rd"];
+    const value = number % 100;
+
+    // 選擇後綴，特別處理 11, 12, 13 這些例外數字
+    return number + (suffixes[(value - 20) % 10] || suffixes[value] || suffixes[0]);
+  }
+
+  function measurementsOfPreterms() {
+    const gestationalAgebyWeek = parseInt(document.getElementById("gestationalAgebyWeek").value);
+    const gestationalAgePlusDay = parseInt(document.getElementById("gestationalAgePlusDay").value);
+    const sex = document.getElementById("sex").value;
+    const birthWeight = parseFloat(document.getElementById("birthWeight").value);
+    const birthHeight = parseFloat(document.getElementById("birthHeight").value);
+    const birthHeadCircumference = parseFloat(document.getElementById("birthHeadCircumference").value);
+
+    const weightZScore = getZScore('weight', sex, gestationalAgebyWeek, birthWeight);
+    const heightZScore = getZScore('height', sex, gestationalAgebyWeek, birthHeight);
+    const headCircumferenceZScore = getZScore('HC', sex, gestationalAgebyWeek, birthHeadCircumference);
+
+    const weightPercentile = jStat.normal.cdf(weightZScore, 0, 1) * 100;
+    const heightPercentile = jStat.normal.cdf(heightZScore, 0, 1) * 100;
+    const headCircumferencePercentile = jStat.normal.cdf(headCircumferenceZScore, 0, 1) * 100;
+    
+    const resultText = `
+      GA: ${gestationalAgebyWeek} weeks + ${gestationalAgePlusDay} day${gestationalAgePlusDay>1? "s":""} <br>
+      Gender: ${sex} <br> 
+      BBW: ${birthWeight}g (= ${getOrdinalSuffix(Math.trunc(weightPercentile))} percentile, Z-score ${weightZScore.toFixed(2)})<br>
+      BBL: ${birthHeight}cm (= ${getOrdinalSuffix(Math.trunc(heightPercentile))} percentile, Z-score ${heightZScore.toFixed(2)})<br>
+      BHC: ${birthHeadCircumference}cm (= ${getOrdinalSuffix(Math.trunc(headCircumferencePercentile))} percentile, Z-score ${headCircumferenceZScore.toFixed(2)})
+    `;
+      // Display the Z scores
+      document.getElementById("measurementsOfPretermsOutput").innerHTML = resultText;
+  } 
 
   // 在 DOM 加載完成後調用函數
   document.addEventListener("DOMContentLoaded", function() {
