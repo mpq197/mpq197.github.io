@@ -1018,23 +1018,26 @@
     const birthHeight = parseFloat(document.getElementById("birthHeight").value);
     const birthHeadCircumference = parseFloat(document.getElementById("birthHeadCircumference").value);
 
+    // 計算 Z-score
     const weightZScore = getZScore('weight', sex, gestationalAgebyWeek, birthWeight);
     const heightZScore = getZScore('height', sex, gestationalAgebyWeek, birthHeight);
     const headCircumferenceZScore = getZScore('HC', sex, gestationalAgebyWeek, birthHeadCircumference);
 
-    const weightPercentile = jStat.normal.cdf(weightZScore, 0, 1) * 100;
-    const heightPercentile = jStat.normal.cdf(heightZScore, 0, 1) * 100;
-    const headCircumferencePercentile = jStat.normal.cdf(headCircumferenceZScore, 0, 1) * 100;
-    
+    // 計算百分位 (若 Z-score 為 null 則設定百分位為 null)
+    const weightPercentile = weightZScore !== null ? (jStat.normal.cdf(weightZScore, 0, 1) * 100) : null;
+    const heightPercentile = heightZScore !== null ? (jStat.normal.cdf(heightZScore, 0, 1) * 100) : null;
+    const headCircumferencePercentile = headCircumferenceZScore !== null ? (jStat.normal.cdf(headCircumferenceZScore, 0, 1) * 100) : null;
+
     const resultText = `
-      GA: ${gestationalAgebyWeek} weeks + ${gestationalAgePlusDay} day${gestationalAgePlusDay>1? "s":""} <br>
+      GA: ${gestationalAgebyWeek} weeks + ${gestationalAgePlusDay} day${gestationalAgePlusDay > 1 ? "s" : ""} <br>
       Gender: ${sex} <br> 
-      BBW: ${birthWeight}g (= ${getOrdinalSuffix(Math.trunc(weightPercentile))} percentile, Z-score ${weightZScore.toFixed(2)})<br>
-      BBL: ${birthHeight}cm (= ${getOrdinalSuffix(Math.trunc(heightPercentile))} percentile, Z-score ${heightZScore.toFixed(2)})<br>
-      BHC: ${birthHeadCircumference}cm (= ${getOrdinalSuffix(Math.trunc(headCircumferencePercentile))} percentile, Z-score ${headCircumferenceZScore.toFixed(2)})
+      BBW: ${birthWeight}g (= ${weightPercentile !== null ? getOrdinalSuffix(Math.trunc(weightPercentile)) : "N/A"} percentile, Z-score ${weightZScore !== null ? weightZScore.toFixed(2) : "N/A"})<br>
+      BBL: ${birthHeight}cm (= ${heightPercentile !== null ? getOrdinalSuffix(Math.trunc(heightPercentile)) : "N/A"} percentile, Z-score ${heightZScore !== null ? heightZScore.toFixed(2) : "N/A"})<br>
+      BHC: ${birthHeadCircumference}cm (= ${headCircumferencePercentile !== null ? getOrdinalSuffix(Math.trunc(headCircumferencePercentile)) : "N/A"} percentile, Z-score ${headCircumferenceZScore !== null ? headCircumferenceZScore.toFixed(2) : "N/A"})
     `;
-      // Display the Z scores
-      document.getElementById("measurementsOfPretermsOutput").innerHTML = resultText;
+
+    // Display
+    document.getElementById("measurementsOfPretermsOutput").innerHTML = resultText;
   } 
 
   // 在 DOM 加載完成後調用函數
