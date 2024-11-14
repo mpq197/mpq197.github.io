@@ -221,7 +221,7 @@
           <tr>
             <td rowspan="8">醫囑</td>
             </td>
-            <td>
+            <td id="bwOutputCell" style="display: block;">
               <div class="order-content">
                 <span id="bwOutput"></span>
                 <button class="btn btn-dark" style="margin-left: auto; " tabindex="999" onclick="copyToClipboard('bwOutput', this)">Copy</button>
@@ -229,7 +229,7 @@
             </td>
           </tr>
           <tr>
-            <td>
+            <td id="tdfOutputCell" style="display: none;">
               <div class="order-content">
                 <span id="tdfOutput"></span>
                 <button class="btn btn-dark" style="margin-left: auto; " tabindex="999" onclick="copyToClipboard('tdfOutput', this)">Copy</button>
@@ -237,7 +237,7 @@
             </td>
           </tr>
           <tr>
-            <td>
+            <td id="poOutputCell" style="display: none;">
               <div class="order-content">
                 <span id="poOutput"></span>
                 <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('poOutput', this)">Copy</button>
@@ -245,7 +245,7 @@
             </td>
           </tr>
           <tr>
-            <td>
+            <td id="tpnOutputCell" style="display: none;">
               <div class="order-content">
                 <span id="tpnOutput"></span>
                 <button class="btn btn-dark" style="margin-left: auto; " tabindex="999" onclick="copyToClipboard('tpnOutput', this)">Copy</button>
@@ -253,7 +253,7 @@
             </td>
           </tr>
           <tr>
-            <td>
+            <td id="lipidOutputCell" style="display: none;">
               <div class="order-content">
                 <span id="lipidOutput"></span>
                 <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('lipidOutput', this)">Copy</button>
@@ -261,7 +261,7 @@
             </td>
           </tr>
           <tr>
-            <td>
+            <td id="mlHrOutputCell" style="display: none;">
               <div class="order-content">
                 <span id="mlHrOutput"></span>
                 <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('mlHrOutput', this)">Copy</button>
@@ -269,7 +269,7 @@
             </td>
           </tr>
           <tr>
-            <td>
+            <td id="mlDayOutputCell" style="display: none;">
               <div class="order-content">
                 <span id="mlDayOutput"></span>
                 <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('mlDayOutput', this)">Copy</button>
@@ -277,7 +277,7 @@
             </td>
           </tr>
           <tr>
-            <td>
+            <td id="regularIVOutputCell" style="display: none;">
               <div class="order-content">
                 <span id="regularIVOutput"></span>
                 <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('regularIVOutput', this)">Copy</button>
@@ -542,7 +542,7 @@
 
 
     //輸出 order
-    updateOutput('bwOutput', bwOutput);
+    document.getElementById('bwOutput').textContent = bwOutput; //最少留一列，所以第一列不隱藏
     updateOutput('tdfOutput', tdfOutput);
     updateOutput('poOutput', parseResult);
     updateOutput('tpnOutput', tpnOutput);
@@ -746,11 +746,12 @@
   // Function to update text content and hide the element if it's empty
   function updateOutput(id, value) {
     const element = document.getElementById(id);
-    if (value === "") {
-        element.style.display = "none"; // Hide the element if value is an empty string
+    const cellOfElement = document.getElementById(id+"Cell");
+    if (value === "" ) {
+      cellOfElement.style.display = "none"; // Hide the element if value is an empty string
     } else {
-        element.style.display = "block"; // Show the element if value is not empty
-        element.textContent = value; // Update the text content
+      cellOfElement.style.display = "block"; // Show the element if value is not empty
+      element.textContent = value; // Update the text content
     }
   }
 
