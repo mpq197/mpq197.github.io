@@ -427,28 +427,27 @@
     document.getElementById('mlDayOutput').textContent = "";
     document.getElementById('regularIVOutput').textContent = "";
     
-    // BW 輸出
-    const bwFluid = parseFloat(document.getElementById('bwFluid').value) || 0;
-    let bwOutput = bwFluid==0 ? "BW : " : `BW: ${bwFluid} g`;
-    document.getElementById('bwOutput').textContent = bwOutput;
-    
-    // TDF 輸出
-    const tdf = parseFloat(document.getElementById('tdf').value) || 0;
-    let totalTDF = roundToDecimalPlaces(tdf*bwFluid/1000, 1);
-    let tdfOutput = tdf==0 ? "TDF: " : `Total daily fluid: ${tdf} ml/kg/day = total ${totalTDF} ml/day`;;
-    document.getElementById('tdfOutput').textContent = tdfOutput;
 
-    // PO 輸出 (假設直接輸出 PO 值)
+    //讀取輸入值
+    const bwFluid = parseFloat(document.getElementById('bwFluid').value) || 0;
+    const tdf = parseFloat(document.getElementById('tdf').value) || 0;
     const po = document.getElementById('po').value;
     const HM = document.getElementById('HM').value;
     const formula = document.getElementById('formula').value;
-    let [parseResult, poTotal] = parsePO(po, HM, formula);
-    document.getElementById('poOutput').textContent = parseResult;
-
-    // TPN 輸出示例
     const tpnAA = document.getElementById('tpnAA').value;
-    const tpnGrams = parseFloat(document.getElementById('tpnGrams').value) || 0;
+    const tpnGramsInput = document.getElementById('tpnGrams').value;
     const tpnHours = document.getElementById('tpnHours').value || 24; 
+    const lipidChoice = document.getElementById('lipidChoice').value;
+    const lipidGrams = parseFloat(document.getElementById('lipidGrams').value) || 0;
+    const lipidHours = document.getElementById('lipidHours').value || 20;
+    const mlHr = document.getElementById('mlHr').value;
+    const mlDay = document.getElementById('mlDay').value;
+    const regularIVInput = document.getElementById('regularIV').value;
+    const regularIVChoice = document.getElementById('regularIVChoice').value || "普通IV";
+    const lipidSpec = {
+      "SMOF": {density: 1/5, unit: "g/ml"},
+      "Omegaven": {density: 1/10, unit: "g/ml"}
+    };
     const tpnMap = {
       "0.025": "TPN",
       "0.030": "TPN [AA 3.0]",
@@ -457,25 +456,19 @@
       "0.040": "TPN [AA 4.0]",
       "0.050": "TPN [N0]"
     };
-    let tpnRate = 0;
-    let tpnTotal = 0;
-    let tpnHoursOutput = "";
-    let tpnOutput = "";
-    tpnRate = roundToDecimalPlaces(tpnGrams*bwFluid/1000/tpnAA/tpnHours, 1);
-    tpnTotal = tpnRate*tpnHours;
-    tpnHoursOutput = tpnHours===24? "":` run ${tpnHours} hrs`;
-    tpnOutput += `${tpnMap[tpnAA]} ${tpnGrams}g/kg/day = ${tpnRate}ml/hr${tpnHoursOutput}`;
-    tpnOutput = tpnGrams==0 ? "TPN:" : tpnOutput ;
-    document.getElementById('tpnOutput').textContent = `${tpnOutput}`;
 
-    // SMOF/Omegaven 輸出示例
-    const lipidChoice = document.getElementById('lipidChoice').value;
-    const lipidGrams = parseFloat(document.getElementById('lipidGrams').value) || 0;
-    let lipidHours = document.getElementById('lipidHours').value || 20;
-    const lipidSpec = {
-      "SMOF": {density: 1/5, unit: "g/ml"},
-      "Omegaven": {density: 1/10, unit: "g/ml"}
-    }
+
+    // BW 輸出
+    let bwOutput = bwFluid==0 ? "" : `BW: ${bwFluid} g`;
+    
+    // TDF 輸出
+    let totalTDF = roundToDecimalPlaces(tdf*bwFluid/1000, 1);
+    let tdfOutput = tdf==0 ? "" : `Total daily fluid: ${tdf} ml/kg/day = total ${totalTDF} ml/day`;;
+
+    // PO 輸出 
+    let [parseResult, poTotal] = parsePO(po, HM, formula);
+
+    // SMOF/Omegaven 輸出
     let lipidRate = 0;
     let lipidTotal = 0;
     let lipidOutput = "";
@@ -496,33 +489,64 @@
     lipidRate = roundToDecimalPlaces(lipidGrams*bwFluid/1000/lipidSpec[lipidChoice].density/closestHour, 1);
     lipidTotal = lipidRate*closestHour;
     lipidOutput = `${lipidChoice} ${lipidGrams}g/kg/day = ${lipidRate} ml/hr run ${closestHour} hrs`;
-    lipidOutput = lipidRate==0? `${lipidChoice}:`:lipidOutput ;
-    document.getElementById('lipidOutput').textContent = `${lipidOutput}`;
+    lipidOutput = lipidRate==0? "":lipidOutput ;
 
 
     // ml/hr 輸出示例
-    const mlHr = document.getElementById('mlHr').value;
-    let mlHrTotal = roundToDecimalPlaces(calculateExpression(mlHr)*24, 1);
+    let mlHrTotal = roundToDecimalPlaces(calculateExpression(mlHr)*24 || 0, 1);
     let mlhrOutput = `other line: ${mlHr}ml/hr = total ${mlHrTotal}ml/day`;
-    mlhrOutput = mlHr==0? "other line:":mlhrOutput;
-    document.getElementById('mlHrOutput').textContent = mlhrOutput;
+    mlhrOutput = mlHr==0? "":mlhrOutput;
 
     // ml/day 輸出示例
-    const mlDay = document.getElementById('mlDay').value;
     let totalmlDay = calculateExpression(mlDay) || 0;
     let mlDayOutput = `other in I/O: ${totalmlDay} ml/day`;
-    mlDayOutput = totalmlDay==0? "other in I/O:":mlDayOutput;
-    document.getElementById('mlDayOutput').textContent = mlDayOutput; 
+    mlDayOutput = totalmlDay==0? "":mlDayOutput;
 
-    // 普通IV 輸出示例
-    const regularIV = parseFloat(document.getElementById('regularIV').value) || 0;
-    const regularIVChoice = document.getElementById('regularIVChoice').value || "普通IV";
-    let regularIVRate = 0;
+
+    // TPN and 普通IV 輸出
+    let tpnGrams = parseFloat(tpnGramsInput) || 0;
+    let tpnRate = 0;
+    let tpnTotal = 0;
+    let tpnHoursOutput = "";
+    let tpnOutput = "";
+    let regularIVRate = parseFloat(regularIVInput) || 0;
     let regularIVTotal = 0;
     let regularIVOutput = "";
-    
-    regularIVRate = roundToDecimalPlaces((totalTDF-poTotal-tpnTotal-lipidTotal-mlHrTotal-mlDay)/24, 1);
-    regularIVOutput += `${regularIVChoice} run ${regularIVRate}ml/hr`;
+
+    if(tpnGramsInput){
+      //有設定tpn gram數，表示非補不足，先計算TPN再計算普通IV流速
+      tpnRate = roundToDecimalPlaces(tpnGrams*bwFluid/1000/tpnAA/tpnHours, 1);
+      tpnTotal = tpnRate*tpnHours;
+      tpnHoursOutput = tpnHours===24? "":` run ${tpnHours} hrs`;
+      tpnOutput += `${tpnMap[tpnAA]} ${tpnGrams}g/kg/day = ${tpnRate}ml/hr${tpnHoursOutput}`;
+      tpnOutput = tpnGrams==0 ? "" : tpnOutput ;
+
+      regularIVRate = roundToDecimalPlaces((totalTDF-poTotal-tpnTotal-lipidTotal-mlHrTotal-mlDay)/24, 1);
+      regularIVOutput += `${regularIVChoice} run ${regularIVRate}ml/hr`;
+
+    } else{
+      //未設定tpn gram數，表示補不足，先計算普通IV流速再計算TPN
+      regularIVTotal = roundToDecimalPlaces(regularIVRate*24, 1);
+      regularIVOutput += `${regularIVChoice} run ${regularIVRate}ml/hr`;
+
+      tpnTotal = totalTDF-poTotal-lipidTotal-mlHrTotal-mlDay-regularIVTotal;
+      tpnRate = roundToDecimalPlaces(tpnTotal/tpnHours, 1);
+      tpnGrams = roundToDecimalPlaces(tpnRate*24*tpnAA/(bwFluid/1000), 1);
+      tpnHoursOutput = tpnHours===24? "":` run ${tpnHours} hrs`;
+      tpnOutput += `${tpnMap[tpnAA]} (補) ${tpnGrams}g/kg/day = ${tpnRate}ml/hr${tpnHoursOutput}`;
+      tpnOutput = tpnGrams==0 ? "" : tpnOutput ;
+      
+    }
+
+
+    //輸出 order
+    document.getElementById('bwOutput').textContent = bwOutput;
+    document.getElementById('tdfOutput').textContent = tdfOutput;
+    document.getElementById('poOutput').textContent = parseResult;
+    document.getElementById('tpnOutput').textContent = `${tpnOutput}`;
+    document.getElementById('lipidOutput').textContent = `${lipidOutput}`;
+    document.getElementById('mlHrOutput').textContent = mlhrOutput;
+    document.getElementById('mlDayOutput').textContent = mlDayOutput; 
     document.getElementById('regularIVOutput').textContent = regularIVOutput;
   };
 
@@ -655,7 +679,7 @@
     
     //若為空值，回傳0
     if (expression==="") {
-      return ["Diet:", 0];
+      return ["", 0];
     }
 
     // 先檢查是否符合 A*B (+ C*D + E*F ...) 格式
