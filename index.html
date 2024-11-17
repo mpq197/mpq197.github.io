@@ -152,7 +152,7 @@
                     </select> 
                     <input type="number" id="tpnGrams" class="form-control text-center" oninput="updateFluid()">
                     <span class="input-group-text">g/kg/day</span>
-                    <input type="number" id="tpnHours" min="0" max="24" class="form-control text-center" oninput="updateFluid()">
+                    <input type="number" id="tpnHours" min="0" max="24" class="form-control text-center" placeholder="-" oninput="updateFluid()">
                     <span class="input-group-text">hrs</span>
                   </div>
                 </div>
@@ -173,7 +173,7 @@
                     </select>             
                     <input type="number" id="lipidGrams" class="form-control text-center" oninput="updateFluid()">
                     <span class="input-group-text">g/kg/day</span>
-                    <input type="number" id="lipidHours" min="16" max="24" class="form-control text-center" oninput="updateFluid()">
+                    <input type="number" id="lipidHours" min="16" max="24" class="form-control text-center" placeholder="-" oninput="updateFluid()">
                     <span class="input-group-text">hrs</span>
                   </div>
                 </div>
@@ -317,7 +317,7 @@
                 </div>
                 <div class="col">
                   <div class="input-group">
-                    <select id="drug0" class="form-select text-center" onchange="updateDrugOrder()">
+                    <select id="drug0" class="form-select text-center" title="" onchange="updateDrugOrder()">
                       <option value="Dopamine"      >Dopamine       </option>
                       <option value="Dobutamine"    >Dobutamine     </option>
                       <option value="Milrinone"     >Milrinone      </option>
@@ -342,7 +342,8 @@
                       <option value="Lidocaine"     >Lidocaine      </option>
                       <!-- More options -->
                     </select>
-                    <span class="input-group-text" id="originalConcentration0"></span>
+                    <input type="text" id="drugExtractAmount" class="form-control text-center" oninput="updateDrugOrder()">
+                    <span class="input-group-text" id="drugExtractAmountUnit"></span>
                   </div> 
                 </div> 
               </div>
@@ -373,10 +374,10 @@
                 <div class="col">
                   <div class="input-group">
                     <span class="input-group-text">run</span> 
-                    <input type="number" id="flowRate0" class="form-control text-center" oninput="updateDrugOrder()">
+                    <input type="number" id="flowRate" class="form-control text-center" oninput="updateDrugOrder()">
                     <span class="input-group-text">ml/hr</span>
                     <span class="input-group-text">=</span> 
-                    <input type="number" id="targetConcentration0" class="form-control text-center" oninput="updateDrugOrder()">
+                    <input type="number" id="targetConcentrationRate" class="form-control text-center" oninput="updateDrugOrder()">
                     <span id="rateUnit" class="input-group-text">mcg/kg/min</span>
                   </div>    
                 </div>
@@ -491,6 +492,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.4.0/math.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jstat@1.9.2/dist/jstat.min.js"></script>
 
+
 <script>
   // 更新fluid計算
   function updateFluid() {
@@ -560,26 +562,29 @@
     let [parseResult, poTotal] = parsePO(po, HM, formula);
 
     // SMOF/Omegaven 輸出
-    let lipidRate = 0;
-    let lipidTotal = 0;
-    let lipidOutput = "";
-    let minDiff = 1000;
-    let closestHour = 16;
     let targetLipidAmount = lipidGrams*bwFluid/1000/lipidSpec[lipidChoice].density;
-    for (let i=16; i<=lipidHours; i+=0.5){
+    let validLipidHours = Math.min(23, Math.max(16, lipidHours)); //確保輸入值在16~23之間
+    let lipidRate = roundToDecimalPlaces(targetLipidAmount/validLipidHours, 1);
+    let lipidTotal = lipidRate*validLipidHours;
+    let lipidOutput = "";
+    let minDiff = Math.abs(lipidTotal-targetLipidAmount);
+    let bestHour = validLipidHours;
+    const acceptedError = 0.5;
+    const maxLipidHour = 23;
+    for (let i=16; i<=validLipidHours && i<=maxLipidHour; i++){
       lipidRate = roundToDecimalPlaces(targetLipidAmount/i, 1);
       lipidTotal = lipidRate*i;
       const diff = Math.abs(lipidTotal-targetLipidAmount);
-      if (diff<minDiff){
+      if (diff<minDiff || diff < acceptedError){
         minDiff=diff;
-        closestHour=i;
+        bestHour=i;
       }
       // console.log(`target ${targetLipidAmount}, current ${lipidTotal}, current hr ${i}`);
-      // console.log(`minDiff ${minDiff}, closestHour = ${closestHour}`);
+      // console.log(`minDiff ${minDiff.toFixed(1)}, bestHour = ${bestHour}`);
     }
-    lipidRate = roundToDecimalPlaces(lipidGrams*bwFluid/1000/lipidSpec[lipidChoice].density/closestHour, 1);
-    lipidTotal = lipidRate*closestHour;
-    lipidOutput = `${lipidChoice} ${lipidGrams}g/kg/day = ${lipidRate} ml/hr run ${closestHour} hrs`;
+    lipidRate = roundToDecimalPlaces(lipidGrams*bwFluid/1000/lipidSpec[lipidChoice].density/bestHour, 1);
+    lipidTotal = lipidRate*bestHour;
+    lipidOutput = `${lipidChoice} ${lipidGrams}g/kg/day = ${lipidRate} ml/hr run ${bestHour} hrs`;
     lipidOutput = lipidRate==0? "":lipidOutput ;
 
 
@@ -608,7 +613,7 @@
       //有設定tpn gram數，表示非補不足，先計算TPN再計算普通IV流速
       tpnRate = roundToDecimalPlaces(tpnGrams*bwFluid/1000/tpnAA/tpnHours, 1);
       tpnTotal = tpnRate*tpnHours;
-      tpnHoursOutput = tpnHours===24? "":` run ${tpnHours} hrs`;
+      tpnHoursOutput = tpnHours==24? "":` run ${tpnHours} hrs`;
       tpnOutput += `${tpnMap[tpnAA]} ${tpnGrams}g/kg/day = ${tpnRate}ml/hr${tpnHoursOutput}`;
       tpnOutput = tpnGrams==0 ? "" : tpnOutput ;
 
@@ -625,7 +630,7 @@
       tpnTotal = totalTDF-poTotal-lipidTotal-mlHrTotal-mlDay-regularIVTotal;
       tpnRate = roundToDecimalPlaces(tpnTotal/tpnHours, 1);
       tpnGrams = roundToDecimalPlaces(tpnRate*24*tpnAA/(bwFluid/1000), 2);
-      tpnHoursOutput = tpnHours===24? "":` run ${tpnHours} hrs`;
+      tpnHoursOutput = tpnHours==24? "":` run ${tpnHours} hrs`;
       tpnOutput += `${tpnMap[tpnAA]} (補) ${tpnGrams}g/kg/day = ${tpnRate}ml/hr${tpnHoursOutput}`;
       tpnOutput = tpnRate==0 ? "" : tpnOutput ;
       
@@ -676,20 +681,33 @@
     const originalUnit = drugSpecs[drug].unit;
     const targetRateUnit = drugSpecs[drug].rateUnit;
     const decimal = drugSpecs[drug].decimalPlace;
-    document.getElementById("originalConcentration0").textContent = originalConcentration + " " + originalUnit;
+    document.getElementById("drugExtractAmountUnit").textContent = originalUnit.replace("/ml","");
+    document.getElementById("drug0").title = `${originalConcentration} ${originalUnit}`;
     document.getElementById("rateUnit").textContent = `(${targetRateUnit})`;    
 
     const bwDrug = parseFloat(document.getElementById("bwDrug").value);
-    const flowRate = parseFloat(document.getElementById("flowRate0").value);
-    const targetConcentration = parseFloat(document.getElementById("targetConcentration0").value);
+    const drugExtractAmount = parseFloat(document.getElementById("drugExtractAmount").value);
+    const flowRate = parseFloat(document.getElementById("flowRate").value);
+    const targetConcentrationRate = parseFloat(document.getElementById("targetConcentrationRate").value);
     const totalVolume = parseFloat(document.getElementById("totalVolume0").value);
     const diluter = document.getElementById("diluter0").value;
-
     let orderText = "醫囑";
     let medText = "藥囑";
     let purelineOrderText = "Pure Line";
-    
-    if (drug && bwDrug && flowRate && targetConcentration && totalVolume) {
+
+    // 當 A 有值時，禁用 B；當 B 有值時，禁用 A；如果兩者都沒有值，兩者都啟用
+    const drugExtractAmountDiv = document.getElementById('drugExtractAmount');
+    const targetConcentrationRateDiv = document.getElementById('targetConcentrationRate');
+    if (drugExtractAmountDiv.value !== "") {
+      targetConcentrationRateDiv.disabled = true;
+    } else if (targetConcentrationRateDiv.value !== "") {
+      drugExtractAmountDiv.disabled = true;
+    } else {
+      drugExtractAmountDiv.disabled = false;
+      targetConcentrationRateDiv.disabled = false;
+    }
+
+    if (drug && bwDrug && flowRate && (drugExtractAmount||targetConcentrationRate) && totalVolume) {
 
       //計算重量單位轉換
       const unitOringinal = originalUnit.split("/")[0];
@@ -707,20 +725,29 @@
       const timeTarget = targetRateUnit.split("/")[2];
       let timeConversionRatio = 1;
       if (timeTarget === 'min') timeConversionRatio = 60;
-
       
-      const dose = roundToDecimalPlaces( targetConcentration * timeConversionRatio * bwDrug * unitConversionRatio / flowRate * totalVolume, decimal);  //計算提取量    
-      const extractedVolume = roundToDecimalPlaces( totalVolume - dose / originalConcentration, 1 ); //計算溶劑體積
+      //若沒有指定drugExtractAmount, 用targetConcentrationRate回推
+      const extractAmount = drugExtractAmount
+        ? drugExtractAmount
+        : roundToDecimalPlaces( targetConcentrationRate * timeConversionRatio * bwDrug * unitConversionRatio / flowRate * totalVolume, decimal);  //計算提取量    
+
+      //若指定drugExtractAmount, 用則算出targetConcentrationRate
+      const concentrationRate = drugExtractAmount
+        ? roundToDecimalPlaces((drugExtractAmount/totalVolume)*flowRate/unitConversionRatio/bwDrug/timeConversionRatio, 2)
+        : targetConcentrationRate;
+
+      const extractedVolume = roundToDecimalPlaces( totalVolume - extractAmount / originalConcentration, 1 ); //計算溶劑體積
       const pureLineConcentration = roundToDecimalPlaces( 1 * originalConcentration / unitConversionRatio / bwDrug / timeConversionRatio, 1);
 
-      orderText = `${drug} ${dose+unitOringinal} in ${diluter} ${extractedVolume}ml (total ${totalVolume}ml), run ${flowRate}ml/hr = ${targetConcentration + targetRateUnit} `;
-      medText = `${drug} ${dose+unitOringinal} in ${diluter} ${extractedVolume}ml (total ${totalVolume}ml), run as order`;
+      orderText = `${drug} ${extractAmount+unitOringinal} in ${diluter} ${extractedVolume}ml (total ${totalVolume}ml), run ${flowRate}ml/hr = ${concentrationRate + targetRateUnit} `;
+      medText = `${drug} ${extractAmount+unitOringinal} in ${diluter} ${extractedVolume}ml (total ${totalVolume}ml), run as order`;
       purelineOrderText =  `${drug} 1 ml/hr = ${pureLineConcentration + " " + targetRateUnit}`;     
     }
 
     document.getElementById("orderText").textContent = orderText;
     document.getElementById("medText").textContent = medText;
     document.getElementById("purelineOrderText").textContent = purelineOrderText;
+
   }
 
   // 複製按鈕
@@ -773,6 +800,10 @@
     //若為空值，回傳0
     if (expression==="") {
       return ["", 0];
+    }
+    //若為0，回傳NPO
+    if (expression==0) {
+      return ["Diet: NPO with OG decompression", 0];
     }
 
     // 先檢查是否符合 A*B (+ C*D + E*F ...) 格式
