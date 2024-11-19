@@ -555,7 +555,7 @@
     let bwOutput = bwFluid==0 ? "" : `BW: ${bwFluid} g`;
     
     // TDF 輸出
-    let totalTDF = roundToDecimalPlaces(tdf*bwFluid/1000, 1);
+    let totalTDF = (tdf*bwFluid/1000).toFixed(1);
     let tdfOutput = tdf==0 ? "" : `Total daily fluid: ${tdf} ml/kg/day = total ${totalTDF} ml/day`;;
 
     // PO 輸出 
@@ -564,7 +564,7 @@
     // SMOF/Omegaven 輸出
     let targetLipidAmount = lipidGrams*bwFluid/1000/lipidSpec[lipidChoice].density;
     let validLipidHours = Math.min(23, Math.max(16, lipidHours)); //確保輸入值在16~23之間
-    let lipidRate = roundToDecimalPlaces(targetLipidAmount/validLipidHours, 1);
+    let lipidRate = (targetLipidAmount/validLipidHours).toFixed(1);
     let lipidTotal = lipidRate*validLipidHours;
     let lipidOutput = "";
     let minDiff = Math.abs(lipidTotal-targetLipidAmount);
@@ -572,7 +572,7 @@
     const acceptedError = 0.5;
     const maxLipidHour = 23;
     for (let i=16; i<=validLipidHours && i<=maxLipidHour; i++){
-      lipidRate = roundToDecimalPlaces(targetLipidAmount/i, 1);
+      lipidRate = (targetLipidAmount/i).toFixed(1);
       lipidTotal = lipidRate*i;
       const diff = Math.abs(lipidTotal-targetLipidAmount);
       if (diff<minDiff || diff < acceptedError){
@@ -582,14 +582,14 @@
       // console.log(`target ${targetLipidAmount}, current ${lipidTotal}, current hr ${i}`);
       // console.log(`minDiff ${minDiff.toFixed(1)}, bestHour = ${bestHour}`);
     }
-    lipidRate = roundToDecimalPlaces(lipidGrams*bwFluid/1000/lipidSpec[lipidChoice].density/bestHour, 1);
+    lipidRate = (lipidGrams*bwFluid/1000/lipidSpec[lipidChoice].density/bestHour).toFixed(1);
     lipidTotal = lipidRate*bestHour;
     lipidOutput = `${lipidChoice} ${lipidGrams}g/kg/day = ${lipidRate} ml/hr run ${bestHour} hrs`;
     lipidOutput = lipidRate==0? "":lipidOutput ;
 
 
     // ml/hr 輸出示例
-    let mlHrTotal = roundToDecimalPlaces(calculateExpression(mlHr)*24 || 0, 1);
+    let mlHrTotal = (calculateExpression(mlHr)*24 || 0).toFixed(1);
     let mlhrOutput = `other line: ${mlHr}ml/hr = total ${mlHrTotal}ml/day`;
     mlhrOutput = mlHr==0? "":mlhrOutput;
 
@@ -611,25 +611,25 @@
 
     if(tpnGramsInput){
       //有設定tpn gram數，表示非補不足，先計算TPN再計算普通IV流速
-      tpnRate = roundToDecimalPlaces(tpnGrams*bwFluid/1000/tpnAA/tpnHours, 1);
+      tpnRate = (tpnGrams*bwFluid/1000/tpnAA/tpnHours).toFixed(1);
       tpnTotal = tpnRate*tpnHours;
       tpnHoursOutput = tpnHours==24? "":` run ${tpnHours} hrs`;
       tpnOutput += `${tpnMap[tpnAA]} ${tpnGrams}g/kg/day = ${tpnRate}ml/hr${tpnHoursOutput}`;
       tpnOutput = tpnGrams==0 ? "" : tpnOutput ;
 
-      regularIVRate = roundToDecimalPlaces((totalTDF-poTotal-tpnTotal-lipidTotal-mlHrTotal-mlDay)/24, 1);
+      regularIVRate = ((totalTDF-poTotal-tpnTotal-lipidTotal-mlHrTotal-mlDay)/24).toFixed(1);
       regularIVOutput += `${regularIVChoice} run ${regularIVRate}ml/hr`;
       regularIVOutput = regularIVRate==0? "":regularIVOutput;
 
     } else{
       //未設定tpn gram數，表示補不足，先計算普通IV流速再計算TPN
-      regularIVTotal = roundToDecimalPlaces(regularIVRate*24, 1);
+      regularIVTotal = (regularIVRate*24).toFixed(1);
       regularIVOutput += `${regularIVChoice} run ${regularIVRate}ml/hr`;
       regularIVOutput = regularIVRate==0? "":regularIVOutput;
 
       tpnTotal = totalTDF-poTotal-lipidTotal-mlHrTotal-mlDay-regularIVTotal;
-      tpnRate = roundToDecimalPlaces(tpnTotal/tpnHours, 1);
-      tpnGrams = roundToDecimalPlaces(tpnRate*24*tpnAA/(bwFluid/1000), 2);
+      tpnRate = (tpnTotal/tpnHours).toFixed(1);
+      tpnGrams = (tpnRate*24*tpnAA/(bwFluid/1000)).toFixed(2);
       tpnHoursOutput = tpnHours==24? "":` run ${tpnHours} hrs`;
       tpnOutput += `${tpnMap[tpnAA]} (補) ${tpnGrams}g/kg/day = ${tpnRate}ml/hr${tpnHoursOutput}`;
       tpnOutput = tpnRate==0 ? "" : tpnOutput ;
@@ -729,15 +729,15 @@
       //若沒有指定drugExtractAmount, 用targetConcentrationRate回推
       const extractAmount = drugExtractAmount
         ? drugExtractAmount
-        : roundToDecimalPlaces( targetConcentrationRate * timeConversionRatio * bwDrug * unitConversionRatio / flowRate * totalVolume, decimal);  //計算提取量    
+        : ( targetConcentrationRate * timeConversionRatio * bwDrug * unitConversionRatio / flowRate * totalVolume).toFixed(decimal);  //計算提取量    
 
       //若指定drugExtractAmount, 用則算出targetConcentrationRate
       const concentrationRate = drugExtractAmount
-        ? roundToDecimalPlaces((drugExtractAmount/totalVolume)*flowRate/unitConversionRatio/bwDrug/timeConversionRatio, 2)
+        ? ((drugExtractAmount/totalVolume)*flowRate/unitConversionRatio/bwDrug/timeConversionRatio).toFixed(2)
         : targetConcentrationRate;
 
-      const extractedVolume = roundToDecimalPlaces( totalVolume - extractAmount / originalConcentration, 1 ); //計算溶劑體積
-      const pureLineConcentration = roundToDecimalPlaces( 1 * originalConcentration / unitConversionRatio / bwDrug / timeConversionRatio, 1);
+      const extractedVolume = ( totalVolume - extractAmount / originalConcentration).toFixed(1); //計算溶劑體積
+      const pureLineConcentration = ( 1 * originalConcentration / unitConversionRatio / bwDrug / timeConversionRatio).toFixed(1);
 
       orderText = `${drug} ${extractAmount+unitOringinal} in ${diluter} ${extractedVolume}ml (total ${totalVolume}ml), run ${flowRate}ml/hr = ${concentrationRate + targetRateUnit} `;
       medText = `${drug} ${extractAmount+unitOringinal} in ${diluter} ${extractedVolume}ml (total ${totalVolume}ml), run as order`;
@@ -761,12 +761,6 @@
       button.textContent = originalText;
     }, 500);
     button.blur();
-  }
-
-  // 四捨五入至小數點第幾位
-  function roundToDecimalPlaces(value, decimalPlaces) {
-    const factor = Math.pow(10, decimalPlaces); // 計算10的次方
-    return Math.round(value * factor) / factor; // 先乘以10的次方再四捨五入，然後除以10的次方
   }
 
   // 加減乘除
@@ -1017,11 +1011,25 @@
   };
 
 
+  // // 使用 async/await 來載入外部 JSON 檔案並返回資料
+  // async function loadJSON(filename) {
+  //     try {
+  //         const response = await fetch(filename);
+  //         const data = await response.json();
+  //         return data;  // 返回 JSON 資料
+  //     } catch (error) {
+  //         console.error('Error loading lms JSON:', error);
+  //         return null;  // 如果發生錯誤，返回 null
+  //     }
+  // }
+
+
   // 獲取 LMS 參數並計算 Z-Score
-  function getZScore(parameter, sex, gestationalAge, value) {
-    const lms = lmsData[parameter][sex][gestationalAge];
+  function getZScore(parameter, sex, daysSinceGA22w0d, value) {
+    console.log(lmsData);
+    const lms = lmsData[parameter][sex][daysSinceGA22w0d];
     if (lms) {
-      const { L, M, S } = lms;
+      const {percentile_3, percentile_10, percentile_50, percentile_90, percentile_97, L, M, S} = lms;
       if (L === 0) {
         return Math.log(value / M) / S;  //L趨近於0時使用極限公式
       } else {
@@ -1049,6 +1057,9 @@
     const birthHeight = parseFloat(document.getElementById("birthHeight").value);
     const birthHeadCircumference = parseFloat(document.getElementById("birthHeadCircumference").value);
 
+    // 換算成距離GA 22w0d 差幾天
+    // let daysSinceGA22w0d = (gestationalAgebyWeek-22)*7+gestationalAgePlusDay;
+    
     // 計算 Z-score
     const weightZScore = getZScore('weight', sex, gestationalAgebyWeek, birthWeight);
     const heightZScore = getZScore('height', sex, gestationalAgebyWeek, birthHeight);
@@ -1076,8 +1087,6 @@
     updateDrugOrder(); // 初始化選擇的藥物濃度
     updateFluid(); // 初始化fluid
   });
-
-
 
 
 </script>
