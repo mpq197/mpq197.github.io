@@ -317,9 +317,18 @@
                   <div class="row mb-1">
                     <div class="input-group">
                       <span class="input-group-text">Dextrose</span>
-                      <input name="dexForGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
+                      <input name="dexForGIR" type="number" class="form-control text-center" value="10" oninput="calculateGIR()">
                       <span class="input-group-text">%</span>
-                      <input name="rateForGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
+                      <input name="rateForGIR" type="text" class="form-control text-center" oninput="calculateGIR()">
+                      <span class="input-group-text">ml/hr</span>
+                    </div>    
+                  </div>
+                  <div class="row mb-1">
+                    <div class="input-group">
+                      <span class="input-group-text">Dextrose</span>
+                      <input name="dexForGIR" type="number" class="form-control text-center" value="5" oninput="calculateGIR()">
+                      <span class="input-group-text">%</span>
+                      <input name="rateForGIR" type="text" class="form-control text-center" oninput="calculateGIR()">
                       <span class="input-group-text">ml/hr</span>
                     </div>    
                   </div>
@@ -328,7 +337,7 @@
                       <span class="input-group-text">Dextrose</span>
                       <input name="dexForGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
                       <span class="input-group-text">%</span>
-                      <input name="rateForGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
+                      <input name="rateForGIR" type="text" class="form-control text-center" oninput="calculateGIR()">
                       <span class="input-group-text">ml/hr</span>
                     </div>    
                   </div>
@@ -337,7 +346,7 @@
                       <span class="input-group-text">Dextrose</span>
                       <input name="dexForGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
                       <span class="input-group-text">%</span>
-                      <input name="rateForGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
+                      <input name="rateForGIR" type="text" class="form-control text-center" oninput="calculateGIR()">
                       <span class="input-group-text">ml/hr</span>
                     </div>    
                   </div>
@@ -357,48 +366,77 @@
           </table>    
         </div>
 
-        <!-- 周邊IV dex 計算器 -->
         <div class="col">
-          <table class="table table-bordered align-middle">
-            <thead class="table-dark">
-              <tr><th>周邊dextrose計算 (測試中)</th></tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>
-                  <div class="row">
-                    <div class="input-group mb-1">
-                      <span class="input-group-text">原液dextrose</span>
-                      <input type="number" class="form-control text-center">
-                      <span class="input-group-text">%</span>
-                      <input type="number" class="form-control text-center">
-                      <span class="input-group-text">ml</span>
-                    </div>  
-                  </div>
-                  <div class="row">
+          <div class="row">
+
+            <!-- 周邊IV dex 計算器 -->
+            <table class="table table-bordered align-middle">
+              <thead class="table-dark">
+                <tr><th>客製dextrose泡法</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div class="row">
+                      <div class="input-group mb-1">
+                        <span class="input-group-text">原液dextrose</span>
+                        <input id="initialDexConcentrationForDexCalc" type="number" class="form-control text-center" value="5" oninput="customizedDex()">
+                        <span class="input-group-text">%</span>
+                        <input id="initialDexAmountForDexCalc" type="number" class="form-control text-center" value="500" oninput="customizedDex()">
+                        <span class="input-group-text">ml</span>
+                      </div>  
+                    </div>
+                    <div class="row">
+                      <div class="input-group">
+                        <span class="input-group-text">加上</span>
+                        <input id="amountOfD50WForDexCalc" type="number" class="form-control text-center" oninput="customizedDex()">
+                        <span class="input-group-text">ml D50W (1pc=20ml)</span>
+                        <!-- <input type="number" class="form-control text-center" value="50"> -->
+                        <!-- <span class="input-group-text">%</span> -->
+                        <!-- <input type="number" class="form-control text-center" value="20"> -->
+                        <!-- <span class="input-group-text">ml</span> -->
+                      </div>  
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="row">
+                      <div id="customizedDexOutput" class="order-content">Dextrose = </div>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>  
+          </div>
+
+          <div class="row">
+            <!-- On line 深度, 可能包含各種line size depth-->
+            <table class="table table-bordered align-middle">
+              <thead class="table-dark">
+                <tr><th>UA UV 深度</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
                     <div class="input-group">
-                      <span class="input-group-text">加上</span>
-                      <input type="number" class="form-control text-center">
-                      <span class="input-group-text">%</span>
-                      <input type="number" class="form-control text-center">
-                      <span class="input-group-text">ml</span>
-                    </div>  
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                      <span class="input-group-text">BW</span>
+                      <input id="bwForLine" class="form-control text-center" type="number" oninput="depthOfLine()">
+                      <span class="input-group-text">g</span>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div id="depthUAUV" class="order-content">UA high: ___ cm, UA low: ___ cm, UV: ___ cm</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>            
+          </div>
         </div>
       </div>
 
-      <!-- On line 深度, 可能包含各種line size depth-->
-      <table class="table table-bordered align-middle">
-        <thead class="table-dark">
-          <tr><th>on line 深度 (測試中)</th></tr>
-        </thead>
-        <tbody>
-        </tbody>
-      </table>
     </div>
 
     <!-- 藥物泡法 -->
@@ -530,6 +568,30 @@
           </tr>
         </thead>
         <tbody>
+          <tr>
+            <td>
+              <div class="input-group mb-1">
+                <span class="input-group-text">GA</span>
+                <input class="form-control text-center" type="number">
+                <span class="input-group-text">w</span>
+                <input class="form-control text-center" type="number">
+                <span class="input-group-text">d</span>
+              </div>
+              <div class="input-group mb-1">
+                <span class="input-group-text">EDC</span>
+                <input class="form-control text-center" type="date">
+              </div>
+              <div class="input-group mb-2">
+                <span class="input-group-text">BW</span>
+                <input class="form-control text-center" type="number">
+                <span class="input-group-text">g</span>
+              </div>
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="flexSwitchCheckDefault">
+                <label class="form-check-label" for="flexSwitchCheckDefault">meningitis dose</label>  
+              </div>
+            </td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -617,6 +679,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.4.0/math.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jstat@1.9.2/dist/jstat.min.js"></script>
 <script src="./scripts/lms_data.js"></script>
+<script src="https://gitcdn.github.io/bootstrap-toggle/2.2.2/js/bootstrap-toggle.min.js"></script>
 
 <script>
   // 更新fluid計算
@@ -785,8 +848,8 @@
     for (let i = 0; i < dexGIRInputs.length; i++) {
       // Parse the values of dex and rate as floats
       let dexValue = parseFloat(dexGIRInputs[i].value) || 0; // Default to 0 if parsing fails
-      let rateValue = parseFloat(rateGIRInputs[i].value) || 0; // Default to 0 if parsing fails
-
+      let rateValue = calculateExpression(rateGIRInputs[i].value) || 0; // Default to 0 if parsing fails
+            
       // Multiply dex * rate and add to the total
       totalGIR += dexValue * rateValue;
     }
@@ -811,12 +874,40 @@
         <span class="input-group-text">Dextrose</span>
         <input name="dexForGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
         <span class="input-group-text">%</span>
-        <input name="rateForGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
+        <input name="rateForGIR" type="text" class="form-control text-center" oninput="calculateGIR()">
         <span class="input-group-text">ml/hr</span>
       </div>    
     `;
     parent.insertBefore(newDiv, referenceNode);
   }    
+
+  // 計算客製化dex
+  function customizedDex() {
+    let initialDex = parseFloat(document.getElementById('initialDexConcentrationForDexCalc').value) || 0;
+    let initialAmount = parseFloat(document.getElementById('initialDexAmountForDexCalc').value) || 0;
+    let amountD50W = parseFloat(document.getElementById('amountOfD50WForDexCalc').value) || 0;
+    let customizedDexOutputDiv = document.getElementById('customizedDexOutput');
+    let resultDex=0;
+    console.log(`${initialDex} ${initialAmount} ${amountD50W} ${(initialDex/100)*initialAmount+(50/100)*amountD50W} ${(initialAmount+amountD50W)}`);
+
+    resultDex = ( (initialDex/100)*initialAmount+(50/100)*amountD50W ) / (initialAmount+amountD50W) * 100;
+    customizedDexOutputDiv.innerHTML = `Dextrose = ${resultDex.toFixed(2)} %`;
+  }  
+  
+  // 計算UA UV深度
+  function depthOfLine() {
+    let depthUAUVDiv = document.getElementById('depthUAUV');
+    depthUAUVDiv.innerHTML="UA high: ___ cm, UA low: ___ cm, UV: ___ cm";
+
+    let bwForLineValue = parseFloat(document.getElementById('bwForLine').value) || 0;
+    let depthUAHigh = (bwForLineValue/1000)*3+9;
+    let depthUALow = (bwForLineValue/1000)+7;
+    let depthUV = (depthUAHigh/2+1);
+
+    if (bwForLineValue !== 0) {
+      depthUAUVDiv.innerHTML = `UA high: ${depthUAHigh.toFixed(1)} cm, UA low: ${depthUALow.toFixed(1)} cm, UV: ${depthUV.toFixed(1)} cm`;
+    }
+  }
 
   // 設定藥物資料
   const drugSpecs = {
@@ -1122,6 +1213,8 @@
     updateDrugOrder(); // 初始化選擇的藥物濃度
     updateFluid(); // 初始化fluid
     calculateGIR(); // 初始化GIR
+    customizedDex();
+    depthOfLine();
   });
 
 
