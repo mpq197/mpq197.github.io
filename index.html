@@ -296,23 +296,100 @@
         </tbody>
       </table>
 
-      <!-- GIR 計算器 -->
-      <table class="table table-bordered align-middle">
-        <thead class="table-dark">
-          <tr><th>GIR計算 (測試中)</th></tr>
-        </thead>
-        <tbody>
-        </tbody>
-      </table>
+      <div class="row">
 
-      <!-- 周邊IV dex 計算器 -->
-      <table class="table table-bordered align-middle">
-        <thead class="table-dark">
-          <tr><th>周邊dextrose計算 (測試中)</th></tr>
-        </thead>
-        <tbody>
-        </tbody>
-      </table>
+        <!-- GIR 計算器 -->
+        <div class="col">
+          <table class="table table-bordered align-middle" id="GIRTable">
+            <thead class="table-dark">
+              <tr><th>GIR計算</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="row mb-1">
+                    <div class="input-group">
+                      <span class="input-group-text">BW</span>
+                      <input id="bwGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
+                      <span class="input-group-text">g</span>
+                    </div>    
+                  </div>
+                  <div class="row mb-1">
+                    <div class="input-group">
+                      <span class="input-group-text">Dextrose</span>
+                      <input name="dexForGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
+                      <span class="input-group-text">%</span>
+                      <input name="rateForGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
+                      <span class="input-group-text">ml/hr</span>
+                    </div>    
+                  </div>
+                  <div class="row mb-1">
+                    <div class="input-group">
+                      <span class="input-group-text">Dextrose</span>
+                      <input name="dexForGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
+                      <span class="input-group-text">%</span>
+                      <input name="rateForGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
+                      <span class="input-group-text">ml/hr</span>
+                    </div>    
+                  </div>
+                  <div class="row mb-1">
+                    <div class="input-group">
+                      <span class="input-group-text">Dextrose</span>
+                      <input name="dexForGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
+                      <span class="input-group-text">%</span>
+                      <input name="rateForGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
+                      <span class="input-group-text">ml/hr</span>
+                    </div>    
+                  </div>
+                  <div class="row" id="addNewGIRLineButton">
+                    <div class="input-group text-center">
+                      <button class="btn btn-light" style="width: 100%; border-color: #e0e3e7;" onclick="addNewGIRLine()">+</button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div id="GIROutput" class="order-content">GIR = </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>    
+        </div>
+
+        <!-- 周邊IV dex 計算器 -->
+        <div class="col">
+          <table class="table table-bordered align-middle">
+            <thead class="table-dark">
+              <tr><th>周邊dextrose計算 (測試中)</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="row">
+                    <div class="input-group mb-1">
+                      <span class="input-group-text">原液dextrose</span>
+                      <input type="number" class="form-control text-center">
+                      <span class="input-group-text">%</span>
+                      <input type="number" class="form-control text-center">
+                      <span class="input-group-text">ml</span>
+                    </div>  
+                  </div>
+                  <div class="row">
+                    <div class="input-group">
+                      <span class="input-group-text">加上</span>
+                      <input type="number" class="form-control text-center">
+                      <span class="input-group-text">%</span>
+                      <input type="number" class="form-control text-center">
+                      <span class="input-group-text">ml</span>
+                    </div>  
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       <!-- On line 深度, 可能包含各種line size depth-->
       <table class="table table-bordered align-middle">
@@ -696,6 +773,51 @@
     updateOutput('regularIVOutput', regularIVOutput);
   };
 
+  // 更新GIR
+  function calculateGIR() {
+    let dexGIRInputs = document.querySelectorAll('[name="dexForGIR"]');
+    let rateGIRInputs = document.querySelectorAll('[name="rateForGIR"]');
+    let GIROutput = document.getElementById('GIROutput');
+    // let bwFluid = parseFloat(document.getElementById('bwFluid').value) || 0;
+    let bwGIR = document.getElementById('bwGIR').value || 0; //unit: grams
+    let totalGIR = 0;
+
+    for (let i = 0; i < dexGIRInputs.length; i++) {
+      // Parse the values of dex and rate as floats
+      let dexValue = parseFloat(dexGIRInputs[i].value) || 0; // Default to 0 if parsing fails
+      let rateValue = parseFloat(rateGIRInputs[i].value) || 0; // Default to 0 if parsing fails
+
+      // Multiply dex * rate and add to the total
+      totalGIR += dexValue * rateValue;
+    }
+    
+    totalGIR /= (6*bwGIR/1000);
+    GIROutput.innerHTML = `GIR = ${totalGIR.toFixed(2)}`;
+  }
+
+  // 增加一行GIR line
+  function addNewGIRLine() {
+    // Get the element you want to insert before
+    let referenceNode = document.getElementById('addNewGIRLineButton');
+
+    // Get the parent of the reference node (in this case, #container)
+    let parent = referenceNode.parentNode;
+
+    // Create a new row for the inputs
+    let newDiv = document.createElement('div');
+    newDiv.classList.add('row', 'mb-1'); //加入row mb-1屬性class
+    newDiv.innerHTML = `
+      <div class="input-group">
+        <span class="input-group-text">Dextrose</span>
+        <input name="dexForGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
+        <span class="input-group-text">%</span>
+        <input name="rateForGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
+        <span class="input-group-text">ml/hr</span>
+      </div>    
+    `;
+    parent.insertBefore(newDiv, referenceNode);
+  }    
+
   // 設定藥物資料
   const drugSpecs = {
     'Dopamine'      : { concentration: 40     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
@@ -999,6 +1121,7 @@
   document.addEventListener("DOMContentLoaded", function() {
     updateDrugOrder(); // 初始化選擇的藥物濃度
     updateFluid(); // 初始化fluid
+    calculateGIR(); // 初始化GIR
   });
 
 
