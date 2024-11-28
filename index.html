@@ -570,27 +570,67 @@
         <tbody>
           <tr>
             <td>
-              <div class="input-group mb-1">
-                <span class="input-group-text">GA</span>
-                <input class="form-control text-center" type="number">
-                <span class="input-group-text">w</span>
-                <input class="form-control text-center" type="number">
-                <span class="input-group-text">d</span>
+              <div class="row">
+                <div class="col">
+                  <select id="commonNBDrugChoice" class="form-select text-center" onchange="commonNBDrugCalc()">
+                    <option value="Ampicillin">Ampicillin</option>
+                    <option value="Gentamicin">Gentamicin</option>
+                    <option value="Cefotaxime">Cefotaxime</option>
+                    <option value="Ceftazidime">Ceftazidime</option>
+                    <option value="Vancomycin">Vancomycin</option>
+                    <option value="Meropenem">Meropenem</option>
+                    <option value="Metronidazole">Metronidazole</option>
+                  </select>
+                </div>
+                <div class="col">
+                  <div class="input-group mb-2">
+                    <span class="input-group-text">BW</span>
+                    <input id="bwForCommonNBDrug" class="form-control text-center" type="number">
+                    <span class="input-group-text">g</span>
+                  </div>
+                </div>
               </div>
-              <div class="input-group mb-1">
-                <span class="input-group-text">EDC</span>
-                <input class="form-control text-center" type="date">
-              </div>
-              <div class="input-group mb-2">
-                <span class="input-group-text">BW</span>
-                <input class="form-control text-center" type="number">
-                <span class="input-group-text">g</span>
-              </div>
-              <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" id="flexSwitchCheckDefault">
-                <label class="form-check-label" for="flexSwitchCheckDefault">meningitis dose</label>  
+              <div class="row">
+                <div class="col">
+                  <div class="input-group mb-1">
+                    <span class="input-group-text">GA</span>
+                    <input id="weeksOfGAForCommonNBDrug" class="form-control text-center" type="number">
+                    <span class="input-group-text">w</span>
+                    <input id="daysOfGAForCommonNBDrug" class="form-control text-center" type="number">
+                    <span class="input-group-text">d</span>
+                  </div>                      
+                </div>
+                <div class="col">
+                  <div class="input-group mb-1">
+                    <span class="input-group-text">EDC</span>
+                    <input id="EDCForCommonNBDrug" class="form-control text-center" type="date">
+                  </div>    
+                </div>
               </div>
             </td>
+          </tr>
+          <tr>
+            <td>
+              <div id="nonMeningitisNBDose" class="order-content">
+                <span>[non-meningitis]</span>
+                <button class="btn btn-dark" style="margin-left: auto; " tabindex="999" onclick="copyToClipboard('stdNBDose', this)">COPY</button>
+              </div>
+            </td>  
+          </tr>
+          <tr>
+            <td>
+              <div id="meningitisNBDose" class="order-content">
+                <span>[meningitis dose] </span>
+                <button class="btn btn-dark" style="margin-left: auto; " tabindex="999" onclick="copyToClipboard('meningitisNBDose', this)">COPY</button>
+              </div>
+            </td>  
+          </tr>
+          <tr>
+            <td>
+              <div id="textbookDoseDescription" class="order-content">
+                <span>說明: </span>
+              </div>
+            </td>  
           </tr>
         </tbody>
       </table>
@@ -1010,6 +1050,32 @@
     document.getElementById("purelineOrderText").textContent = purelineOrderText;
 
   }
+
+
+  // 設定常用NB藥物資料
+
+  // 設定藥物資料
+  const commonNBDrugs = {
+    'Ampicillin'    : { 
+      'non-meningitis': [ 
+        {GA_min: 0, GA_max: 34, PNA_min: 0, PNA_max: 7, BW_min: 0, BW_max: Infinity, frequency: "Q12H", dose: 50, unit: "mg/kg/dose", description: "50 mg/kg/dose, Q12H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
+        {GA_min: 0, GA_max: 34, PNA_min: 0, PNA_max: 7, BW_min: 0, BW_max: Infinity, frequency: "Q12H", dose: 75, unit: "mg/kg/dose", description: "75 mg/kg/dose, Q12H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
+        {GA_min: 35, GA_max: Infinity, PNA_min: 0, PNA_max: 28, BW_min: 0, BW_max: Infinity, frequency: "Q8H", dose: 50, unit: "mg/kg/dose", description: "50 mg/kg/dose, Q8H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"}
+      ],
+      'meningitis': [ 
+        {GA_min: 0, GA_max: 34, PNA_min: 0, PNA_max: 7, BW_min: 0, BW_max: Infinity, frequency: "Q8H", dose: 100, unit: "mg/kg/dose", description: "100 mg/kg/dose, Q8H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
+        {GA_min: 0, GA_max: 34, PNA_min: 8, PNA_max:60, BW_min: 0, BW_max: Infinity, frequency: "Q6H", dose: 75, unit: "mg/kg/dose", description: "75 mg/kg/dose, Q6H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
+        {GA_min: 35, GA_max: Infinity, PNA_min: 0, PNA_max: 7, BW_min: 0, BW_max: Infinity, frequency: "Q8H", dose: 100, unit: "mg/kg/dose", description: "100 mg/kg/dose, Q8H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
+        {GA_min: 35, GA_max: Infinity, PNA_min: 8, PNA_max: 60, BW_min: 0, BW_max: Infinity, frequency: "Q6H", dose: 75, unit: "mg/kg/dose", description: "75 mg/kg/dose, Q6H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"}
+      ]      
+    },
+    'Gentamicin'    : {},
+    'Cefotaxime'    : {},
+    'Ceftazidime'   : {},
+    'Vancomycin'    : {},
+    'Meropenem'     : {},
+    'Metronidazole' : {}
+  };
 
   // 複製按鈕
   function copyToClipboard(id, button) {
