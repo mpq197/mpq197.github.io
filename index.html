@@ -22,7 +22,6 @@
     .order-content {
       display: flex;
       align-items: center;
-      gap: 10px;
     }
 
     /*把輸入框的上下箭頭移除*/
@@ -82,7 +81,7 @@
       <table class="table table-bordered align-middle">
         <thead class="table-dark">
           <tr>
-            <th colspan="3">水份計算</th>
+            <th colspan="2">水份計算</th>
             <!-- <th style="width: 50%;">輸出</th> -->
           </tr>
         </thead>
@@ -611,24 +610,41 @@
           </tr>
           <tr>
             <td>
-              <div id="nonMeningitisNBDose" class="order-content">
-                <span>[non-meningitis]</span>
-                <button class="btn btn-dark" style="margin-left: auto; " tabindex="999" onclick="copyToClipboard('stdNBDose', this)">COPY</button>
+              <div class="row align-items-center">
+                <div class="col-2 border-end border-2">non-meningitis</div>
+                <div class="col-2 border-end border-2" id="nonMeningitisNBDose"></div>
+                <div class="col">
+                  <div class="order-content">
+                    <span id="nonMeningitisNBDoseDescription"></span>
+                    <button class="btn btn-dark" style="margin-left: auto; " tabindex="999" onclick="copyToClipboard('stdNBDose', this)">COPY</button>
+                  </div>
+                </div>
               </div>
             </td>  
           </tr>
           <tr>
             <td>
-              <div id="meningitisNBDose" class="order-content">
-                <span>[meningitis dose] </span>
-                <button class="btn btn-dark" style="margin-left: auto; " tabindex="999" onclick="copyToClipboard('meningitisNBDose', this)">COPY</button>
+              <div class="row align-items-center">
+                <div class="col-2 border-end border-2">meningitis</div>
+                <div class="col-2 border-end border-2" id="meningitisNBDose"></div>
+                <div class="col">
+                  <div class="order-content">
+                    <span id="meningitisNBDoseDescription"></span>
+                    <button class="btn btn-dark" style="margin-left: auto; " tabindex="999" onclick="copyToClipboard('meningitisNBDose', this)">COPY</button>
+                  </div>
+                </div>
               </div>
             </td>  
           </tr>
           <tr>
             <td>
-              <div id="textbookDoseDescription" class="order-content">
-                <span>說明: </span>
+              <div class="row align-items-center">
+                <div class="col-2 border-end border-2">說明</div>
+                <div class="col">
+                  <div class="order-content">
+                    <span id="textbookDoseDescription"></span>
+                  </div>
+                </div>
               </div>
             </td>  
           </tr>
@@ -1090,9 +1106,11 @@
     const bwForCommonNBDrug = document.getElementById('bwForCommonNBDrug').value;
     const weeksOfGAForCommonNBDrug = document.getElementById('weeksOfGAForCommonNBDrug').value;
     const daysOfGAForCommonNBDrug = document.getElementById('daysOfGAForCommonNBDrug').value;
-    let textbookDoseDescriptionDiv = document.getElementById('textbookDoseDescription');
-    let meningitisNBDoseDiv = document.getElementById('meningitisNBDose');
     let nonMeningitisNBDoseDiv = document.getElementById('nonMeningitisNBDose');
+    let nonMeningitisNBDoseDescriptionDiv = document.getElementById('nonMeningitisNBDoseDescription');
+    let meningitisNBDoseDiv = document.getElementById('meningitisNBDose');
+    let meningitisNBDoseDescriptionDiv = document.getElementById('meningitisNBDoseDescription');
+    let textbookDoseDescriptionDiv = document.getElementById('textbookDoseDescription');
 
     const today = new Date();
     const birthday = new Date(birthdayForCommonNBDrug);
@@ -1101,7 +1119,11 @@
     const postnatalAge = Math.floor(diffInMs / (1000*60*60*24));
 
     let targetDrugDose = findDose(drugChoice, 'meningitis', weeksOfGAForCommonNBDrug, postnatalAge, bwForCommonNBDrug);
-    if (targetDrugDose.description) textbookDoseDescriptionDiv.innerHTML = targetDrugDose.description;
+    let doseGiven = (targetDrugDose.dose*(bwForCommonNBDrug/1000)/3).toFixed(1);
+    if (targetDrugDose.description) {
+      nonMeningitisNBDoseDiv.innerHTML = `${doseGiven} mg ${targetDrugDose.frequency}`;
+      textbookDoseDescriptionDiv.innerHTML = targetDrugDose.description;
+    }
   }
 
   // 複製按鈕
