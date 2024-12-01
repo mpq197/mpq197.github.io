@@ -1112,18 +1112,33 @@
     let meningitisNBDoseDescriptionDiv = document.getElementById('meningitisNBDoseDescription');
     let textbookDoseDescriptionDiv = document.getElementById('textbookDoseDescription');
 
+    nonMeningitisNBDoseDiv.innerHTML="";
+    nonMeningitisNBDoseDescriptionDiv.innerHTML="";
+    meningitisNBDoseDiv.innerHTML="";
+    meningitisNBDoseDescriptionDiv.innerHTML="";
+    
     const today = new Date();
     const birthday = new Date(birthdayForCommonNBDrug);
     //計算PNA in ms (以毫秒為單位)
     const diffInMs = today-birthday;
     const postnatalAge = Math.floor(diffInMs / (1000*60*60*24));
 
-    let targetDrugDose = findDose(drugChoice, 'meningitis', weeksOfGAForCommonNBDrug, postnatalAge, bwForCommonNBDrug);
-    let doseGiven = (targetDrugDose.dose*(bwForCommonNBDrug/1000)/3).toFixed(1);
-    if (targetDrugDose.description) {
-      nonMeningitisNBDoseDiv.innerHTML = `${doseGiven} mg ${targetDrugDose.frequency}`;
-      textbookDoseDescriptionDiv.innerHTML = targetDrugDose.description;
+
+
+    let nonMeningitisDose = findDose(drugChoice, 'non-meningitis', weeksOfGAForCommonNBDrug, postnatalAge, bwForCommonNBDrug);
+    let nonMeningitisDoseGiven = (nonMeningitisDose.dose*(bwForCommonNBDrug/1000)/3).toFixed(1);
+    if (nonMeningitisDose.description) {
+      nonMeningitisNBDoseDiv.innerHTML = `${nonMeningitisDoseGiven} mg ${nonMeningitisDose.frequency}`;
+      nonMeningitisNBDoseDescriptionDiv.innerHTML = nonMeningitisDose.description;
     }
+
+    let meningitisDose = findDose(drugChoice, 'meningitis', weeksOfGAForCommonNBDrug, postnatalAge, bwForCommonNBDrug);
+    let meningitisDoseGiven = (meningitisDose.dose*(bwForCommonNBDrug/1000)/3).toFixed(1);
+    if (meningitisDose.description) {
+      meningitisNBDoseDiv.innerHTML = `${meningitisDoseGiven} mg ${meningitisDose.frequency}`;
+      meningitisNBDoseDescriptionDiv.innerHTML = meningitisDose.description;
+    }
+
   }
 
   // 複製按鈕
