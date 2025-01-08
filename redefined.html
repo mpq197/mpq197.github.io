@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeoAssist</title>
+    <!-- 引入 Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f4ece6;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .card {
+            background-color: #f3e9e1;
+            margin-bottom: 10px;
+        }
+
+        .nav-tabs .nav-link {
+            color: #495057;
+        }
+
+        .nav-tabs .nav-link.active {
+            background-color: #495057;
+            color: white;
+        }
+
+        .card-header {
+            background-color: #495057;
+            color: white;
+        }
+
+        .input-group {
+            margin-bottom: 5px;
+        }
+
+        /*把輸入框的上下箭頭移除*/
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 分頁導航欄 -->
+    <ul class="nav nav-tabs" id="calculatorTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="fluid-tab" data-bs-toggle="tab" data-bs-target="#fluid" type="button"
+                role="tab" aria-controls="fluid" aria-selected="true">水份計算</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="drug-tab" data-bs-toggle="tab" data-bs-target="#drug" type="button" role="tab"
+                aria-controls="drug" aria-selected="false">藥物泡法</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="measurements-tab" data-bs-toggle="tab" data-bs-target="#measurements"
+                type="button" role="tab" aria-controls="measurements" aria-selected="false">生長測量</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="nb-tab" data-bs-toggle="tab" data-bs-target="#nb" type="button" role="tab"
+                aria-controls="nb" aria-selected="false">NB常用</button>
+        </li>
+    </ul>
+
+    <!-- 分頁內容區域 -->
+    <div class="tab-content" id="calculatorTabsContent">
+        <!-- 分頁 1: 水份計算 -->
+        <div class="tab-pane fade show active" id="fluid" role="tabpanel" aria-labelledby="fluid-tab">
+            <div class="container mt-4">
+                <div class="row">
+                    <div class="col">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                水份計算
+                            </div>
+                            <div class="card-body">
+                                <div class="input-group">
+                                    <span class="input-group-text justify-content-center" style="width: 15%;">BW</span>
+                                    <input type="number" id="bwFluid" class="form-control text-center"
+                                        oninput="updateFluid()">
+                                    <span class="input-group-text">g</span>
+                                </div>
+                                <div class="input-group">
+                                    <span class="input-group-text justify-content-center" style="width: 15%;">TDF</span>
+                                    <input type="number" id="bwFluid" class="form-control text-center"
+                                        oninput="updateFluid()">
+                                    <span class="input-group-text">ml/kg/day</span>
+                                </div>
+                                <div class="input-group">
+                                    <span class="input-group-text justify-content-center" style="width: 15%;">PO</span>
+                                    <select id="HM" class="form-select text-center" onchange="updateFluid()">
+                                        <option value=""></option>
+                                        <option value="HM" selected>HM</option>
+                                    </select>
+                                    <span class="input-group-text" style="background-color: #ffffff;">/</span>
+                                    <select id="formula" class="form-select text-center" onchange="updateFluid()">
+                                        <option value=""></option>
+                                        <option value="16%PF" selected>16%PF</option>
+                                        <option value="15%PDF">15%PDF</option>
+                                        <option value="14%RF">14%RF</option>
+                                    </select>
+                                    <input type="text" id="po" class="form-control text-center" oninput="updateFluid()">
+                                    <span class="input-group-text">ml/day</span>
+                                </div>
+                                <div class="input-group">
+                                    <span class="input-group-text justify-content-center" style="width: 15%;">TPN</span>
+                                    <select id="tpnAA" class="form-select text-center" onchange="updateFluid()">
+                                        <option value="0.025">AA 2.5</option>
+                                        <option value="0.030">AA 3.0</option>
+                                        <option value="0.033">AA 3.3</option>
+                                        <option value="0.035">AA 3.5</option>
+                                        <option value="0.040">AA 4.0</option>
+                                        <option value="0.050">AA 5.0</option>
+                                    </select>
+                                    <input type="number" id="tpnGrams" class="form-control text-center"
+                                        oninput="updateFluid()">
+                                    <span class="input-group-text">g/kg/day</span>
+                                    <input type="number" id="tpnHours" min="0" max="24" class="form-control text-center"
+                                        placeholder="-" oninput="updateFluid()">
+                                    <span class="input-group-text">hrs</span>
+                                </div>
+                                <div class="input-group">
+                                    <span class="input-group-text justify-content-center" style="width: 15%;">TPN成分</span>
+                                    <select id="tpnDex" class="form-select text-center" onchange="updateFluid()">
+                                        <option value="0.05">Dex 5%</option>
+                                        <option value="0.075">Dex 7.5%</option>
+                                        <option value="0.1" selected>Dex 10%</option>
+                                        <option value="0.125">Dex 12.5%</option>
+                                        <option value="0.15">Dex 15%</option>
+                                        <option value="0.175">Dex 17.5%</option>
+                                        <option value="0.2">Dex 20%</option>
+                                    </select>
+                                    <select id="tpnCa" class="form-select text-center" onchange="updateFluid()">
+                                        <option value=""></option>
+                                        <option value="40">Ca 40</option>
+                                        <option value="30">Ca 30</option>
+                                    </select>
+                                    <select id="tpnNa" class="form-select text-center" onchange="updateFluid()">
+                                        <option value="20">Na 20</option>
+                                        <option value="30">Na 30</option>
+                                        <option value="40">Na 40</option>
+                                        <option value="50">Na 50</option>
+                                        <option value="60">Na 60</option>
+                                    </select>
+                                    <select id="tpnK" class="form-select text-center" onchange="updateFluid()">
+                                        <option value="20">K 20</option>
+                                        <option value="30">K 30</option>
+                                        <option value="40">K 40</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <span class="input-group-text justify-content-center"
+                                        style="width: 15%;">Lipid</span>
+                                    <select id="lipidChoice" class="form-select text-center" onchange=" updateFluid()">
+                                        <option value="SMOF">SMOF</option>
+                                        <option value="Omegaven">Omegaven</option>
+                                    </select>
+                                    <input type="number" id="lipidGrams" class="form-control text-center"
+                                        oninput="updateFluid()">
+                                    <span class="input-group-text">g/kg/day</span>
+                                    <input type="number" id="lipidHours" min="16" max="24"
+                                        class="form-control text-center" placeholder="-" oninput="updateFluid()">
+                                    <span class="input-group-text">hrs</span>
+                                </div>
+                                <div class="input-group">
+                                    <span class="input-group-text justify-content-center"
+                                        style="width: 15%;">Other</span>
+                                    <input type="text" id="mlHr" class="form-control text-center"
+                                        oninput="updateFluid()">
+                                    <span class="input-group-text">ml/hr</span>
+                                </div>
+                                <div class="input-group">
+                                    <span class="input-group-text justify-content-center"
+                                        style="width: 15%;">Other</span>
+                                    <select id="regularIVChoice" class="form-select text-center"onchange="updateFluid()">
+                                        <option value=""></option>
+                                        <option value="D10W" selected>D10W 配置</option>
+                                        <option value="D5W">D5W</option>
+                                        <option value="D0.225S(500) + 2PC D50W">D0.225S(500) + 2PC D50W</option>
+                                        <option value="D0.225S(500)">D0.225S(500)</option>
+                                    </select>
+                                    <input type="text" id="mlDay" class="form-control text-center"
+                                        oninput="updateFluid()">
+                                    <span class="input-group-text">ml/day</span>
+                                </div>
+                                <div class="input-group text-center">
+                                    <span class="input-group-text justify-content-center"
+                                        style="width: 15%;">Other</span>
+                                    <button class="btn btn-light" style="width: 85%; border-color: #e0e3e7;"
+                                        onclick="addNewGIRLine()">+</button>
+                                </div>
+                                <div class="input-group">
+                                    <span class="input-group-text justify-content-center"
+                                        style="width: 15%;">普通IV</span>
+                                    <select id="regularIVChoice" class="form-select text-center"
+                                        onchange="updateFluid()">
+                                        <option value=""></option>
+                                        <option value="D10W">D10W</option>
+                                        <option value="D5W">D5W</option>
+                                        <option value="D0.225S(500) + 2PC D50W">D0.225S(500) + 2PC D50W</option>
+                                        <option value="D0.225S(500)">D0.225S(500)</option>
+                                    </select>
+                                    <input type="number" id="regularIV" class="form-control text-center"
+                                        oninput="updateFluid()">
+                                    <span class="input-group-text">ml/hr</span>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                1651561
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 分頁 2: 藥物泡法 -->
+        <div class="tab-pane fade" id="drug" role="tabpanel" aria-labelledby="drug-tab">
+            <div class="container mt-4">
+                <div class="row">
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">藥物泡法</h5>
+                                <p class="card-text">計算藥物配比和輸液速率。</p>
+                                <button class="btn btn-primary w-100" onclick="showTable('drugTable')">開始計算</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 分頁 3: 生長測量 -->
+        <div class="tab-pane fade" id="measurements" role="tabpanel" aria-labelledby="measurements-tab">
+            <div class="container mt-4">
+                <div class="row">
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">生長測量</h5>
+                                <p class="card-text">計算出生體重、身長與頭圍的百分位及 Z 分數。</p>
+                                <button class="btn btn-primary w-100" onclick="showTable('measurements')">開始測量</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 分頁 4: NB常用 -->
+        <div class="tab-pane fade" id="nb" role="tabpanel" aria-labelledby="nb-tab">
+            <div class="container mt-4">
+                <div class="row">
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">NB常用</h5>
+                                <p class="card-text">顯示新生兒科常用藥物的劑量計算。</p>
+                                <button class="btn btn-primary w-100" onclick="showTable('')">查看內容</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+
+    </script>
+</body>
+
+</html>
