@@ -2,285 +2,343 @@
 <html lang="zh-TW">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NeoAssist</title>
-    <!-- 引入 Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            background-color: #f7f4f0;
-            font-family: 'Roboto', sans-serif;
-            color: #333333;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NeoAssist</title>
+  <!-- 引入 Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body {
+      background-color: #f1e6d8;
+      font-family: 'Roboto', sans-serif;
+      color: #333333;
+    }
 
-        .card {
-            background-color: white;
-            margin-bottom: 10px;
-        }
+    .card {
+      background-color: #f3ece4;
+      margin-bottom: 10px;
+    }
 
-        .nav-tabs .nav-link {
-            color: #777777;
-        }
+    .card-header {
+      background-color: #333333;
+      color: white;
+    }
 
-        .nav-tabs .nav-link.active {
-            background-color: #333333;
-            color: white;
-        }
+    .nav-tabs {
+      display: flex;
+      justify-content: space-between;
+      border-color: #333333;
+      /* 選項平均分配 */
+    }
 
-        .card-header {
-            background-color: #333333;
-            color: white;
-        }
+    .nav-tabs .nav-item {
+      flex: 1;
+      /* 每個項目占同等比例 */
+      text-align: center;
+      /* 文字置中 */
+    }
 
-        .input-group {
-            margin-bottom: 5px;
-        }
-        
-        /* 修改聚焦時的邊框顏色，並確保樣式優先級 */
-        input:focus, textarea:focus, select:focus {
-            border-color: #333333 !important;
-            box-shadow: 0 0 0 0.2rem #333333 !important; /* 強制使用深棕色邊框陰影 */
-        }
+    .nav-tabs .nav-link {
+      color: #777777;
+      width: 100%;
+      /* 填滿父容器寬度 */
+      text-align: center;
+      /* 文字置中 */
+    }
 
-        /*把輸入框的上下箭頭移除*/
-        input[type=number]::-webkit-inner-spin-button,
-        input[type=number]::-webkit-outer-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
+    .nav-tabs .nav-link.active {
+      background-color: #333333;
+      color: white;
+    }
 
-        input[type=number] {
-            -moz-appearance: textfield;
-        }
+    .input-group {
+      margin-bottom: 5px;
+    }
 
-        /* 移除預設的向下箭頭 */
-        .form-select {
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            background-image: none !important;
-            padding-right: 0.75rem !important;
-        }
-        .form-select:hover{
-            background-color: #f8f9fa;
-        }
+    .input-group-text {
+      background-color: #faf9f8;
+    }
 
-        .copy-item{
-            background-color: transparent;
-            border-color: #c8c0b9;
-            cursor: pointer;
-        }
+    /* 修改聚焦時的邊框顏色，並確保樣式優先級 */
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border-color: #333333 !important;
+      box-shadow: 0 0 0 0.2rem #333333 !important;
+      /* 強制使用深棕色邊框陰影 */
+    }
 
-        .copy-item:hover{
-            background-color: #f8f9fa;
-        }
-        
-    </style>
+    /*把輸入框的上下箭頭移除*/
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+
+    /* 移除預設的向下箭頭 */
+    .form-select {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      background-image: none !important;
+      padding-right: 0.75rem !important;
+    }
+
+    .copy-item {
+      background-color: #faf9f8;
+      border-color: #dee2e6;
+      cursor: pointer;
+    }
+
+    .copy-item:hover,
+    input:hover,
+    .form-select:hover {
+      background-color: #e9e7e5 !important;
+      /* 統一的 Hover 顏色 */
+      color: #333333;
+      /* 保持文字顏色一致 */
+    }
+  </style>
 </head>
 
 <body>
-    <!-- 分頁導航欄 -->
-    <ul class="nav nav-tabs" id="mainTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="fluidTab" data-bs-toggle="tab" data-bs-target="#fluidContent" type="button"
-                role="tab" aria-controls="fluidContent" aria-selected="true">水份計算</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="medicationTab" data-bs-toggle="tab" data-bs-target="#medicationContent" type="button" role="tab"
-                aria-controls="medicationContent" aria-selected="false">藥物泡法</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="growthTab" data-bs-toggle="tab" data-bs-target="#growthContent"
-                type="button" role="tab" aria-controls="growthContent" aria-selected="false">生長測量</button>
-        </li>
-    </ul>
+  <!-- 分頁導航欄 -->
+  <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="fluidTab" data-bs-toggle="tab" data-bs-target="#fluidContent" type="button"
+        role="tab" aria-controls="fluidContent" aria-selected="true">
+        水份計算
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="medicationTab" data-bs-toggle="tab" data-bs-target="#medicationContent" type="button"
+        role="tab" aria-controls="medicationContent" aria-selected="false">
+        藥物泡法
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="growthTab" data-bs-toggle="tab" data-bs-target="#growthContent" type="button"
+        role="tab" aria-controls="growthContent" aria-selected="false">
+        生長測量
+      </button>
+    </li>
+  </ul>
 
-    <!-- 分頁內容區域 -->
-    <div class="tab-content" id="mainTabContent">
-        <!-- 分頁 1: 水份計算 -->
-        <div class="tab-pane fade show active" id="fluidContent" role="tabpanel" aria-labelledby="fluidTab">
-            <div class="container mt-4">
-                <div class="row">
-                    <div class="col">
-                        <div class="card h-100">
-                            <div class="card-header">
-                                水份計算
-                            </div>
-                            <div class="card-body pb-0">
-                                <div class="input-group">
-                                    <span class="input-group-text justify-content-center" style="width: 15%;">BW</span>
-                                    <input type="number" id="bodyWeight" class="form-control text-center"
-                                        oninput="calculateFluid()">
-                                    <span class="input-group-text">g</span>
-                                </div>
-                                <div class="input-group">
-                                    <span class="input-group-text justify-content-center" style="width: 15%;">TDF</span>
-                                    <input type="number" id="totalDailyFluid" class="form-control text-center"
-                                        oninput="calculateFluid()">
-                                    <span class="input-group-text">ml/kg/day</span>
-                                </div>
-                                <div class="input-group">
-                                    <span class="input-group-text justify-content-center" style="width: 15%;">PO</span>
-                                    <select id="milkType" class="form-select text-center" onchange="calculateFluid()">
-                                        <option value=""></option>
-                                        <option value="HM" selected>HM</option>
-                                    </select>
-                                    <span class="input-group-text" style="background-color: #ffffff;">/</span>
-                                    <select id="formulaType" class="form-select text-center" onchange="calculateFluid()">
-                                        <option value=""></option>
-                                        <option value="16%PF" selected>16%PF</option>
-                                        <option value="15%PDF">15%PDF</option>
-                                        <option value="14%RF">14%RF</option>
-                                    </select>
-                                    <input type="text" id="oralIntake" class="form-control text-center" oninput="calculateFluid()">
-                                    <span class="input-group-text">ml/day</span>
-                                </div>
-                                <div class="input-group">
-                                    <span class="input-group-text justify-content-center" style="width: 15%;">TPN</span>
-                                    <select id="aminoAcidConc" class="form-select text-center" onchange="calculateFluid()">
-                                        <option value="0.025">AA 2.5</option>
-                                        <option value="0.030">AA 3.0</option>
-                                        <option value="0.033">AA 3.3</option>
-                                        <option value="0.035">AA 3.5</option>
-                                        <option value="0.040">AA 4.0</option>
-                                        <option value="0.050">AA 5.0</option>
-                                    </select>
-                                    <input type="number" id="aminoAcidAmount" class="form-control text-center"
-                                        oninput="calculateFluid()">
-                                    <span class="input-group-text">g/kg/day</span>
-                                    <input type="number" id="tpnDuration" min="0" max="24" class="form-control text-center"
-                                        placeholder="-" oninput="calculateFluid()">
-                                    <span class="input-group-text">hrs</span>
-                                </div>
-                                <div class="input-group">
-                                    <span class="input-group-text justify-content-center" style="width: 15%;">.</span>
-                                    <select id="dextroseConc" class="form-select text-center" onchange="calculateFluid()">
-                                        <option value="0.05">Dex 5</option>
-                                        <option value="0.075">Dex 7.5</option>
-                                        <option value="0.1" selected>Dex 10</option>
-                                        <option value="0.125">Dex 12.5</option>
-                                        <option value="0.15">Dex 15</option>
-                                        <option value="0.175">Dex 17.5</option>
-                                        <option value="0.2">Dex 20</option>
-                                    </select>
-                                    <select id="sodiumConc" class="form-select text-center" onchange="calculateFluid()">
-                                        <option value="20">Na 20</option>
-                                        <option value="30">Na 30</option>
-                                        <option value="40" selected>Na 40</option>
-                                        <option value="50">Na 50</option>
-                                        <option value="60">Na 60</option>
-                                    </select>
-                                    <select id="potassiumConc" class="form-select text-center" onchange="calculateFluid()">
-                                        <option value="20" selected>K 20</option>
-                                        <option value="30">K 30</option>
-                                        <option value="40">K 40</option>
-                                    </select>
-                                    <select id="calciumConc" class="form-select text-center" onchange="calculateFluid()">
-                                        <option value=""></option>
-                                        <option value="20" selected>Ca 20</option>
-                                        <option value="30">Ca 30</option>
-                                        <option value="40">Ca 40</option>
-                                    </select>
-                                    <select id="phosphateConc" class="form-select text-center" onchange="calculateFluid()">
-                                        <option value=""></option>
-                                        <option value="9" selected>P 9</option>
-                                        <option value="15">P 15</option>
-                                        <option value="20">P 20</option>
-                                    </select>
-                                </div>
-                                <div class="input-group">
-                                    <span class="input-group-text justify-content-center" style="width: 15%;">Lipid</span>
-                                    <select id="lipidType" class="form-select text-center" onchange="calculateFluid()">
-                                        <option value="SMOF">SMOF</option>
-                                        <option value="Omegaven">Omegaven</option>
-                                    </select>
-                                    <input type="number" id="lipidAmount" class="form-control text-center"
-                                        oninput="calculateFluid()">
-                                    <span class="input-group-text">g/kg/day</span>
-                                    <input type="number" id="lipidDuration" min="16" max="24"
-                                        class="form-control text-center" placeholder="-" oninput="calculateFluid()">
-                                    <span class="input-group-text">hrs</span>
-                                </div>
-                                <div class="input-group">
-                                    <span class="input-group-text justify-content-center" style="width: 15%;">Other</span>
-                                    <input type="text" id="otherDailyVolume" class="form-control text-center"
-                                        oninput="calculateFluid()">
-                                    <span class="input-group-text">ml/day</span>
-                                </div>
-                                <div class="input-group">
-                                    <span class="input-group-text justify-content-center" style="width: 15%;">.</span>
-                                    <select id="otherIvSolution" class="form-select text-center" onchange="calculateFluid()">
-                                        <option value="" selected></option>
-                                        <option value="D/W">D/W base</option>
-                                        <option value="D5W">D5W base</option>
-                                        <option value="H/S">H/S base</option>
-                                        <option value="N/S">N/S base</option>
-                                    </select>
-                                    <input type="text" id="otherHourlyRate" class="form-control text-center"
-                                        oninput="calculateFluid()">
-                                    <span class="input-group-text">ml/hr</span>
-                                </div>
-                                <div class="input-group text-center">
-                                    <span class="input-group-text justify-content-center" style="width: 15%;">.</span>
-                                    <button class="btn btn-light" style="width: 85%; border-color: #e0e3e7;"
-                                        onclick="addNewFluidLine()">+</button>
-                                </div>
-                                <div class="input-group">
-                                    <span class="input-group-text justify-content-center" style="width: 15%;">普通IV</span>
-                                    <select id="standardIvType" class="form-select text-center" onchange="calculateFluid()">
-                                        <option value=""></option>
-                                        <option value="D10W">D10W</option>
-                                        <option value="D5W">D5W</option>
-                                        <option value="D0.225S(500) + 2PC D50W">D0.225S(500) + 2PC D50W</option>
-                                        <option value="D0.225S(500)">D0.225S(500)</option>
-                                    </select>
-                                    <input type="number" id="standardIvRate" class="form-control text-center"
-                                        oninput="calculateFluid()">
-                                    <span class="input-group-text">ml/hr</span>
-                                </div>
-                            </div>
-                            <div class="card-footer bg-transparent">
-                                <ul class="list-group mt-2 mb-2">
-                                    <li class="list-group-item copy-item" data-content="Order: ">Order:</li>
-                                </ul>
-                                <ul class="list-group mt-2 mb-2">
-                                    <li class="list-group-item copy-item" data-content="Daily intake: Na ">Daily intake: Na </li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
+  <!-- 分頁內容區域 -->
+  <div class="tab-content" id="mainTabContent">
+    <!-- 分頁 1: 水份計算 -->
+    <div class="tab-pane fade show active" id="fluidContent" role="tabpanel" aria-labelledby="fluidTab">
+      <div class="container mt-4">
+        <div class="row">
+          <div class="col">
+            <div class="card h-100">
+              <div class="card-header">水份計算</div>
+              <div class="card-body pb-0">
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">BW</span>
+                  <input type="number" id="fluid_BW" class="form-control text-center" oninput="calculateFluid()" />
+                  <span class="input-group-text">g</span>
                 </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">TDF</span>
+                  <input type="number" id="fluid_TDF" class="form-control text-center" oninput="calculateFluid()" />
+                  <span class="input-group-text">ml/kg/day</span>
+                </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">PO</span>
+                  <select id="fluid_PO_HM" class="form-select text-center" onchange="calculateFluid()">
+                    <option value=""></option>
+                    <option value="HM" selected>HM</option>
+                  </select>
+                  <span class="input-group-text" style="background-color: #ffffff;">/</span>
+                  <select id="fluid_PO_formula" class="form-select text-center" onchange="calculateFluid()">
+                    <option value=""></option>
+                    <option value="16%PF" selected>16%PF</option>
+                    <option value="15%PDF">15%PDF</option>
+                    <option value="14%RF">14%RF</option>
+                  </select>
+                  <input type="text" id="fluid_PO" class="form-control text-center" oninput="calculateFluid()" />
+                  <span class="input-group-text">ml/day</span>
+                </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">TPN</span>
+                  <select id="fluid_TPN_AA" class="form-select text-center" onchange="calculateFluid()">
+                    <option value="0.025">AA 2.5</option>
+                    <option value="0.030">AA 3.0</option>
+                    <option value="0.033">AA 3.3</option>
+                    <option value="0.035">AA 3.5</option>
+                    <option value="0.040">AA 4.0</option>
+                    <option value="0.050">AA 5.0</option>
+                  </select>
+                  <input type="number" id="fluid_TPN_grams" class="form-control text-center" oninput="calculateFluid()" />
+                  <span class="input-group-text">g/kg/day</span>
+                  <input type="number" id="fluid_TPN_hours" min="0" max="24" class="form-control text-center" placeholder="-" oninput="calculateFluid()" />
+                  <span class="input-group-text">hrs</span>
+                </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">.</span>
+                  <select id="fluid_TPN_dex" class="form-select text-center" onchange="calculateFluid()">
+                    <option value="0.05">Dex 5</option>
+                    <option value="0.075">Dex 7.5</option>
+                    <option value="0.1" selected>Dex 10</option>
+                    <option value="0.125">Dex 12.5</option>
+                    <option value="0.15">Dex 15</option>
+                    <option value="0.175">Dex 17.5</option>
+                    <option value="0.2">Dex 20</option>
+                  </select>
+                  <select id="fluid_TPN_Na" class="form-select text-center" onchange="calculateFluid()">
+                    <option value="20">Na 20</option>
+                    <option value="30">Na 30</option>
+                    <option value="40" selected>Na 40</option>
+                    <option value="50">Na 50</option>
+                    <option value="60">Na 60</option>
+                  </select>
+                  <select id="fluid_TPN_K" class="form-select text-center" onchange="calculateFluid()">
+                    <option value="20" selected>K 20</option>
+                    <option value="30">K 30</option>
+                    <option value="40">K 40</option>
+                  </select>
+                  <select id="fluid_TPN_Ca" class="form-select text-center" onchange="calculateFluid()">
+                    <option value=""></option>
+                    <option value="20" selected>Ca 20</option>
+                    <option value="30">Ca 30</option>
+                    <option value="40">Ca 40</option>
+                  </select>
+                  <select id="fluid_TPN_P" class="form-select text-center" onchange="calculateFluid()">
+                    <option value=""></option>
+                    <option value="9" selected>P 9</option>
+                    <option value="15">P 15</option>
+                    <option value="20">P 20</option>
+                  </select>
+                </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">Lipid</span>
+                  <select id="fluid_lipid_type" class="form-select text-center" onchange="calculateFluid()">
+                    <option value="SMOF">SMOF</option>
+                    <option value="Omegaven">Omegaven</option>
+                  </select>
+                  <input type="number" id="fluid_lipid_grams" class="form-control text-center" oninput="calculateFluid()" />
+                  <span class="input-group-text">g/kg/day</span>
+                  <input type="number" id="fluid_lipid_hours" min="16" max="24" class="form-control text-center" placeholder="-" oninput="calculateFluid()" />
+                  <span class="input-group-text">hrs</span>
+                </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">Other</span>
+                  <input type="text" id="fluid_other_in_IO" class="form-control text-center" oninput="calculateFluid()" />
+                  <span class="input-group-text">ml/day</span>
+                </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">.</span>
+                  <select id="fluid_other_solution_base" class="form-select text-center" onchange="calculateFluid()">
+                    <option value="" selected></option>
+                    <option value="D/W">D/W base</option>
+                    <option value="D5W">D5W base</option>
+                    <option value="H/S">H/S base</option>
+                    <option value="N/S">N/S base</option>
+                  </select>
+                  <input type="text" id="fluid_other_solution_rate" class="form-control text-center" oninput="calculateFluid()" />
+                  <span class="input-group-text">ml/hr</span>
+                </div>
+                <div class="input-group text-center">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">.</span>
+                  <button class="btn btn-light" style="width: 85%; border-color: #e0e3e7;" onclick="addNewFluidLine()">+</button>
+                </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">普通IV</span>
+                  <select id="fluid_regular_IV_type" class="form-select text-center" onchange="calculateFluid()">
+                    <option value=""></option>
+                    <option value="D10W">D10W</option>
+                    <option value="D5W">D5W</option>
+                    <option value="D0.225S(500) + 2PC D50W">D0.225S(500) + 2PC D50W</option>
+                    <option value="D0.225S(500)">D0.225S(500)</option>
+                  </select>
+                  <input type="number" id="fluid_regular_IV_rate" class="form-control text-center" oninput="calculateFluid()" />
+                  <span class="input-group-text">ml/hr</span>
+                </div>
+              </div>
+              <div class="card-footer bg-transparent">
+                <ul class="list-group mt-2 mb-2">
+                  <li class="list-group-item copy-item" id="fluid_nutrition_spec" data-content="Daily intake: Na ">Daily intake: Na</li>
+                </ul>
+                <ul class="list-group mt-2 mb-2">
+                  <li class="list-group-item copy-item" id="fluid_order_output" data-content="Order: ">Order:</li>
+                </ul>
+              </div>
             </div>
+          </div>
         </div>
-
-        <!-- 其他分頁內容保持不變 -->
-        <!-- ... -->
-
+      </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
+    <!-- 其他分頁內容保持不變 -->
+    <!-- ... -->
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
     function calculateFluid() {
-        // 計算邏輯將在這裡實現
+      //先歸零
+      //document.getElementById('fluid_order_output').textContent="";
+      //document.getElementById('fluid_nutrition_spec').textContent="";
+
+      //讀取輸入值
+      const fluidBW = parseFloat(document.getElementById('fluid_BW').value) || 0;
+      const fluidTDF = parseFloat(document.getElementById('fluid_TDF').value) || 0;
+      const fluidPO = document.getElementById('fluid_PO').value;
+      const fluidPOHM = document.getElementById('fluid_PO_HM').value;
+      const fluidPOFormula = document.getElementById('fluid_PO_formula').value;
+      const fluidTPNAA = document.getElementById('fluid_TPN_AA').value;
+      const fluidTPNGrams = parseFloat(document.getElementById('fluid_TPN_grams').value);
+      const fluidTPNHours = parseFloat(document.getElementById('fluid_TPN_hours').value) || 24;
+      const fluidTPNDex = document.getElementById('fluid_TPN_dex').value;
+      const fluidTPNNa = document.getElementById('fluid_TPN_Na').value;
+      const fluidTPNK = document.getElementById('fluid_TPN_K').value;
+      const fluidTPNCa = document.getElementById('fluid_TPN_Ca').value;
+      const fluidTPNP = document.getElementById('fluid_TPN_P').value;
+      const fluidLipidType = document.getElementById('fluid_lipid_type').value;
+      const fluidLipidGrams = parseFloat(document.getElementById('fluid_lipid_grams').value) || 0;
+      const fluidLipidHours = parseFloat(document.getElementById('fluid_lipid_hours').value) || 20;
+      const fluidOtherInIO = parseFloat(document.getElementById('fluid_other_in_IO').value) || 0;
+      const fluidOtherSolutionBase = document.getElementById('fluid_other_solution_base').value;
+      const fluidOtherSolutionRate = parseFloat(document.getElementById('fluid_other_solution_rate').value) || 0;
+      const fluidRegularIVType = document.getElementById('fluid_regular_IV_type').value;
+      const fluidRegularIVRate = parseFloat(document.getElementById('fluid_regular_IV_rate').value) || 0;
+      
+      const fluidLipidSpec = {
+        "SMOF": {density: 1/5, unit: "g/ml"},
+        "Omegaven": {density: 1/10, unit: "g/ml"}
+      };
+      const fluidTpnToText = {
+        "0.025": "TPN",
+        "0.030": "TPN [AA 3.0]",
+        "0.033": "TPN [AA 3.3]",
+        "0.035": "TPN [AA 3.5]",
+        "0.040": "TPN [AA 4.0]",
+        "0.050": "TPN [N0]"
+      };
+
     }
 
     function addNewFluidLine() {
-        // 新增輸入行的邏輯將在這裡實現
+      // 新增輸入行的邏輯將在這裡實現
     }
 
     // 為每個複製按鈕添加點擊事件
     document.querySelectorAll('.copy-item').forEach(item => {
-        item.addEventListener('click', () => {
-            const content = item.getAttribute('data-content');
-            navigator.clipboard.writeText(content).then(() => {
-                console.log(`已複製: ${content}`);
-            }).catch(err => {
-                console.error('複製失敗:', err);
-            });
+      item.addEventListener('click', () => {
+        const content = item.getAttribute('data-content');
+        navigator.clipboard.writeText(content).then(() => {
+          console.log(`已複製: ${content}`);
+        }).catch(err => {
+          console.error('複製失敗:', err);
         });
+      });
     });
-    </script>
+  </script>
 </body>
 
 </html>
