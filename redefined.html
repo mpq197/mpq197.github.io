@@ -15,7 +15,7 @@
     }
 
     .card {
-      background-color: #f3ece4;
+      background-color: #faf9f8;
       margin-bottom: 10px;
     }
 
@@ -48,16 +48,21 @@
 
     .nav-tabs .nav-link.active {
       background-color: #333333;
+      border-color: #333333;
       color: white;
+    }
+
+    .nav-tabs .nav-link:hover {
+      border-color: #333333;
     }
 
     .input-group {
       margin-bottom: 5px;
     }
 
-    .input-group-text {
-      background-color: #faf9f8;
-    }
+    /* .input-group-text {
+      background-color: #f3ece4;
+    } */
 
     /* 修改聚焦時的邊框顏色，並確保樣式優先級 */
     input:focus,
@@ -74,7 +79,6 @@
       -webkit-appearance: none;
       margin: 0;
     }
-
     input[type=number] {
       -moz-appearance: textfield;
     }
@@ -214,6 +218,7 @@
                     <option value="15">P 15</option>
                     <option value="20">P 20</option>
                   </select>
+                  <span class="input-group-text">.</span>
                 </div>
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">Lipid</span>
@@ -233,19 +238,16 @@
                 </div>
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">.</span>
-                  <select id="fluid_other_solution_base" class="form-select text-center" onchange="calculateFluid()">
+                  <select name="fluid_other_solution_base" class="form-select text-center" onchange="calculateFluid()">
                     <option value="" selected></option>
                     <option value="D/W">D/W base</option>
                     <option value="D5W">D5W base</option>
                     <option value="H/S">H/S base</option>
                     <option value="N/S">N/S base</option>
                   </select>
-                  <input type="text" id="fluid_other_solution_rate" class="form-control text-center" oninput="calculateFluid()" />
+                  <input type="text" name="fluid_other_solution_rate" class="form-control text-center" oninput="calculateFluid()" />
                   <span class="input-group-text">ml/hr</span>
-                </div>
-                <div class="input-group text-center">
-                  <span class="input-group-text justify-content-center" style="width: 15%;">.</span>
-                  <button class="btn btn-light" style="width: 85%; border-color: #e0e3e7;" onclick="addNewFluidLine()">+</button>
+                  <button class="btn btn-light" style="border-color: #e0e3e7;" onclick="addNewElement(this, 'fluid_other_solution')">+</button>
                 </div>
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">普通IV</span>
@@ -279,6 +281,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.0.0/math.min.js"></script>
   <script>
     function calculateFluid() {
       //先歸零
@@ -292,7 +295,7 @@
       const fluidPOHM = document.getElementById('fluid_PO_HM').value;
       const fluidPOFormula = document.getElementById('fluid_PO_formula').value;
       const fluidTPNAA = document.getElementById('fluid_TPN_AA').value;
-      const fluidTPNGrams = parseFloat(document.getElementById('fluid_TPN_grams').value);
+      let fluidTPNGrams = document.getElementById('fluid_TPN_grams').value;
       const fluidTPNHours = parseFloat(document.getElementById('fluid_TPN_hours').value) || 24;
       const fluidTPNDex = document.getElementById('fluid_TPN_dex').value;
       const fluidTPNNa = document.getElementById('fluid_TPN_Na').value;
@@ -302,17 +305,23 @@
       const fluidLipidType = document.getElementById('fluid_lipid_type').value;
       const fluidLipidGrams = parseFloat(document.getElementById('fluid_lipid_grams').value) || 0;
       const fluidLipidHours = parseFloat(document.getElementById('fluid_lipid_hours').value) || 20;
-      const fluidOtherInIO = parseFloat(document.getElementById('fluid_other_in_IO').value) || 0;
-      const fluidOtherSolutionBase = document.getElementById('fluid_other_solution_base').value;
-      const fluidOtherSolutionRate = parseFloat(document.getElementById('fluid_other_solution_rate').value) || 0;
+      const fluidOtherInIO = document.getElementById('fluid_other_in_IO').value;
+      let fluidOtherSolutionBase = document.querySelectorAll('[name="fluid_other_solution_base"]');
+      let fluidOtherSolutionRate = document.querySelectorAll('[name="fluid_other_solution_rate"]');
+      // const fluidOtherSolutionBase = document.getElementById('fluid_other_solution_base').value;
+      // const fluidOtherSolutionRate = parseFloat(document.getElementById('fluid_other_solution_rate').value) || 0;
       const fluidRegularIVType = document.getElementById('fluid_regular_IV_type').value;
-      const fluidRegularIVRate = parseFloat(document.getElementById('fluid_regular_IV_rate').value) || 0;
+      let fluidRegularIVRate = parseFloat(document.getElementById('fluid_regular_IV_rate').value) || 0;
       
+
+      //設定SMOF密度
       const fluidLipidSpec = {
         "SMOF": {density: 1/5, unit: "g/ml"},
         "Omegaven": {density: 1/10, unit: "g/ml"}
       };
-      const fluidTpnToText = {
+
+      //設定TPN配方說明
+      const fluidTpnAAMap = {
         "0.025": "TPN",
         "0.030": "TPN [AA 3.0]",
         "0.033": "TPN [AA 3.3]",
@@ -321,12 +330,224 @@
         "0.050": "TPN [N0]"
       };
 
+      // Only one of fluidTPNGrams and fluidRegularIVRate can be entered
+      const fluidRegularIVRateDIV = document.getElementById('fluid_regular_IV_rate');
+      const fluidTPNGramsDIV = document.getElementById('fluid_TPN_grams');
+      if (fluidTPNGramsDIV.value !== "") {
+        fluidRegularIVRateDIV.disabled = true;
+      } else if (fluidRegularIVRateDIV.value !== "") {
+        fluidTPNGramsDIV.disabled = true;
+      } else {
+        fluidRegularIVRateDIV.disabled = false;
+        fluidTPNGramsDIV.disabled = false;
+      }
+
+
+      // *****************************************
+      //               計算fluid過程
+      // *****************************************
+      console.log("***************開始水分計算***************")
+      console.log(`BW: ${fluidBW} g`);
+      //計算TDF總量
+      let fluidTotalTDF = (fluidTDF*fluidBW/1000).toFixed(1);
+      console.log(`Total daily fluid: ${fluidTDF} ml/kg/day = total ${fluidTotalTDF} ml/day`);
+      //計算PO總量
+      let fluidTotalPO = fluidPO === "" ? 0 : parseExpression(fluidPO);      
+      console.log(`Diet: ${fluidTotalPO} ml/day`);
+      //計算Lipid總量
+      let fluidLipidTotalVolumeGoal = fluidLipidGrams*fluidBW/1000/fluidLipidSpec[fluidLipidType].density;
+      let fluidLipidValidHours = Math.min(23, Math.max(16, fluidLipidHours)); //確保輸入值在16~23之間
+      let fluidLipidRate = (fluidLipidTotalVolumeGoal/fluidLipidValidHours).toFixed(1)
+      let fluidLipidTotalVolume = fluidLipidRate*fluidLipidValidHours;
+      let fluidLipidMinDiff = Math.abs(fluidLipidTotalVolume-fluidLipidTotalVolumeGoal);
+      let fluidLipidBestHour = fluidLipidValidHours;
+      const fluidLipidAcceptedError = 0.5;
+      const fluidLipidMaxHour = 23;
+      for (let i=16; i<=fluidLipidValidHours && i<=fluidLipidMaxHour; i++){
+        fluidLipidRate = (fluidLipidTotalVolumeGoal/i).toFixed(1);
+        fluidLipidTotalVolume = fluidLipidRate*i;
+        const fluidLipidTotalVolumeDiff = Math.abs(fluidLipidTotalVolume-fluidLipidTotalVolumeGoal);
+        if (fluidLipidTotalVolumeDiff<fluidLipidMinDiff || fluidLipidTotalVolumeDiff < fluidLipidAcceptedError){
+          fluidLipidMinDiff=fluidLipidTotalVolumeDiff;
+          fluidLipidBestHour=i;
+        }
+        // console.log(`target ${fluidLipidTotalVolumeGoal}, current ${fluidLipidTotalVolume}, current hr ${i}`);
+        // console.log(`minDiff ${fluidLipidMinDiff.toFixed(1)}, bestHour = ${fluidLipidBestHour}`);
+      }
+      fluidLipidRate = (fluidLipidGrams*fluidBW/1000/fluidLipidSpec[fluidLipidType].density/fluidLipidBestHour).toFixed(1); //由best hour還原速率
+      fluidLipidTotalVolume = fluidLipidRate*fluidLipidBestHour; //由best hour還原總量
+      
+
+      //計算fluid other in I/O 總量
+      let fluidOtherInIOTotalVolume = parseExpression(fluidOtherInIO) || 0;
+      console.log(`Other in I/O: ${fluidOtherInIOTotalVolume} ml/day`);
+
+      //計算fluid Other Solution總量
+      let fluidOtherSolutionTotalVolume = 0;
+      for (let i = 0; i < fluidOtherSolutionBase.length; i++) {
+        let rateValue = parseExpression(fluidOtherSolutionRate[i].value) || 0;
+        fluidOtherSolutionTotalVolume += rateValue*24;
+        // base value 用於計算Na intake尚未完成
+        // let baseValue = fluidOtherSolutionBase[i].value;
+        // if (baseValue === "D/W") { rateValue = rateValue/5; }
+        // else if (baseValue === "D5W") { rateValue = rateValue/5; }
+        // else if (baseValue === "H/S") { rateValue = rateValue/5; }
+        // else if (baseValue === "N/S") { rateValue = rateValue/5; }
+      }
+      console.log(`Total Other Solution: ${fluidOtherSolutionTotalVolume} ml/day`);
+      
+      //計算fluid Regular IV and TPN
+      let fluidTPNRate = 0;
+      let fluidTPNTotalVolume = 0;
+      let fluidRegularIVTotalVolume = 0;
+      let fluidTPNMakeUp = "";
+
+      //fluidTPNGrams有值，表示非補不足，先計算TPN再計算普通IV流速
+      if (fluidTPNGrams || fluidTPNGrams === 0){ 
+        fluidTPNGrams = fluidTPNGrams || 0;
+        fluidTPNRate = (fluidTPNGrams*fluidBW/1000/fluidTPNAA/fluidTPNHours).toFixed(1);
+        fluidTPNTotalVolume = fluidTPNRate*fluidTPNHours;
+
+        //計算普通IV流速
+        fluidRegularIVRate = ((fluidTotalTDF-fluidTotalPO-fluidTPNTotalVolume-fluidLipidTotalVolume-fluidOtherInIOTotalVolume-fluidOtherSolutionTotalVolume)/24).toFixed(1);
+      } else { 
+        //未設定tpn gram數，表示補不足，先計算普通IV流速再計算TPN
+        fluidRegularIVTotalVolume = (fluidRegularIVRate*24).toFixed(1);
+        fluidTPNTotalVolume = fluidTotalTDF-fluidTotalPO-fluidLipidTotalVolume-fluidOtherInIOTotalVolume-fluidOtherSolutionTotalVolume-fluidRegularIVTotalVolume;
+        fluidTPNRate = (fluidTPNTotalVolume/fluidTPNHours).toFixed(1);
+        fluidTPNGrams = (fluidTPNRate*24*fluidTPNAA/(fluidBW/1000)).toFixed(2);
+        fluidTPNMakeUp = " (補)";
+      }
+      console.log(`Regular IV: ${fluidRegularIVRate} ml/hr`);
+      console.log(`TPN ${fluidTPNGrams} g/kg/day = ${fluidTPNRate} ml/hr run ${fluidTPNHours} hrs`);
+      console.log("***************結束水分計算***************")
+                   
+      // *****************************************
+      //           將計算結果轉成文字輸出
+      // *****************************************
+      console.log("***************開始文字輸出***************")
+      // BW: ? g
+      let fluidOrderOutputBW = fluidBW === 0 ? "" : `BW: ${fluidBW} g`;
+      console.log(`BW: ${fluidOrderOutputBW}`);
+      // TDF: ? ml/kg/day = total ? ml/day
+      let fluidOrderOutputTDF = fluidTDF === 0 ? "" : `Total daily fluid: ${fluidTDF} ml/kg/day = total ${fluidTotalTDF} ml/day`;
+      console.log(`Total daily fluid: ${fluidOrderOutputTDF}`);
+      // PO: Diet: ? ml/day
+      let fluidOrderOutputPO = "";
+      const fluidPOPattern = /^(\d+\s*\*\s*\d+)(\s*\+\s*\d+\s*\*\s*\d+)*$/; // "A*B + C*D + E*F ...", where A B ... are numbers  
+      if (fluidPO == "") { fluidOrderOutputPO = "";} 
+      else if (fluidPO === 0) { fluidOrderOutputPO = "Diet: NPO with OG decompression";} //若輸入為0則NPO
+      else if (!fluidPOPattern.test(fluidPO)) { console.log("Invalid PO format"); fluidOrderOutputPO = `Diet: ${fluidTotalPO} ml/day`;}
+      else {
+
+        //抓出PO裡面的數字組合 A*B + C*D + E*F ... 
+        const fluidPOComponentsPattern = /(\d+)\s*\*\s*(\d+)/g; // match all A*B, where A B are numbers
+        let fluidPOComponentsMatch;
+        let fluidPOComponentsPairs = [];
+        while ((fluidPOComponentsMatch = fluidPOComponentsPattern.exec(fluidPO)) !== null) {
+          const [_, base, multiplier] = fluidPOComponentsMatch;
+          fluidPOComponentsPairs.push({ base: parseInt(base), multiplier: parseInt(multiplier) });
+        }
+        
+        // 計算總共幾餐 = Q?H feeding, ? = 24/總餐數
+        let fluidPOMultiplierSum = fluidPOComponentsPairs.reduce((sum, item) => sum + item.multiplier, 0);
+        if (24 % fluidPOMultiplierSum !== 0) { fluidOrderOutputPO = `Diet: ${fluidTotalPO} ml/day`; } //若不能整除24則直接輸出總量
+        else{
+          fluidOrderOutputPO = fluidPOComponentsPairs.map(({ base, multiplier }) => `${base}ml * ${multiplier} meals`).join(" then ");
+          fluidOrderOutputPO.split(" then ").slice(0, -1).join(" then "); //移除最後一個元素 (最後一個*幾餐)
+          fluidOrderOutputPO += ` / Q${24/fluidPOMultiplierSum}H`;  //加上餵食頻率
+          // 加上奶品
+          let fluidPOMilkType = fluidPOHM && fluidPOFormula ?  `${fluidPOHM}/${fluidPOFormula}` : fluidPOHM || fluidPOFormula || '';
+          fluidOrderOutputPO = fluidPOMilkType ? `${fluidPOMilkType} ${fluidOrderOutputPO}` : fluidOrderOutputPO;
+          // 加上PO總量
+          fluidOrderOutputPO = `Diet: ${fluidOrderOutputPO} = (total ${fluidTotalPO}ml/day )`;
+        }
+      }
+      console.log(`Diet: ${fluidOrderOutputPO}`);     
+
+      // TPN: ? g/kg/day = ? ml/hr run ? hrs
+      let fluidOrderOutputTPNHours = fluidTPNHours ===24? "":`run ${fluidTPNHours}hrs`;
+      let fluidOrderOutputTPN = `${fluidTpnAAMap[fluidTPNAA]}${fluidTPNMakeUp} ${fluidTPNGrams}g/kg/day=${fluidTPNRate}ml/hr ${fluidOrderOutputTPNHours}`;
+      fluidOrderOutputTPN = fluidTPNGrams==0 ? "":fluidOrderOutputTPN;
+      console.log(`TPN: ${fluidOrderOutputTPN}`);      
+
+      // Lipid: ? g/kg/day = total ? g/day
+      let fluidOrderOutputLipid = `${fluidLipidType} ${fluidLipidGrams}g/kg/day = ${fluidLipidRate} ml/hr run ${fluidLipidBestHour} hrs`;
+      fluidOrderOutputLipid = fluidLipidGrams==0 ? "":fluidOrderOutputLipid;
+      console.log(`Lipid: ${fluidOrderOutputLipid}`); 
+
+      // Other in I/O: ? ml/day
+      console.log(`Other in I/O: ${fluidOtherInIOTotalVolume} ml/day`);
+
+      // other solution: ? ml/hr
+      console.log(`Total Other Solution: ${fluidOtherSolutionTotalVolume} ml/day`);
+
+      // Regular IV: ? ml/hr
+      let fluidOrderOutputRegularIV = fluidRegularIVRate === 0 ? "" : `普通IV: ${fluidRegularIVRate} ml/hr`;
+      console.log(`Regular IV: ${fluidRegularIVRate} ml/hr`);
+
+      console.log("***************結束文字輸出***************")
+
+
+
+      // *****************************************
+      //           將計算結果輸出到網頁
+      // *****************************************
+      
+      document.getElementById('fluid_order_output').textContent = `${fluidOrderOutputBW}\n${fluidOrderOutputTDF}\n${fluidOrderOutputPO}\n${fluidOrderOutputTPN}\n${fluidOrderOutputLipid}\n${fluidOrderOutputRegularIV}`;
     }
 
-    function addNewFluidLine() {
-      // 新增輸入行的邏輯將在這裡實現
+
+
+    // *****************************************
+    // 對傳入的文字進行解析並加減乘除
+    // * Evaluates a mathematical expression and returns the result.
+    // * @param {string} expression - The mathematical expression to evaluate.
+    // * @returns {number} - The result of the evaluated expression.
+    // *****************************************
+    function parseExpression(expression) {
+      expression = expression.replace(/\s+/g, ""); // 移除掉多餘的空格
+      expression = expression.replace(/[+\-*\/]$/, ""); // 移除結尾的 +, -, *, / 符號
+      try {
+        return math.evaluate(expression); // 使用 math.js 的 evaluate 方法計算表達式
+      } catch (error) {
+          console.error("Expression Error:", error);
+          return 0; // 若計算過程中有錯誤，返回 0
+      }
     }
 
+
+    // *****************************************
+    // 新增新的ml/hr輸入行
+    // *****************************************
+    function addNewElement( referenceNode, typeOfElement) {
+      // Get the parent of the reference node
+      let parent = referenceNode.parentNode;     
+      let grandParent = parent.parentNode;
+
+      // Create a new row for the inputs
+      let newDiv = document.createElement('div');
+      newDiv.classList.add('input-group'); //加入屬性class
+      switch(typeOfElement){
+        case('fluid_other_solution'):
+          newDiv.innerHTML = `
+            <span class="input-group-text justify-content-center" style="width: 15%;">.</span>
+            <select name="fluid_other_solution_base" class="form-select text-center" onchange="calculateFluid()">
+              <option value="" selected></option>
+              <option value="D/W">D/W base</option>
+              <option value="D5W">D5W base</option>
+              <option value="H/S">H/S base</option>
+              <option value="N/S">N/S base</option>
+            </select>
+            <input type="text" name="fluid_other_solution_rate" class="form-control text-center" oninput="calculateFluid()" />
+            <span class="input-group-text">ml/hr</span>
+          `;
+          break;
+      }
+      grandParent.insertBefore(newDiv, parent);
+    }    
+
+    
     // 為每個複製按鈕添加點擊事件
     document.querySelectorAll('.copy-item').forEach(item => {
       item.addEventListener('click', () => {
@@ -338,6 +559,8 @@
         });
       });
     });
+
+
   </script>
 </body>
 
