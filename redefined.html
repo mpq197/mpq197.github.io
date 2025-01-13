@@ -145,12 +145,12 @@
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">BW</span>
                   <input type="number" id="fluid_BW" class="form-control text-center" oninput="calculateFluid()" />
-                  <span class="input-group-text">g</span>
+                  <span class="input-group-text" style="width: 20%;">g</span>
                 </div>
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">TDF</span>
                   <input type="number" id="fluid_TDF" class="form-control text-center" oninput="calculateFluid()" />
-                  <span class="input-group-text">ml/kg/day</span>
+                  <span class="input-group-text" style="width: 20%;">ml/kg/day</span>
                 </div>
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">PO</span>
@@ -166,7 +166,7 @@
                     <option value="14%RF">14%RF</option>
                   </select>
                   <input type="text" id="fluid_PO" class="form-control text-center" oninput="calculateFluid()" />
-                  <span class="input-group-text">ml/day</span>
+                  <span class="input-group-text" style="width: 20%;">ml/day</span>
                 </div>
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">TPN</span>
@@ -181,7 +181,7 @@
                   <input type="number" id="fluid_TPN_grams" class="form-control text-center" oninput="calculateFluid()" />
                   <span class="input-group-text">g/kg/day</span>
                   <input type="number" id="fluid_TPN_hours" min="0" max="24" class="form-control text-center" placeholder="-" oninput="calculateFluid()" />
-                  <span class="input-group-text">hrs</span>
+                  <span class="input-group-text" style="width: 20%;">hrs</span>
                 </div>
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">.</span>
@@ -218,7 +218,7 @@
                     <option value="15">P 15</option>
                     <option value="20">P 20</option>
                   </select>
-                  <span class="input-group-text">.</span>
+                  <span class="input-group-text" style="width: 20%;">.</span>
                 </div>
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">Lipid</span>
@@ -229,15 +229,15 @@
                   <input type="number" id="fluid_lipid_grams" class="form-control text-center" oninput="calculateFluid()" />
                   <span class="input-group-text">g/kg/day</span>
                   <input type="number" id="fluid_lipid_hours" min="16" max="24" class="form-control text-center" placeholder="-" oninput="calculateFluid()" />
-                  <span class="input-group-text">hrs</span>
+                  <span class="input-group-text" style="width: 20%;">hrs</span>
                 </div>
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">Other</span>
                   <input type="text" id="fluid_other_in_IO" class="form-control text-center" oninput="calculateFluid()" />
-                  <span class="input-group-text">ml/day</span>
+                  <span class="input-group-text" style="width: 20%;">ml/day</span>
                 </div>
                 <div class="input-group">
-                  <span class="input-group-text justify-content-center" style="width: 15%;">.</span>
+                  <span class="input-group-text justify-content-center" style="width: 15%;">Other</span>
                   <select name="fluid_other_solution_base" class="form-select text-center" onchange="calculateFluid()">
                     <option value="" selected></option>
                     <option value="D/W">D/W base</option>
@@ -246,8 +246,8 @@
                     <option value="N/S">N/S base</option>
                   </select>
                   <input type="text" name="fluid_other_solution_rate" class="form-control text-center" oninput="calculateFluid()" />
-                  <span class="input-group-text">ml/hr</span>
-                  <button class="btn btn-light" style="border-color: #e0e3e7;" onclick="addNewElement(this, 'fluid_other_solution')">+</button>
+                  <span class="input-group-text" style="width:12%">ml/hr</span>
+                    <button class="btn btn-light" style="border-color: #e0e3e7; width: 8%;" onclick="addNewElement(this, 'fluid_other_solution')">+</button>
                 </div>
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">普通IV</span>
@@ -259,7 +259,7 @@
                     <option value="D0.225S(500)">D0.225S(500)</option>
                   </select>
                   <input type="number" id="fluid_regular_IV_rate" class="form-control text-center" oninput="calculateFluid()" />
-                  <span class="input-group-text">ml/hr</span>
+                  <span class="input-group-text" style="width: 20%;">ml/hr</span>
                 </div>
               </div>
               <div class="card-footer bg-transparent">
@@ -267,7 +267,7 @@
                   <li class="list-group-item copy-item" id="fluid_nutrition_spec" data-content="Daily intake: Na ">Daily intake: Na</li>
                 </ul>
                 <ul class="list-group mt-2 mb-2">
-                  <li class="list-group-item copy-item" id="fluid_order_output" data-content="Order: ">Order:</li>
+                  <li class="list-group-item copy-item" style="background-color: #333333; color: white;;" id="fluid_order_output" data-content="Order: ">Order:</li>
                 </ul>
               </div>
             </div>
@@ -297,11 +297,11 @@
       const fluidTPNAA = document.getElementById('fluid_TPN_AA').value;
       let fluidTPNGrams = document.getElementById('fluid_TPN_grams').value;
       const fluidTPNHours = parseFloat(document.getElementById('fluid_TPN_hours').value) || 24;
-      const fluidTPNDex = document.getElementById('fluid_TPN_dex').value;
-      const fluidTPNNa = document.getElementById('fluid_TPN_Na').value;
-      const fluidTPNK = document.getElementById('fluid_TPN_K').value;
-      const fluidTPNCa = document.getElementById('fluid_TPN_Ca').value;
-      const fluidTPNP = document.getElementById('fluid_TPN_P').value;
+      const fluidTPNDex = parseFloat(document.getElementById('fluid_TPN_dex').value) || 10;
+      const fluidTPNNa = parseFloat(document.getElementById('fluid_TPN_Na').value) || 40;
+      const fluidTPNK = parseFloat(document.getElementById('fluid_TPN_K').value) || 20;
+      const fluidTPNCa = parseFloat(document.getElementById('fluid_TPN_Ca').value) || 20;
+      const fluidTPNP = parseFloat(document.getElementById('fluid_TPN_P').value) || 9;
       const fluidLipidType = document.getElementById('fluid_lipid_type').value;
       const fluidLipidGrams = parseFloat(document.getElementById('fluid_lipid_grams').value) || 0;
       const fluidLipidHours = parseFloat(document.getElementById('fluid_lipid_hours').value) || 20;
@@ -310,7 +310,7 @@
       let fluidOtherSolutionRate = document.querySelectorAll('[name="fluid_other_solution_rate"]');
       // const fluidOtherSolutionBase = document.getElementById('fluid_other_solution_base').value;
       // const fluidOtherSolutionRate = parseFloat(document.getElementById('fluid_other_solution_rate').value) || 0;
-      const fluidRegularIVType = document.getElementById('fluid_regular_IV_type').value;
+      const fluidRegularIVType = document.getElementById('fluid_regular_IV_type').value || "普通IV";
       let fluidRegularIVRate = parseFloat(document.getElementById('fluid_regular_IV_rate').value) || 0;
       
 
@@ -426,12 +426,17 @@
       //           將計算結果轉成文字輸出
       // *****************************************
       console.log("***************開始文字輸出***************")
+      let fluidOrderArray = [];
       // BW: ? g
       let fluidOrderOutputBW = fluidBW === 0 ? "" : `BW: ${fluidBW} g`;
+      fluidOrderArray.push(fluidOrderOutputBW);
       console.log(`BW: ${fluidOrderOutputBW}`);
+
       // TDF: ? ml/kg/day = total ? ml/day
       let fluidOrderOutputTDF = fluidTDF === 0 ? "" : `Total daily fluid: ${fluidTDF} ml/kg/day = total ${fluidTotalTDF} ml/day`;
+      fluidOrderArray.push(fluidOrderOutputTDF);
       console.log(`Total daily fluid: ${fluidOrderOutputTDF}`);
+
       // PO: Diet: ? ml/day
       let fluidOrderOutputPO = "";
       const fluidPOPattern = /^(\d+\s*\*\s*\d+)(\s*\+\s*\d+\s*\*\s*\d+)*$/; // "A*B + C*D + E*F ...", where A B ... are numbers  
@@ -463,38 +468,86 @@
           fluidOrderOutputPO = `Diet: ${fluidOrderOutputPO} = (total ${fluidTotalPO}ml/day )`;
         }
       }
+      fluidOrderArray.push(fluidOrderOutputPO);
       console.log(`Diet: ${fluidOrderOutputPO}`);     
 
       // TPN: ? g/kg/day = ? ml/hr run ? hrs
       let fluidOrderOutputTPNHours = fluidTPNHours ===24? "":`run ${fluidTPNHours}hrs`;
       let fluidOrderOutputTPN = `${fluidTpnAAMap[fluidTPNAA]}${fluidTPNMakeUp} ${fluidTPNGrams}g/kg/day=${fluidTPNRate}ml/hr ${fluidOrderOutputTPNHours}`;
       fluidOrderOutputTPN = fluidTPNGrams==0 ? "":fluidOrderOutputTPN;
+      fluidOrderArray.push(fluidOrderOutputTPN);
       console.log(`TPN: ${fluidOrderOutputTPN}`);      
 
       // Lipid: ? g/kg/day = total ? g/day
       let fluidOrderOutputLipid = `${fluidLipidType} ${fluidLipidGrams}g/kg/day = ${fluidLipidRate} ml/hr run ${fluidLipidBestHour} hrs`;
       fluidOrderOutputLipid = fluidLipidGrams==0 ? "":fluidOrderOutputLipid;
+      fluidOrderArray.push(fluidOrderOutputLipid);
       console.log(`Lipid: ${fluidOrderOutputLipid}`); 
 
       // Other in I/O: ? ml/day
-      console.log(`Other in I/O: ${fluidOtherInIOTotalVolume} ml/day`);
+      let fluidOrderOutputOtherInIO = fluidOtherInIOTotalVolume === 0 ? "" : `Other in I/O: ${fluidOtherInIOTotalVolume} ml/day`;
+      fluidOrderArray.push(fluidOrderOutputOtherInIO);
+      console.log(`Other in I/O: ${fluidOrderOutputOtherInIO} ml/day`);
 
       // other solution: ? ml/hr
-      console.log(`Total Other Solution: ${fluidOtherSolutionTotalVolume} ml/day`);
+      let fluidOrderOutputOtherSolution = fluidOtherSolutionTotalVolume === 0 ? "" : `Total Other Solution run ${(fluidOtherSolutionTotalVolume/24).toFixed(1)} ml/hr = ${fluidOtherSolutionTotalVolume} ml/day`;
+      fluidOrderArray.push(fluidOrderOutputOtherSolution);
+      console.log(`Total Other Solution: ${fluidOrderOutputOtherSolution}`);
 
       // Regular IV: ? ml/hr
-      let fluidOrderOutputRegularIV = fluidRegularIVRate === 0 ? "" : `普通IV: ${fluidRegularIVRate} ml/hr`;
+      let fluidOrderOutputRegularIV = fluidRegularIVRate === 0 ? "" : `${fluidRegularIVType} run ${fluidRegularIVRate} ml/hr`;
+      fluidOrderArray.push(fluidOrderOutputRegularIV);
       console.log(`Regular IV: ${fluidRegularIVRate} ml/hr`);
 
       console.log("***************結束文字輸出***************")
+      console.log(fluidOrderArray.join("\n"));
 
-
+      // *****************************************
+      //           計算營養成分
+      // *****************************************
+      let fluidTotalNa = ((fluidTPNTotalVolume/1000*fluidTPNNa)/(fluidBW/1000)).toFixed(1);
+      let fluidTotalK = ((fluidTPNTotalVolume/1000*fluidTPNK)/(fluidBW/1000)).toFixed(1);
+      let fluidTotalCa = ((fluidTPNTotalVolume/1000*fluidTPNCa)/(fluidBW/1000)).toFixed(1);
+      let fluidTotalP = ((fluidTPNTotalVolume/1000*fluidTPNP)/(fluidBW/1000)).toFixed(1);
 
       // *****************************************
       //           將計算結果輸出到網頁
       // *****************************************
       
-      document.getElementById('fluid_order_output').textContent = `${fluidOrderOutputBW}\n${fluidOrderOutputTDF}\n${fluidOrderOutputPO}\n${fluidOrderOutputTPN}\n${fluidOrderOutputLipid}\n${fluidOrderOutputRegularIV}`;
+      //先將name=fluid_order_outputs的li都移除
+      let fluidOrderOutputs = document.querySelectorAll('[name="fluid_order_outputs"]');
+      fluidOrderOutputs.forEach(output => {
+        output.remove();
+      });      
+      
+      //在fluid_order_output下面新增一個節點，顯示計算結果
+      let fluidOrderOutputDiv = document.getElementById('fluid_order_output');
+      fluidOrderArray.forEach(order => {
+        if (order) {
+          fluidOrderOutputDiv.insertAdjacentHTML('afterend', `<li class="list-group-item copy-item" name="fluid_order_outputs" data-content="${order}">${order}</li>`);
+          fluidOrderOutputDiv=fluidOrderOutputDiv.nextSibling; //移動到下一個節點
+        }
+      });
+
+      //將Daily intake: Na ? mEq, K ? mEq, Ca ? mEq, P ? mEq 輸出到網頁
+      let fluidTPNOutput = `Daily intake (mEq/kg/day): Na ${fluidTotalNa}, K ${fluidTotalK}, Ca ${fluidTotalCa}, P ${fluidTotalP}`;
+      document.getElementById('fluid_nutrition_spec').textContent = fluidTPNOutput;
+      
+      //加入複製功能         
+      document.querySelectorAll('.copy-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const content = item.getAttribute('data-content');
+          navigator.clipboard.writeText(content).then(() => {
+            console.log(`已複製: ${content}`);
+          }).catch(err => {
+            console.error('複製失敗:', err);
+          });
+        });
+      });
+      
+      // document.getElementById('fluid_nutrition_spec').textContent = `Daily intake: Na ${fluidTPNNa} mEq, K ${fluidTPNK} mEq, Ca ${fluidTPNCa} mEq, P ${fluidTPNP} mEq`;
+
+      // document.getElementById('fluid_order_output').textContent = `${fluidOrderOutputBW}\n${fluidOrderOutputTDF}\n${fluidOrderOutputPO}\n${fluidOrderOutputTPN}\n${fluidOrderOutputLipid}\n${fluidOrderOutputRegularIV}`;
     }
 
 
@@ -531,7 +584,7 @@
       switch(typeOfElement){
         case('fluid_other_solution'):
           newDiv.innerHTML = `
-            <span class="input-group-text justify-content-center" style="width: 15%;">.</span>
+            <span class="input-group-text justify-content-center" style="width: 15%;">Other</span>
             <select name="fluid_other_solution_base" class="form-select text-center" onchange="calculateFluid()">
               <option value="" selected></option>
               <option value="D/W">D/W base</option>
@@ -540,26 +593,17 @@
               <option value="N/S">N/S base</option>
             </select>
             <input type="text" name="fluid_other_solution_rate" class="form-control text-center" oninput="calculateFluid()" />
-            <span class="input-group-text">ml/hr</span>
+            <span class="input-group-text" style="width:20%;">ml/hr</span>
           `;
           break;
       }
       grandParent.insertBefore(newDiv, parent);
     }    
 
-    
-    // 為每個複製按鈕添加點擊事件
-    document.querySelectorAll('.copy-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const content = item.getAttribute('data-content');
-        navigator.clipboard.writeText(content).then(() => {
-          console.log(`已複製: ${content}`);
-        }).catch(err => {
-          console.error('複製失敗:', err);
-        });
-      });
-    });
 
+
+    // 頁面載入時先執行一次計算
+    calculateFluid();
 
   </script>
 </body>
