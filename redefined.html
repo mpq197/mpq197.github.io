@@ -522,6 +522,7 @@
       let fluidOrderOutputTPNHours = fluidTPNHours ===24? "":`run ${fluidTPNHours}hrs`;
       let fluidOrderOutputTPN = `${fluidTpnAAMap[fluidTPNAA]}${fluidTPNMakeUp} ${fluidTPNGrams}g/kg/day=${fluidTPNRate}ml/hr ${fluidOrderOutputTPNHours}`;
       fluidOrderOutputTPN = fluidTPNGrams==0 ? "":fluidOrderOutputTPN;
+      fluidOrderOutputTPN = fluidBW > 0 ? fluidOrderOutputTPN : ""; //若BW=0則不顯示TPN，避免出現NaN
       fluidOrderArray.push(fluidOrderOutputTPN);
       console.log(`TPN: ${fluidOrderOutputTPN}`);      
 
