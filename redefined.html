@@ -44,6 +44,7 @@
       /* 填滿父容器寬度 */
       text-align: center;
       /* 文字置中 */
+      border-radius: 0%;
     }
 
     .nav-tabs .nav-link.active {
@@ -290,7 +291,7 @@
                   <span class="input-group-text  justify-content-center" style="width: 15%;">ml/hr</span>
                 </div>
               </div>
-              <div class="card-footer bg-transparent">
+              <div class="card-footer">
                 <!-- <div class="input-group d-flex mt-2 mb-2">
                   <span class="input-group-text justify-content-center text-truncate" style="width: 15%;">current BW</span>
                   <input type="text" class="form-control flex-fill text-center" placeholder="" id="fluid_BW_for_calculating_nutrition"/>
@@ -300,19 +301,37 @@
                   <span class="input-group-text copy-item flex-fill justify-content-center" id="fluid_nutrition_Kcal">Kcal</span>
                 </div> -->
                 <div class="input-group d-flex mt-2 mb-2">
-                  <span class="input-group-text copy-item flex-fill justify-content-center" id="fluid_nutrition_Na">Na</span>
-                  <span class="input-group-text copy-item flex-fill justify-content-center" id="fluid_nutrition_K">K</span>
-                  <span class="input-group-text copy-item flex-fill justify-content-center" id="fluid_nutrition_Ca">Ca</span>
-                  <span class="input-group-text copy-item flex-fill justify-content-center" id="fluid_nutrition_P">P</span>
-                  <span class="input-group-text copy-item flex-fill justify-content-center" id="fluid_nutrition_Mg">Mg</span>
+                  <span class="input-group-text copy-item flex-fill justify-content-center" id="fluid_nutrition_Na">Na ___</span>
+                  <span class="input-group-text copy-item flex-fill justify-content-center" id="fluid_nutrition_K">K ___</span>
+                  <span class="input-group-text copy-item flex-fill justify-content-center" id="fluid_nutrition_Ca">Ca ___</span>
+                  <span class="input-group-text copy-item flex-fill justify-content-center" id="fluid_nutrition_P">P ___</span>
+                  <span class="input-group-text copy-item flex-fill justify-content-center" id="fluid_nutrition_Mg">Mg ___</span>
                   <span class="input-group-text justify-content-center text-truncate" style="width: 15%;">/kg/day</span>
                 </div>
                 <!-- <ul class="list-group mt-2 mb-2">
                   <li class="list-group-item copy-item" id="fluid_nutrition_spec" data-content=""></li>
                 </ul> -->
-                <ul class="list-group mt-2 mb-2">
-                  <li class="list-group-item" style="background-color: #333333; color: white;;" id="fluid_order_output" data-content="Order: ">Order:</li>
+                <ul class="list-group mt-2">
+                  <li class="list-group-item" style="background-color: #373737; color: white;" id="fluid_order_output" data-content="Order: ">Order:</li>
                 </ul>
+                <div>
+                  <div class="row g-2">
+                    <div class="col-8">
+                      <div class="input-group d-flex mt-2 mb-2">
+                        <span class="input-group-text copy-item flex-fill justify-content-center" style="background-color: #373737; color: white;">UA</span>
+                        <span class="input-group-text copy-item flex-fill justify-content-center" id="fluid_UA_high_len">(高位)</span>
+                        <span class="input-group-text copy-item flex-fill justify-content-center" id="fluid_UA_low_len">(低位)</span>
+                      </div>
+                    </div>
+                    <div class="col-4">
+                      <div class="input-group d-flex mt-2 mb-2">
+                        <span class="input-group-text copy-item flex-fill justify-content-center" style="background-color: #373737; color: white;">UV</span>
+                        <span class="input-group-text copy-item flex-fill justify-content-center" id="fluid_UV_len"></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
           </div>
@@ -593,6 +612,7 @@
       let fluidTotalPPerKg  = fluidBW > 0 ? (fluidTotalP /(fluidBW/1000)).toFixed(1) : "___";
       let fluidTotalMgPerKg = fluidBW > 0 ? (fluidTotalMg/(fluidBW/1000)).toFixed(1) : "___";
 
+
       // *****************************************
       //           將計算結果輸出到網頁
       // *****************************************
@@ -620,6 +640,18 @@
       document.getElementById('fluid_nutrition_Ca').textContent = `Ca ${fluidTotalCaPerKg}`;
       document.getElementById('fluid_nutrition_P').textContent = `P ${fluidTotalPPerKg}`;
       document.getElementById('fluid_nutrition_Mg').textContent = `Mg ${fluidTotalMgPerKg}`;
+
+
+      // *****************************************
+      //           計算UA/UV length並輸出
+      // *****************************************
+      let fluidUAHighLen = fluidBW > 0 ? (fluidBW/1000*3+9).toFixed(1) : "___";
+      let fluidUALowLen = fluidBW > 0 ? (fluidBW/1000+7).toFixed(1) : "___";
+      let fluidUVLen = fluidUAHighLen > 0 ? (fluidUAHighLen/2+1).toFixed(1) : "___";
+
+      document.getElementById('fluid_UA_high_len').textContent = `高位 ${fluidUAHighLen} cm`;
+      document.getElementById('fluid_UA_low_len').textContent = `低位 ${fluidUALowLen} cm`;
+      document.getElementById('fluid_UV_len').textContent = `${fluidUVLen} cm`;
 
       
       //加入複製功能         
