@@ -184,8 +184,9 @@
                   <span class="input-group-text  justify-content-center" style="width: 15%;">hrs</span>
                 </div>
                 <div class="input-group">
-                  <span class="input-group-text justify-content-center" style="width: 15%;">.</span>
+                  <span class="input-group-text justify-content-center" style="width: 15%;"></span>
                   <select id="fluid_TPN_dex" class="form-select text-center" onchange="calculateFluid()">
+                    <option value="0.025">Dex 2.5</option>
                     <option value="0.05">Dex 5</option>
                     <option value="0.075">Dex 7.5</option>
                     <option value="0.1" selected>Dex 10</option>
@@ -193,18 +194,30 @@
                     <option value="0.15">Dex 15</option>
                     <option value="0.175">Dex 17.5</option>
                     <option value="0.2">Dex 20</option>
+                    <option value="0.225">Dex 22.5</option>
+                    <option value="0.25">Dex 25</option>
                   </select>
                   <select id="fluid_TPN_Na" class="form-select text-center" onchange="calculateFluid()">
+                    <option value="0" >Na  0</option>
+                    <option value="10">Na 10</option>
                     <option value="20">Na 20</option>
                     <option value="30">Na 30</option>
                     <option value="40" selected>Na 40</option>
                     <option value="50">Na 50</option>
                     <option value="60">Na 60</option>
+                    <option value="60">Na 70</option>
+                    <option value="60">Na 80</option>
                   </select>
                   <select id="fluid_TPN_K" class="form-select text-center" onchange="calculateFluid()">
+                    <option value="0" >K  0</option>
+                    <option value="10">K 10</option>
                     <option value="20" selected>K 20</option>
                     <option value="30">K 30</option>
                     <option value="40">K 40</option>
+                    <option value="50">K 50</option>
+                    <option value="60">K 60</option>
+                    <option value="70">K 70</option>
+                    <option value="80">K 80</option>
                   </select>
                   <select id="fluid_TPN_Ca" class="form-select text-center" onchange="calculateFluid()">
                     <option value=""></option>
@@ -213,17 +226,20 @@
                     <option value="40">Ca 40</option>
                   </select>
                   <select id="fluid_TPN_P" class="form-select text-center" onchange="calculateFluid()">
-                    <option value=""></option>
+                    <option value="0">P 0</option>
+                    <option value="6">P 6</option>
                     <option value="9" selected>P 9</option>
+                    <option value="10">P 10</option>
+                    <option value="13.5">P 13.5</option>
                     <option value="15">P 15</option>
                     <option value="20">P 20</option>
                   </select>
                   <select id="fluid_TPN_Mg" class="form-select text-center" onchange="calculateFluid()">
-                    <option value=""></option>
-                    <option value="2" selected>Mg 2</option>
-                    <option value="4">Mg 4</option>
+                    <option value="0">Mg 0</option>
+                    <option value="2">Mg 2</option>
+                    <option value="4" selected>Mg 4</option>
                   </select>
-                  <span class="input-group-text  justify-content-center" style="width: 15%;">.</span>
+                  <span class="input-group-text  justify-content-center" style="width: 15%;"></span>
                 </div>
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">Lipid</span>
