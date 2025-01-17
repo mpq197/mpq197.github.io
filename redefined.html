@@ -509,12 +509,12 @@
       console.log("***************開始文字輸出***************")
       let fluidOrderArray = [];
       // BW: ? g
-      let fluidOrderOutputBW = fluidBW === 0 ? "" : `BW: ${fluidBW} g`;
+      let fluidOrderOutputBW = fluidBW === 0 ? "BW:" : `BW: ${fluidBW} g`;
       fluidOrderArray.push(fluidOrderOutputBW);
       console.log(`BW: ${fluidOrderOutputBW}`);
 
       // TDF: ? ml/kg/day = total ? ml/day
-      let fluidOrderOutputTDF = fluidTDF === 0 ? "" : `Total daily fluid: ${fluidTDF} ml/kg/day = total ${fluidTotalTDF} ml/day`;
+      let fluidOrderOutputTDF = fluidTDF === 0 ? "Total daily fluid:" : `Total daily fluid: ${fluidTDF} ml/kg/day = total ${fluidTotalTDF} ml/day`;
       fluidOrderArray.push(fluidOrderOutputTDF);
       console.log(`Total daily fluid: ${fluidOrderOutputTDF}`);
 
