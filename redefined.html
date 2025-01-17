@@ -347,36 +347,41 @@
                 </div>
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">Dextrose</span>
-                  <input name="dexForGIR" type="number" class="form-control text-center" value="10" oninput="calculateGIR()">
+                  <input name="GIR_dex" type="number" class="form-control text-center" value="10" oninput="calculateGIR()">
                   <span class="input-group-text">%</span>
-                  <input name="rateForGIR" type="text" class="form-control text-center" oninput="calculateGIR()">
+                  <input name="GIR_rate" type="text" class="form-control text-center" oninput="calculateGIR()">
                   <span class="input-group-text" style="width: 10%;">ml/hr</span>
-                  <button class="btn btn-light" style="border-color: #e0e3e7; width: 5%;" onclick="addNewElement(this, 'dexForGIR')">+</button>
+                  <button class="btn btn-light" style="border-color: #e0e3e7; width: 5%;" onclick="addNewElement(this, 'GIR_dex')">+</button>
                 </div>   
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">Dextrose</span>
-                  <input name="dexForGIR" type="number" class="form-control text-center" value="5" oninput="calculateGIR()">
+                  <input name="GIR_dex" type="number" class="form-control text-center" value="5" oninput="calculateGIR()">
                   <span class="input-group-text">%</span>
-                  <input name="rateForGIR" type="text" class="form-control text-center" oninput="calculateGIR()">
+                  <input name="GIR_rate" type="text" class="form-control text-center" oninput="calculateGIR()">
                   <span class="input-group-text" style="width: 10%;">ml/hr</span>
-                  <button class="btn btn-light" style="border-color: #e0e3e7; width: 5%;" onclick="addNewElement(this, 'dexForGIR')">+</button>
+                  <button class="btn btn-light" style="border-color: #e0e3e7; width: 5%;" onclick="addNewElement(this, 'GIR_dex')">+</button>
                 </div>   
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">Dextrose</span>
-                  <input name="dexForGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
+                  <input name="GIR_dex" type="number" class="form-control text-center" oninput="calculateGIR()">
                   <span class="input-group-text">%</span>
-                  <input name="rateForGIR" type="text" class="form-control text-center" oninput="calculateGIR()">
+                  <input name="GIR_rate" type="text" class="form-control text-center" oninput="calculateGIR()">
                   <span class="input-group-text" style="width: 10%;">ml/hr</span>
-                  <button class="btn btn-light" style="border-color: #e0e3e7; width: 5%;" onclick="addNewElement(this, 'dexForGIR')">+</button>
+                  <button class="btn btn-light" style="border-color: #e0e3e7; width: 5%;" onclick="addNewElement(this, 'GIR_dex')">+</button>
                 </div>   
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">Dextrose</span>
-                  <input name="dexForGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
+                  <input name="GIR_dex" type="number" class="form-control text-center" oninput="calculateGIR()">
                   <span class="input-group-text">%</span>
-                  <input name="rateForGIR" type="text" class="form-control text-center" oninput="calculateGIR()">
+                  <input name="GIR_rate" type="text" class="form-control text-center" oninput="calculateGIR()">
                   <span class="input-group-text" style="width: 10%;">ml/hr</span>
-                  <button class="btn btn-light" style="border-color: #e0e3e7; width: 5%;" onclick="addNewElement(this, 'dexForGIR')">+</button>
+                  <button class="btn btn-light" style="border-color: #e0e3e7; width: 5%;" onclick="addNewElement(this, 'GIR_dex')">+</button>
                 </div>   
+              </div>
+              <div class="card-footer">
+                <div class="input-group d-flex mt-2 mb-2">
+                  <span class="input-group-text copy-item flex-fill justify-content-center" id="GIR_result">GIR: 0.0</span>
+                </div>
               </div>
             </div>
           </div>
@@ -391,6 +396,9 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.0.0/math.min.js"></script>
   <script>
+    //*****************************************
+    //計算水分
+    //*****************************************
     function calculateFluid() {
 
       //讀取輸入值
@@ -711,6 +719,25 @@
       });  
     }
 
+    // *****************************************
+    // 計算GIR
+    // *****************************************
+    function calculateGIR(){
+      //讀取輸入值
+      const girBW = parseFloat(document.getElementById('GIR_BW').value) || 0;
+      let girDex = document.querySelectorAll('[name="GIR_dex"]');
+      let girRate = document.querySelectorAll('[name="GIR_rate"]');
+      let girTotal = 0;
+      for (let i = 0; i < girDex.length; i++) {
+        let dex = parseFloat(girDex[i].value) || 0;
+        let rate = parseFloat(girRate[i].value) || 0;
+        girTotal += dex*rate;
+      }
+
+      girTotal = girTotal/(6*girBW/1000);
+      //將GIR輸出到網頁
+      document.getElementById('GIR_result').textContent = `GIR ${girTotal.toFixed(2)}`;
+    }
 
 
     // *****************************************
@@ -732,7 +759,7 @@
 
 
     // *****************************************
-    // 新增新的ml/hr輸入行
+    // 新增新的輸入行
     // *****************************************
     function addNewElement( referenceNode, typeOfElement) {
       // Get the parent of the reference node
@@ -772,14 +799,14 @@
             <button class="btn btn-light" style="border-color: #e0e3e7; width: 5%;" onclick="addNewElement(this, 'fluid_other_in_IO')">+</button>
           `;
           break;
-        case('dexForGIR'):
+        case('GIR_dex'):
           newDiv.innerHTML = `
             <span class="input-group-text justify-content-center" style="width: 15%;">Dextrose</span>
-            <input name="dexForGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
+            <input name="GIR_dex" type="number" class="form-control text-center" oninput="calculateGIR()">
             <span class="input-group-text">%</span>
-            <input name="rateForGIR" type="text" class="form-control text-center" oninput="calculateGIR()">
+            <input name="GIR_rate" type="text" class="form-control text-center" oninput="calculateGIR()">
             <span class="input-group-text" style="width: 10%;">ml/hr</span>
-            <button class="btn btn-light" style="border-color: #e0e3e7; width: 5%;" onclick="addNewElement(this, 'dexForGIR')">+</button>
+            <button class="btn btn-light" style="border-color: #e0e3e7; width: 5%;" onclick="addNewElement(this, 'GIR_dex')">+</button>
           `;
           break;
       }
@@ -790,6 +817,7 @@
 
     // 頁面載入時先執行一次計算
     calculateFluid();
+    calculateGIR();
 
   </script>
 </body>
