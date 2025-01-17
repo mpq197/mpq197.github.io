@@ -2,6 +2,13 @@
 <html lang="zh-TW">
 
 <head>
+  <!-- 
+    代辦事項
+    1. 新增ICD10搜尋功能
+    2. 新增問診重點等文件下載
+    3. 自動轉換成體重
+  -->
+
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NeoAssist</title>
@@ -116,7 +123,7 @@
     <li class="nav-item" role="presentation">
       <button class="nav-link active" id="fluidTab" data-bs-toggle="tab" data-bs-target="#fluidContent" type="button"
         role="tab" aria-controls="fluidContent" aria-selected="true">
-        水份計算
+        水分計算
       </button>
     </li>
     <li class="nav-item" role="presentation">
@@ -135,13 +142,13 @@
 
   <!-- 分頁內容區域 -->
   <div class="tab-content" id="mainTabContent">
-    <!-- 分頁 1: 水份計算 -->
-    <div class="tab-pane fade show active" id="fluidContent" role="tabpanel" aria-labelledby="fluidTab">
+    <!-- 分頁 1: 水分計算 -->
+    <div class="tab-pane show active" id="fluidContent" role="tabpanel" aria-labelledby="fluidTab">
       <div class="container mt-4">
         <div class="row mb-3">
           <div class="col">
             <div class="card h-100">
-              <div class="card-header text-center">水份計算</div>
+              <div class="card-header text-center">水分計算</div>
               <div class="card-body pb-0">
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">BW</span>
@@ -301,15 +308,15 @@
                   <span class="input-group-text copy-item flex-fill justify-content-center" id="fluid_nutrition_Kcal">Kcal</span>
                 </div> -->
                 <div class="input-group d-flex mt-2 mb-2">
-                  <span class="input-group-text copy-item flex-fill justify-content-center" id="fluid_nutrition_Na">Na ___</span>
-                  <span class="input-group-text copy-item flex-fill justify-content-center" id="fluid_nutrition_K">K ___</span>
-                  <span class="input-group-text copy-item flex-fill justify-content-center" id="fluid_nutrition_Ca">Ca ___</span>
-                  <span class="input-group-text copy-item flex-fill justify-content-center" id="fluid_nutrition_P">P ___</span>
-                  <span class="input-group-text copy-item flex-fill justify-content-center" id="fluid_nutrition_Mg">Mg ___</span>
+                  <span class="input-group-text flex-fill justify-content-center" id="fluid_nutrition_Na">Na ___</span>
+                  <span class="input-group-text flex-fill justify-content-center" id="fluid_nutrition_K">K ___</span>
+                  <span class="input-group-text flex-fill justify-content-center" id="fluid_nutrition_Ca">Ca ___</span>
+                  <span class="input-group-text flex-fill justify-content-center" id="fluid_nutrition_P">P ___</span>
+                  <span class="input-group-text flex-fill justify-content-center" id="fluid_nutrition_Mg">Mg ___</span>
                   <span class="input-group-text justify-content-center text-truncate" style="width: 15%;">/kg/day</span>
                 </div>
                 <ul class="list-group mt-2 mb-2">
-                  <li class="list-group-item" style="background-color: #373737; color: white;" id="fluid_order_output">Order:</li>
+                  <li class="list-group-item" style="background-color: #faf9f8;" id="fluid_order_output">Order</li>
                   <li class="list-group-item copy-item" name="fluid_order_outputs" data-content="BW:">BW:</li>
                   <li class="list-group-item copy-item" name="fluid_order_outputs" data-content="Total daily fluid:">Total daily fluid:</li>
                 </ul>
@@ -437,6 +444,82 @@
       </div>
     </div>
 
+    <!-- 分頁 2: 藥物泡法 -->
+    <div class="tab-pane" id="medicationContent" role="tabpanel" aria-labelledby="medicationTab">
+      <div class="container mt-4">
+        <div class="row mb-3">
+          <div class="col">
+            <div class="card h-100">
+              <div class="card-header text-center">藥物泡法</div>
+              <div class="card-body pb-0">
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">BW</span>
+                  <input type="text" id="drug_BW" class="form-control text-center" oninput="calculateDrugPreperation()"/>
+                  <span class="input-group-text justify-content-center" style="width: 15%;">kg</span>
+                </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">Drug</span>
+                  <select id="drug_name" class="form-select text-center" title="" onchange="calculateDrugPreperation()">
+                    <option value="Dopamine"      >Dopamine       </option>
+                    <option value="Dobutamine"    >Dobutamine     </option>
+                    <option value="Milrinone"     >Milrinone      </option>
+                    <option value="Epinephrine"   >Epinephrine    </option>
+                    <option value="Midazolam"     >Midazolam      </option>
+                    <option value="Fentanyl"      >Fentanyl       </option>
+                    <option value="Bumetanide"    >Bumetanide     </option>
+                    <option value="Norepinephrine">Norepinephrine </option>
+                    <option value="Nicardipine"   >Nicardipine    </option>
+                    <option value="Nitroglycerin" >Nitroglycerin  </option>
+                    <option value="Labetalol"     >Labetalol      </option>
+                    <option value="PGE1"          >PGE1           </option>
+                    <option value="Vasopressin"   >Vasopressin    </option>
+                    <option value="Isoproterenol" >Isoproterenol  </option>
+                    <option value="Rocuronium"    >Rocuronium     </option>
+                    <option value="Cisatracurium" >Cisatracurium  </option>
+                    <option value="Morphine"      >Morphine       </option>
+                    <option value="Lorazepam"     >Lorazepam      </option>
+                    <option value="Ketamine"      >Ketamine       </option>
+                    <option value="Propofol"      >Propofol       </option>
+                    <option value="MgSO4"         >MgSO4          </option>
+                    <option value="Lidocaine"     >Lidocaine      </option>
+                    <!-- More options -->
+                  </select>
+                  <input type="text" id="drug_extract_amount" class="form-control text-center" oninput="calculateDrugPreperation()" />
+                  <span class="input-group-text justify-content-center" style="width: 15%;" id="drug_extract_amount_unit">mg</span>
+                </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">In</span>
+                  <select id="drug_diluter_name" class="form-select text-center" onchange="calculateDrugPreperation()">
+                    <option value="D5W">D5W</option>
+                    <option value="N/S">N/S</option>
+                    <option value="D/W">D/W</option>
+                  </select>  
+                  <span class="input-group-text justify-content-center">total</span>
+                  <input type="number" id="drug_total_final_volume" class="form-control text-center" oninput="calculateDrugPreperation()" />
+                  <span class="input-group-text justify-content-center" style="width: 15%;">ml</span>
+                </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">Run</span>
+                  <input type="text" id="drug_infusion_rate" class="form-control text-center" oninput="calculateDrugPreperation()" />
+                  <span class="input-group-text justify-content-center">ml/hr</span>
+                  <span class="input-group-text justify-content-center">=</span>
+                  <input type="number" id="drug_infusion_final_rate" class="form-control text-center" oninput="calculateDrugPreperation()" />
+                  <span class="input-group-text justify-content-center" id="drug_infusion_final_rate_unit">mcg/kg/min</span>
+                </div>
+              </div>
+              <div class="card-footer">
+                <ul class="list-group mt-2 mb-2">
+                  <li class="list-group-item copy-item" id="drug_text_for_order">&nbsp;</li>
+                  <li class="list-group-item copy-item" id="drug_text_for_med">&nbsp;</li>
+                  <li class="list-group-item copy-item" id="drug_text_for_pure_line">&nbsp;</li>
+                </ul>  
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 其他分頁內容保持不變 -->
     <!-- ... -->
   </div>
@@ -445,7 +528,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.0.0/math.min.js"></script>
   <script>
     //*****************************************
-    //計算水分
+    //水分 水分計算 = 計算水分
     //*****************************************
     function calculateFluid() {
 
@@ -745,15 +828,16 @@
       //加入複製功能         
       document.querySelectorAll('.copy-item').forEach(item => {
         item.addEventListener('click', () => {
-          const content = item.getAttribute('data-content');
+          const content = item.textContent.trim();  // 直接獲取文字內容
           navigator.clipboard.writeText(content).then(() => {
             console.log(`已複製: ${content}`);
           }).catch(err => {
             console.error('複製失敗:', err);
           });
         });
-      });  
+      });
     }
+
 
     // *****************************************
     // 計算GIR
@@ -795,6 +879,7 @@
       document.getElementById('dextrose_concentration_final').textContent = `Dextrose = ${dextroseConcentrationFinal} %`;
     }
 
+
     // *****************************************
     // 計算UA、UV深度
     // *****************************************
@@ -812,10 +897,119 @@
 
 
     // *****************************************
+    // 設定藥物資料
+    // *****************************************
+    const drugSpecs = {
+      'Dopamine'      : { concentration: 40     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Dobutamine'    : { concentration: 12.5   , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Milrinone'     : { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Epinephrine'   : { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},
+      'Midazolam'     : { concentration: 5      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Fentanyl'      : { concentration: 0.05   , unit: 'mg/ml' , rateUnit: 'mcg/kg/hr'  , decimalPlace: 3},
+      'Bumetanide'    : { concentration: 0.25   , unit: 'mg/ml' , rateUnit: 'mcg/kg/hr'  , decimalPlace: 1},
+      'Norepinephrine': { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},
+      'Nicardipine'   : { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Nitroglycerin' : { concentration: 0.5    , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}, //小數點待確定
+      'Labetalol'     : { concentration: 5      , unit: 'mg/ml' , rateUnit: 'mg/kg/hr'   , decimalPlace: 2}, //小數點待確定
+      'PGE1'          : { concentration: 0.5    , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},
+      'Vasopressin'   : { concentration: 20     , unit: 'U/ml'  , rateUnit: 'mU/kg/min'  , decimalPlace: 1},
+      'Isoproterenol' : { concentration: 0.2    , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Rocuronium'    : { concentration: 10     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Cisatracurium' : { concentration: 2      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Morphine'      : { concentration: 10     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}, //小數點待確定
+      'Lorazepam'     : { concentration: 2      , unit: 'mg/ml' , rateUnit: 'mg/kg/hr'   , decimalPlace: 2}, //小數點待確定
+      'Ketamine'      : { concentration: 50     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Propofol'      : { concentration: 10     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}, //小數點待確定
+      'MgSO4'         : { concentration: 100    , unit: 'mg/ml' , rateUnit: 'mg/kg/hr'   , decimalPlace: 1},
+      'Lidocaine'     : { concentration: 50     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}  //小數點待確定
+    };
+
+    // *****************************************
+    // 計算藥物配製
+    // *****************************************
+    function calculateDrugPreperation() {
+      //讀取輸入值
+      const drugBW = parseFloat(document.getElementById('drug_BW').value) || 0;
+      const drugName = document.getElementById('drug_name').value;
+      let drugExtractAmount = parseFloat(document.getElementById('drug_extract_amount').value) || 0;
+      const drugDiluterName = document.getElementById('drug_diluter_name').value;
+      const drugTotalFinalVolume = parseFloat(document.getElementById('drug_total_final_volume').value) || 0;
+      const drugInfusionRate = parseFloat(document.getElementById('drug_infusion_rate').value) || 0;
+      let drugInfusionFinalRate = parseFloat(document.getElementById('drug_infusion_final_rate').value) || 0;
+
+      //取得藥物資料
+      const drugSpec = drugSpecs[drugName];
+
+      //更新網頁上顯示的藥物濃度單位
+      document.getElementById('drug_name').title= `${drugName} ${drugSpec.concentration} ${drugSpec.unit}`;
+      document.getElementById('drug_extract_amount_unit').textContent = (drugSpec.unit).replace("/ml","");
+      document.getElementById('drug_infusion_final_rate_unit').textContent = drugSpec.rateUnit;
+
+      //限制網頁上的輸入框，若drugExtractAmount>0則drugInfusionFinalRate不能輸入，反之亦然，若都沒有值則都可以輸入
+      document.getElementById('drug_infusion_final_rate').disabled = drugExtractAmount > 0;
+      document.getElementById('drug_extract_amount').disabled = drugInfusionFinalRate > 0;
+
+      //重量單位換算
+      let drugUnitConversionRatio = 1;
+      const drugExtractAmountUnits = (drugSpec.unit).split("/"); // e.g. [0] = mg, [1] = ml
+      const drugInfusionFinalRateUnits = (drugSpec.rateUnit).split("/"); // e.g. [0] = mcg, [1] = kg, [2] = min
+      const drugUnitComb = `${drugExtractAmountUnits[0]}-${drugInfusionFinalRateUnits[0]}`;
+      switch (drugUnitComb) {
+        case 'mg-mcg': drugUnitConversionRatio = 1/1000; break;
+        case 'U-mU'  : drugUnitConversionRatio = 1/1000; break;
+        case 'mg-mg' : drugUnitConversionRatio = 1; break;
+        default: drugUnitConversionRatio = 1; break;
+      }
+
+      //時間單位換算
+      let drugTimeConversionRatio = 1;
+      if (drugInfusionFinalRateUnits[2] === 'min') drugTimeConversionRatio = 60; // e.g. [0] = mcg, [1] = kg, [2] = min
+      
+      //若無drugExtractAmount, 用drugInfusionFinalRate回推; 反之亦然
+      if (drugExtractAmount === 0) {
+        drugExtractAmount = drugInfusionFinalRate * drugBW * drugUnitConversionRatio * drugTimeConversionRatio / drugInfusionRate * drugTotalFinalVolume.toFixed(drugSpec.decimalPlace);
+        // drugInfusionFinalRate = drugInfusionFinalRate.toFixed(2);
+      } else {
+        drugInfusionFinalRate = (drugExtractAmount / drugTotalFinalVolume / drugBW / drugUnitConversionRatio / drugTimeConversionRatio * drugInfusionRate).toFixed(2);
+        drugExtractAmount = drugExtractAmount.toFixed(drugSpec.decimalPlace);
+      }
+      
+      //計算需要多少dilutor
+      let drugDiluterAmount = ( drugTotalFinalVolume - drugExtractAmount / drugSpec.concentration ).toFixed(1);
+
+      //計算pure line
+      let drugPureLineFinalRate = ( 1 * drugSpec.concentration / drugUnitConversionRatio / drugBW / drugTimeConversionRatio).toFixed(1);
+
+      //輸出成文字
+      let drugTextForOrder = `${drugName} ${drugExtractAmount}${drugExtractAmountUnits[0]} in ${drugDiluterName} ${drugDiluterAmount}ml (total ${drugTotalFinalVolume}ml), run ${drugInfusionRate}ml/hr = ${drugInfusionFinalRate} ${drugSpec.rateUnit}`;
+      let drugTextForMed = `${drugName} ${drugExtractAmount}${drugExtractAmountUnits[0]} in ${drugDiluterName} ${drugDiluterAmount}ml (total ${drugTotalFinalVolume}ml), run as order`;
+      let drugTextForPureLine = `${drugName} pure line 1 ml/hr = ${drugPureLineFinalRate} ${drugSpec.rateUnit}`;
+
+      //移除所有NAN或是0並替代成"___"
+      // drugTextForOrder = drugTextForOrder.replace(/NaN|Infinity/g, "___");
+      // drugTextForMed = drugTextForMed.replace(/NaN|Infinity/g, "___");
+      // drugTextForPureLine = drugTextForPureLine.replace(/NaN|Infinity/g, "___");
+
+      //輸出到網頁
+      if (drugBW && drugName && drugDiluterName && drugTotalFinalVolume && drugInfusionRate && (drugExtractAmount||drugInfusionFinalRate)) {
+        document.getElementById('drug_text_for_order').textContent = drugTextForOrder;
+        document.getElementById('drug_text_for_med').textContent = drugTextForMed;
+        document.getElementById('drug_text_for_pure_line').textContent = drugTextForPureLine;
+      } else {
+        document.getElementById('drug_text_for_order').textContent = "醫囑";
+        document.getElementById('drug_text_for_med').textContent = "藥囑";
+        document.getElementById('drug_text_for_pure_line').textContent = "Pure Line";
+      }
+    }    
+
+
+    // *****************************************
+    // 計算常用antibiotics配置
+    // *****************************************
+
+
+    // *****************************************
     // 對傳入的文字進行解析並加減乘除
-    // * Evaluates a mathematical expression and returns the result.
-    // * @param {string} expression - The mathematical expression to evaluate.
-    // * @returns {number} - The result of the evaluated expression.
     // *****************************************
     function parseExpression(expression) {
       expression = expression.replace(/\s+/g, ""); // 移除掉多餘的空格
@@ -885,11 +1079,12 @@
     }    
 
 
-
     // 頁面載入時先執行一次計算
     calculateFluid();
     calculateGIR();
+    calculateDex();
     calculateUmbilicalCathLen();
+    calculateDrugPreperation();
 
   </script>
 </body>
