@@ -138,10 +138,10 @@
     <!-- 分頁 1: 水份計算 -->
     <div class="tab-pane fade show active" id="fluidContent" role="tabpanel" aria-labelledby="fluidTab">
       <div class="container mt-4">
-        <div class="row mb-4">
+        <div class="row mb-3">
           <div class="col">
             <div class="card h-100">
-              <div class="card-header">水份計算</div>
+              <div class="card-header text-center">水份計算</div>
               <div class="card-body pb-0">
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">BW</span>
@@ -308,45 +308,27 @@
                   <span class="input-group-text copy-item flex-fill justify-content-center" id="fluid_nutrition_Mg">Mg ___</span>
                   <span class="input-group-text justify-content-center text-truncate" style="width: 15%;">/kg/day</span>
                 </div>
-                <!-- <ul class="list-group mt-2 mb-2">
-                  <li class="list-group-item copy-item" id="fluid_nutrition_spec" data-content=""></li>
-                </ul> -->
-                <ul class="list-group mt-2">
-                  <li class="list-group-item" style="background-color: #373737; color: white;" id="fluid_order_output" data-content="Order: ">Order:</li>
+                <ul class="list-group mt-2 mb-2">
+                  <li class="list-group-item" style="background-color: #373737; color: white;" id="fluid_order_output">Order:</li>
+                  <li class="list-group-item copy-item" name="fluid_order_outputs" data-content="BW:">BW:</li>
+                  <li class="list-group-item copy-item" name="fluid_order_outputs" data-content="Total daily fluid:">Total daily fluid:</li>
                 </ul>
-                <div>
-                  <div class="row g-2">
-                    <div class="col">
-                      <div class="input-group d-flex mt-2 mb-2">
-                        <span class="input-group-text justify-content-center" style="width:30%; background-color: #373737; color: white;">UA</span>
-                        <span class="input-group-text copy-item flex-fill justify-content-center" id="fluid_UA_len"></span>
-                      </div>
-                    </div>
-                    <div class="col">
-                      <div class="input-group d-flex mt-2 mb-2">
-                        <span class="input-group-text justify-content-center" style="width:30%; background-color: #373737; color: white;">UV</span>
-                        <span class="input-group-text copy-item flex-fill justify-content-center" id="fluid_UV_len"></span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
               </div>
             </div>
           </div>
         </div>
-        <div class="row mb-4">
+        <div class="row mb-3">
           <div class="col">
             <div class="card h-100">
-              <div class="card-header">GIR計算</div>
-              <div class="card-body">
+              <div class="card-header text-center">GIR計算</div>
+              <div class="card-body pb-0">
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">BW</span>
                   <input type="number" id="GIR_BW" class="form-control text-center" oninput="calculateGIR()" />
                   <span class="input-group-text  justify-content-center" style="width: 15%;">g</span>
                 </div>
                 <div class="input-group">
-                  <span class="input-group-text justify-content-center" style="width: 15%;">Dextrose</span>
+                  <span class="input-group-text justify-content-center" style="width: 15%;">Dex</span>
                   <input name="GIR_dex" type="number" class="form-control text-center" value="10" oninput="calculateGIR()">
                   <span class="input-group-text">%</span>
                   <input name="GIR_rate" type="text" class="form-control text-center" oninput="calculateGIR()">
@@ -354,7 +336,7 @@
                   <button class="btn btn-light" style="border-color: #e0e3e7; width: 5%;" onclick="addNewElement(this, 'GIR_dex')">+</button>
                 </div>   
                 <div class="input-group">
-                  <span class="input-group-text justify-content-center" style="width: 15%;">Dextrose</span>
+                  <span class="input-group-text justify-content-center" style="width: 15%;">Dex</span>
                   <input name="GIR_dex" type="number" class="form-control text-center" value="5" oninput="calculateGIR()">
                   <span class="input-group-text">%</span>
                   <input name="GIR_rate" type="text" class="form-control text-center" oninput="calculateGIR()">
@@ -362,7 +344,7 @@
                   <button class="btn btn-light" style="border-color: #e0e3e7; width: 5%;" onclick="addNewElement(this, 'GIR_dex')">+</button>
                 </div>   
                 <div class="input-group">
-                  <span class="input-group-text justify-content-center" style="width: 15%;">Dextrose</span>
+                  <span class="input-group-text justify-content-center" style="width: 15%;">Dex</span>
                   <input name="GIR_dex" type="number" class="form-control text-center" oninput="calculateGIR()">
                   <span class="input-group-text">%</span>
                   <input name="GIR_rate" type="text" class="form-control text-center" oninput="calculateGIR()">
@@ -370,7 +352,7 @@
                   <button class="btn btn-light" style="border-color: #e0e3e7; width: 5%;" onclick="addNewElement(this, 'GIR_dex')">+</button>
                 </div>   
                 <div class="input-group">
-                  <span class="input-group-text justify-content-center" style="width: 15%;">Dextrose</span>
+                  <span class="input-group-text justify-content-center" style="width: 15%;">Dex</span>
                   <input name="GIR_dex" type="number" class="form-control text-center" oninput="calculateGIR()">
                   <span class="input-group-text">%</span>
                   <input name="GIR_rate" type="text" class="form-control text-center" oninput="calculateGIR()">
@@ -380,7 +362,73 @@
               </div>
               <div class="card-footer">
                 <div class="input-group d-flex mt-2 mb-2">
-                  <span class="input-group-text copy-item flex-fill justify-content-center" id="GIR_result">GIR: 0.0</span>
+                  <span class="input-group-text copy-item flex-fill justify-content-center" id="GIR_result">GIR 0.0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="card h-100">
+              <div class="card-header text-center">普通點滴dextrose計算</div>
+              <div class="card-body d-flex align-items-center pb-0">
+                <div>
+                  <div class="input-group">
+                    <span class="input-group-text justify-content-center" style="width: 15%;">Dex</span>
+                    <input type="number" id="dextrose_original_concentration" class="form-control text-center" value="5" oninput="calculateDex()" />
+                    <span class="input-group-text  justify-content-center" style="width: 15%;">%</span>
+                    <input type="number" id="dextrose_original_amount" class="form-control text-center" value="500" oninput="calculateDex()" />
+                    <span class="input-group-text  justify-content-center" style="width: 15%;">ml</span>                  
+                  </div>
+                  <div class="input-group">
+                    <span class="input-group-text justify-content-center w-100" style="background-color: transparent; border: 0cm;">+</span>          
+                  </div>
+                  <div class="input-group">
+                    <span class="input-group-text justify-content-center" style="width: 15%;">Dex</span>
+                    <input type="number" id="dextrose_add_concentration" class="form-control text-center" value="50" oninput="calculateDex()"/>
+                    <span class="input-group-text  justify-content-center" style="width: 15%;">%</span>
+                    <input type="number" id="dextrose_add_amount" class="form-control text-center" oninput="calculateDex()" />
+                    <span class="input-group-text  justify-content-center" style="width: 15%;">ml</span>                  
+                  </div>
+                  <div class="input-group">
+                    <span class="input-group-text justify-content-center w-100" style="background-color: transparent; border: 0cm;">| |</span>          
+                  </div>
+                </div>
+              </div>
+              <div class="card-footer">
+                <div class="input-group d-flex mt-2 mb-2">
+                  <span class="input-group-text copy-item flex-fill justify-content-center" id="dextrose_concentration_final">Dextrose = 0.00 %</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="row mb-4">
+          <div class="col">
+            <div class="card h-100">
+              <div class="card-header text-center">UA、UV深度計算</div>
+              <div class="card-body pb-0">
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">BW</span>
+                  <input type="number" id="umbilical_cath_len_BW" class="form-control text-center" oninput="calculateUmbilicalCathLen()" />
+                  <span class="input-group-text  justify-content-center" style="width: 15%;">g</span>
+                </div>
+              </div>
+              <div class="card-footer">
+                <div>
+                  <div class="row g-2">
+                    <div class="col">
+                      <div class="input-group d-flex mt-2 mb-2">
+                        <span class="input-group-text justify-content-center" style="width:30%;">UA</span>
+                        <span class="input-group-text copy-item flex-fill justify-content-center" id="umbilical_cath_len_UA"></span>
+                      </div>
+                    </div>
+                    <div class="col">
+                      <div class="input-group d-flex mt-2 mb-2">
+                        <span class="input-group-text justify-content-center" style="width:30%;">UV</span>
+                        <span class="input-group-text copy-item flex-fill justify-content-center" id="umbilical_cath_len_UV"></span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -693,19 +741,7 @@
       document.getElementById('fluid_nutrition_Ca').textContent = `Ca ${fluidTotalCaPerKg}`;
       document.getElementById('fluid_nutrition_P').textContent = `P ${fluidTotalPPerKg}`;
       document.getElementById('fluid_nutrition_Mg').textContent = `Mg ${fluidTotalMgPerKg}`;
-
-
-      // *****************************************
-      //           計算UA/UV length並輸出
-      // *****************************************
-      let fluidUAHighLen = fluidBW > 0 ? (fluidBW/1000*3+9).toFixed(1) : "";
-      let fluidUALowLen = fluidBW > 0 ? (fluidBW/1000+7).toFixed(1) : "";
-      let fluidUVLen = fluidUAHighLen > 0 ? (fluidUAHighLen/2+1).toFixed(1) : "";
-
-      document.getElementById('fluid_UA_len').textContent = fluidBW? `高位 ${fluidUAHighLen}, 低位 ${fluidUALowLen} cm`: "";
-      document.getElementById('fluid_UV_len').textContent = fluidBW? `${fluidUVLen} cm` : "" ;
-
-      
+     
       //加入複製功能         
       document.querySelectorAll('.copy-item').forEach(item => {
         item.addEventListener('click', () => {
@@ -735,8 +771,43 @@
       }
 
       girTotal = girTotal/(6*girBW/1000);
+
       //將GIR輸出到網頁
-      document.getElementById('GIR_result').textContent = `GIR ${girTotal.toFixed(2)}`;
+      document.getElementById('GIR_result').textContent = girTotal? `GIR ${girTotal.toFixed(2)}`:"GIR 0.0";
+    }
+
+
+    // *****************************************
+    // 計算Dextrose濃度
+    // *****************************************
+    function calculateDex(){
+      //讀取輸入值
+      const dextroseOriginalConcentration = parseFloat(document.getElementById('dextrose_original_concentration').value) || 0;
+      const dextroseOriginalAmount = parseFloat(document.getElementById('dextrose_original_amount').value) || 0;
+      const dextroseAddConcentration = parseFloat(document.getElementById('dextrose_add_concentration').value) || 0;
+      const dextroseAddAmount = parseFloat(document.getElementById('dextrose_add_amount').value) || 0;
+
+      let dextroseConcentrationFinal = (dextroseOriginalConcentration/100*dextroseOriginalAmount + dextroseAddConcentration/100*dextroseAddAmount)/(dextroseOriginalAmount+dextroseAddAmount)*100;
+      dextroseConcentrationFinal = dextroseConcentrationFinal > 0 ? dextroseConcentrationFinal.toFixed(2) : 0.00;
+
+      
+      //將Dextrose濃度輸出到網頁
+      document.getElementById('dextrose_concentration_final').textContent = `Dextrose = ${dextroseConcentrationFinal} %`;
+    }
+
+    // *****************************************
+    // 計算UA、UV深度
+    // *****************************************
+    function calculateUmbilicalCathLen(){
+      //讀取輸入值
+      const umbilicalCathLenBW = parseFloat(document.getElementById('umbilical_cath_len_BW').value) || 0;
+      const umbilicalCathLenUAHigh = umbilicalCathLenBW > 0 ? (umbilicalCathLenBW/1000*3+9).toFixed(1) : "";
+      const umbilicalCathLenUALow = umbilicalCathLenBW > 0 ? (umbilicalCathLenBW/1000+7).toFixed(1) : "";
+      const umbilicalCathLenUV = umbilicalCathLenUAHigh > 0 ? (umbilicalCathLenUAHigh/2+1).toFixed(1) : "";
+   
+      //將UA、UV深度輸出到網頁
+      document.getElementById('umbilical_cath_len_UA').textContent = umbilicalCathLenUAHigh? `高位 ${umbilicalCathLenUAHigh} cm, 低位 ${umbilicalCathLenUALow} cm`:"";
+      document.getElementById('umbilical_cath_len_UV').textContent = umbilicalCathLenUV? `${umbilicalCathLenUV} cm`:"";
     }
 
 
@@ -801,7 +872,7 @@
           break;
         case('GIR_dex'):
           newDiv.innerHTML = `
-            <span class="input-group-text justify-content-center" style="width: 15%;">Dextrose</span>
+            <span class="input-group-text justify-content-center" style="width: 15%;">Dex</span>
             <input name="GIR_dex" type="number" class="form-control text-center" oninput="calculateGIR()">
             <span class="input-group-text">%</span>
             <input name="GIR_rate" type="text" class="form-control text-center" oninput="calculateGIR()">
@@ -818,6 +889,7 @@
     // 頁面載入時先執行一次計算
     calculateFluid();
     calculateGIR();
+    calculateUmbilicalCathLen();
 
   </script>
 </body>
