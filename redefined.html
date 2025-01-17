@@ -7,6 +7,7 @@
     1. 新增ICD10搜尋功能
     2. 新增問診重點等文件下載
     3. 自動轉換成體重
+    4. local storage
   -->
 
   <meta charset="UTF-8" />
@@ -984,11 +985,6 @@
       let drugTextForOrder = `${drugName} ${drugExtractAmount}${drugExtractAmountUnits[0]} in ${drugDiluterName} ${drugDiluterAmount}ml (total ${drugTotalFinalVolume}ml), run ${drugInfusionRate}ml/hr = ${drugInfusionFinalRate} ${drugSpec.rateUnit}`;
       let drugTextForMed = `${drugName} ${drugExtractAmount}${drugExtractAmountUnits[0]} in ${drugDiluterName} ${drugDiluterAmount}ml (total ${drugTotalFinalVolume}ml), run as order`;
       let drugTextForPureLine = `${drugName} pure line 1 ml/hr = ${drugPureLineFinalRate} ${drugSpec.rateUnit}`;
-
-      //移除所有NAN或是0並替代成"___"
-      // drugTextForOrder = drugTextForOrder.replace(/NaN|Infinity/g, "___");
-      // drugTextForMed = drugTextForMed.replace(/NaN|Infinity/g, "___");
-      // drugTextForPureLine = drugTextForPureLine.replace(/NaN|Infinity/g, "___");
 
       //輸出到網頁
       if (drugBW && drugName && drugDiluterName && drugTotalFinalVolume && drugInfusionRate && (drugExtractAmount||drugInfusionFinalRate)) {
