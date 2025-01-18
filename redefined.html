@@ -8,6 +8,7 @@
     2. 新增問診重點等文件下載
     3. 自動轉換成體重
     4. local storage
+    5. insulin?
   -->
 
   <meta charset="UTF-8" />
@@ -148,7 +149,7 @@
       <div class="container mt-4">
         <div class="row mb-3">
           <div class="col">
-            <div class="card h-100">
+            <div class="card h-100" id="fluid_content">
               <div class="card-header text-center">水分計算</div>
               <div class="card-body pb-0">
                 <div class="input-group">
@@ -164,15 +165,15 @@
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">PO</span>
                   <select id="fluid_PO_HM" class="form-select text-center" onchange="calculateFluid()">
+                    <option value="HM">HM</option>
                     <option value=""></option>
-                    <option value="HM" selected>HM</option>
                   </select>
                   <span class="input-group-text" style="background-color: #ffffff;">/</span>
                   <select id="fluid_PO_formula" class="form-select text-center" onchange="calculateFluid()">
-                    <option value=""></option>
-                    <option value="16%PF" selected>16%PF</option>
+                    <option value="16%PF">16%PF</option>
                     <option value="15%PDF">15%PDF</option>
                     <option value="14%RF">14%RF</option>
+                    <option value=""></option>
                   </select>
                   <input type="text" id="fluid_PO" class="form-control text-center" oninput="calculateFluid()" />
                   <span class="input-group-text  justify-content-center" style="width: 15%;">ml/day</span>
@@ -198,7 +199,7 @@
                     <option value="0.025">Dex 2.5</option>
                     <option value="0.05">Dex 5.0</option>
                     <option value="0.075">Dex 7.5</option>
-                    <option value="0.1" selected>Dex 10.0</option>
+                    <option value="0.1">Dex 10.0</option>
                     <option value="0.125">Dex 12.5</option>
                     <option value="0.15">Dex 15.0</option>
                     <option value="0.175">Dex 17.5</option>
@@ -229,7 +230,6 @@
                     <option value="80">K 80</option>
                   </select>
                   <select id="fluid_TPN_Ca" class="form-select text-center" onchange="calculateFluid()">
-                    <option value=""></option>
                     <option value="20" selected>Ca 20</option>
                     <option value="30">Ca 30</option>
                     <option value="40">Ca 40</option>
@@ -264,7 +264,7 @@
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">Other</span>
                   <select name="fluid_other_in_IO_base" class="form-select text-center" onchange="calculateFluid()">
-                    <option value="" selected></option>
+                    <option value=""></option>
                     <option value="3% NaCl">3% NaCl</option>
                   </select>
                   <input type="text" name="fluid_other_in_IO" class="form-control text-center" oninput="calculateFluid()" />
@@ -274,7 +274,7 @@
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">Other</span>
                   <select name="fluid_other_solution_base" class="form-select text-center" onchange="calculateFluid()">
-                    <option value="" selected></option>
+                    <option value=""></option>
                     <option value="D/W">D/W base</option>
                     <option value="D5W">D5W base</option>
                     <option value="D10W">D10W base</option>
@@ -316,18 +316,27 @@
                   <span class="input-group-text flex-fill justify-content-center" id="fluid_nutrition_Mg">Mg ___</span>
                   <span class="input-group-text justify-content-center text-truncate" style="width: 15%;">/kg/day</span>
                 </div>
-                <ul class="list-group mt-2 mb-2">
-                  <li class="list-group-item" style="background-color: #faf9f8;" id="fluid_order_output">Order</li>
-                  <li class="list-group-item copy-item" name="fluid_order_outputs">BW:</li>
-                  <li class="list-group-item copy-item" name="fluid_order_outputs">Total daily fluid:</li>
-                </ul>
+                <div class="row">
+                  <div class="col-10">
+                    <ul class="list-group mt-2 mb-2">
+                      <li class="list-group-item" style="background-color: #faf9f8;" id="fluid_order_output">Order</li>
+                      <li class="list-group-item copy-item" name="fluid_order_outputs">BW:</li>
+                      <li class="list-group-item copy-item" name="fluid_order_outputs">Total daily fluid:</li>
+                    </ul>    
+                  </div>
+                  <div class="col-2">
+                    <div class="d-flex justify-content-center align-items-center h-100">
+                      <button class="btn btn-secondary" onclick="resetForm('fluid_content')">Reset</button>
+                    </div>    
+                  </div>
+                </div> 
               </div>
             </div>
           </div>
         </div>
         <div class="row mb-3">
           <div class="col">
-            <div class="card h-100">
+            <div class="card h-100" id="GIR_content">
               <div class="card-header text-center">GIR計算</div>
               <div class="card-body pb-0">
                 <div class="input-group">
@@ -369,14 +378,23 @@
                 </div>   
               </div>
               <div class="card-footer">
-                <div class="input-group d-flex mt-2 mb-2">
-                  <span class="input-group-text copy-item flex-fill justify-content-center" id="GIR_result">GIR 0.0</span>
+                <div class="row">
+                  <div class="col-10">
+                    <div class="input-group d-flex mt-2 mb-2">
+                      <span class="input-group-text copy-item flex-fill justify-content-center" id="GIR_result">GIR 0.0</span>
+                    </div>    
+                  </div>
+                  <div class="col-2">
+                    <div class="d-flex justify-content-center align-items-center h-100">
+                      <button class="btn btn-secondary" onclick="resetForm('GIR_content')">Reset</button>
+                    </div>    
+                  </div>
                 </div>
               </div>
             </div>
           </div>
           <div class="col">
-            <div class="card h-100">
+            <div class="card h-100" id="dex_content">
               <div class="card-header text-center">普通點滴dextrose計算</div>
               <div class="card-body d-flex align-items-center pb-0">
                 <div>
@@ -403,8 +421,17 @@
                 </div>
               </div>
               <div class="card-footer">
-                <div class="input-group d-flex mt-2 mb-2">
-                  <span class="input-group-text copy-item flex-fill justify-content-center" id="dextrose_concentration_final">Dextrose = 0.00 %</span>
+                <div class="row">
+                  <div class="col-10">
+                    <div class="input-group d-flex mt-2 mb-2">
+                      <span class="input-group-text copy-item flex-fill justify-content-center" id="dextrose_concentration_final">Dextrose = 0.00 %</span>
+                    </div>    
+                  </div>
+                  <div class="col-2">
+                    <div class="d-flex justify-content-center align-items-center h-100">
+                      <button class="btn btn-secondary" onclick="resetForm('dex_content')">Reset</button>
+                    </div>    
+                  </div>
                 </div>
               </div>
             </div>
@@ -412,7 +439,7 @@
         </div>
         <div class="row mb-4">
           <div class="col">
-            <div class="card h-100">
+            <div class="card h-100" id="umbilical_cath_len_content">
               <div class="card-header text-center">UA、UV深度計算</div>
               <div class="card-body pb-0">
                 <div class="input-group">
@@ -422,20 +449,21 @@
                 </div>
               </div>
               <div class="card-footer">
-                <div>
-                  <div class="row g-2">
-                    <div class="col">
-                      <div class="input-group d-flex mt-2 mb-2">
-                        <span class="input-group-text justify-content-center" style="width:30%;">UA</span>
-                        <span class="input-group-text copy-item flex-fill justify-content-center" id="umbilical_cath_len_UA"></span>
-                      </div>
+                <div class="row">
+                  <div class="col-10">
+                    <div class="input-group d-flex mt-2 mb-2">
+                      <span class="input-group-text justify-content-center" style="width:30%;">UA</span>
+                      <span class="input-group-text copy-item flex-fill justify-content-center" id="umbilical_cath_len_UA"></span>
+                    </div>  
+                    <div class="input-group d-flex mt-2 mb-2">
+                      <span class="input-group-text justify-content-center" style="width:30%;">UV</span>
+                      <span class="input-group-text copy-item flex-fill justify-content-center" id="umbilical_cath_len_UV"></span>
                     </div>
-                    <div class="col">
-                      <div class="input-group d-flex mt-2 mb-2">
-                        <span class="input-group-text justify-content-center" style="width:30%;">UV</span>
-                        <span class="input-group-text copy-item flex-fill justify-content-center" id="umbilical_cath_len_UV"></span>
-                      </div>
-                    </div>
+                  </div>
+                  <div class="col-2">
+                    <div class="d-flex justify-content-center align-items-center h-100">
+                      <button class="btn btn-secondary" onclick="resetForm('umbilical_cath_len_content')">Reset</button>
+                    </div>    
                   </div>
                 </div>
               </div>
@@ -450,7 +478,7 @@
       <div class="container mt-4">
         <div class="row mb-3">
           <div class="col">
-            <div class="card h-100">
+            <div class="card h-100" id="drug_content">
               <div class="card-header text-center">藥物泡法</div>
               <div class="card-body pb-0">
                 <div class="input-group">
@@ -509,19 +537,28 @@
                 </div>
               </div>
               <div class="card-footer">
-                <ul class="list-group mt-2 mb-2">
-                  <li class="list-group-item copy-item" id="drug_text_for_order">&nbsp;</li>
-                  <li class="list-group-item copy-item" id="drug_text_for_med">&nbsp;</li>
-                  <li class="list-group-item copy-item" id="drug_text_for_pure_line">&nbsp;</li>
-                </ul>  
+                <div class="row">
+                  <div class="col-10">
+                    <ul class="list-group mt-2 mb-2">
+                      <li class="list-group-item copy-item" id="drug_text_for_order">&nbsp;</li>
+                      <li class="list-group-item copy-item" id="drug_text_for_med">&nbsp;</li>
+                      <li class="list-group-item copy-item" id="drug_text_for_pure_line">&nbsp;</li>
+                    </ul>        
+                  </div>
+                  <div class="col-2">
+                    <div class="d-flex justify-content-center align-items-center h-100">
+                      <button class="btn btn-secondary" onclick="resetForm('drug_content')">Reset</button>
+                    </div>    
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
         <div class="row mb-3">
           <div class="col">
-            <div class="card h-100">
-              <div class="card-header text-center">NB常用抗生素泡法 (開發中)</div>
+            <div class="card h-100" id="anti_NB_content">
+              <div class="card-header text-center">NB常用抗生素泡法 (測試版，請參考手冊驗算)</div>
               <div class="card-body pb-0">
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">BW</span>
@@ -538,6 +575,11 @@
                     <option value="Vancomycin"    >Vancomycin   </option>
                     <option value="Meropenem"     >Meropenem    </option>
                     <option value="Metronidazole" >Metronidazole</option>
+                    <option value="Amikacin"      >Amikacin</option>
+                    <option value="Cefazolin"     >Cefazolin</option>
+                    <option value="Oxacillin"     >Oxacillin</option>
+                    <option value="Tazocin"       >Tazocin</option>
+                    <!-- <option value="Teicoplanin"   >Teicoplanin</option> -->
                     <!-- More options -->
                   </select>
                   <span class="input-group-text justify-content-center" style="width: 15%;" id="drug_extract_amount_unit"> </span>
@@ -556,26 +598,49 @@
                 </div>
               </div>
               <div class="card-footer">
-                <ul class="list-group mt-2 mb-2"> 
-                  <div class="input-group flex-nowrap">
-                    <span class="input-group-text justify-content-center" style="min-width: 15%;">Standard</span>
-                    <span class="input-group-text justify-content-center text-truncate" style="width: 20%;" id="anti_NB_standard_dose_text"></span>
-                    <span class="input-group-text flex-fill text-truncate copy-item" id="anti_NB_standard_dose_description_text"></span>
+                <div class="row">
+                  <div class="col-10">
+                    <div class="input-group flex-nowrap">
+                      <span class="input-group-text justify-content-center" style="min-width: 15%;">Standard</span>
+                      <span class="input-group-text justify-content-center text-truncate" style="width: 20%;" id="anti_NB_standard_dose_text"></span>
+                      <span class="input-group-text flex-fill text-truncate copy-item" id="anti_NB_standard_dose_description_text"></span>
+                    </div>
+                    <div class="input-group flex-nowrap">
+                      <span class="input-group-text justify-content-center" style="min-width: 15%;">Meningitis</span>
+                      <span class="input-group-text justify-content-center text-truncate" style="width: 20%;" id="anti_NB_meningitis_dose_text"></span>
+                      <span class="input-group-text flex-fill text-truncate copy-item" id="anti_NB_meningitis_dose_description_text"></span>
+                    </div>
+                    <div class="input-group">
+                      <span class="input-group-text justify-content-center" style="width: 15%;">Description</span>
+                      <span class="input-group-text flex-fill text-truncate" id="anti_NB_dose_remark"></span>
+                    </div>
                   </div>
-                  <div class="input-group flex-nowrap">
-                    <span class="input-group-text justify-content-center" style="min-width: 15%;">Meningitis</span>
-                    <span class="input-group-text justify-content-center text-truncate" style="width: 20%;" id="anti_NB_meningitis_dose_text"></span>
-                    <span class="input-group-text flex-fill text-truncate copy-item" id="anti_NB_meningitis_dose_description_text"></span>
+                  <div class="col-2">
+                    <div class="d-flex justify-content-center align-items-center h-100">
+                      <button class="btn btn-secondary" onclick="resetForm('anti_NB_content')">Reset</button>
+                    </div>    
                   </div>
-                  <div class="input-group">
-                    <span class="input-group-text justify-content-center" style="width: 15%;">Description</span>
-                    <span class="input-group-text flex-fill text-truncate" id="anti_NB_dose_description"></span>
-                  </div>
-                </ul>  
+                </div>
               </div>
             </div>
           </div>
         </div>
+        <!-- <div class="row mb-3">
+          <div class="col">
+            <div class="card h-100">
+              <div class="card-header text-center">ICD-10 搜尋</div>
+              <div class="card-body">
+                <div class="input-group mb-3">
+                  <input type="text" id="icd10SearchInput" class="form-control" placeholder="輸入 ICD-10 代碼或關鍵字...">
+                  <button class="btn btn-dark" onclick="searchICD10()">搜尋</button>
+                </div>
+                <ul id="icd10Results" class="list-group"></ul>
+              </div>
+            </div>
+            </div>
+          </div>
+        </div> -->
+        
       </div>
     </div>
 
@@ -1054,52 +1119,148 @@
     const antiNBDrugSpecs = {
       'Ampicillin'    : { 
         'standard': [ 
-          {GA_min: 0, GA_max: 34, PNA_min: 0, PNA_max: 7, BW_min: 0, BW_max: Infinity        , frequency: "Q12H", dose: 50, unit: "mg/kg/dose", description: "50 mg/kg/dose, Q12H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
-          {GA_min: 0, GA_max: 34, PNA_min: 8, PNA_max: 28, BW_min: 0, BW_max: Infinity       , frequency: "Q12H", dose: 75, unit: "mg/kg/dose", description: "75 mg/kg/dose, Q12H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
-          {GA_min: 35, GA_max: Infinity, PNA_min: 0, PNA_max: 28, BW_min: 0, BW_max: Infinity, frequency: "Q8H", dose: 50, unit: "mg/kg/dose", description: "50 mg/kg/dose, Q8H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"}
+          {GA_min: 0, GA_max: 34, PNA_min: 0, PNA_max: 7, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity        , frequency: "Q12H", dose: 50, unit: "mg/kg/dose", description: "50 mg/kg/dose, Q12H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
+          {GA_min: 0, GA_max: 34, PNA_min: 8, PNA_max: 28, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity       , frequency: "Q12H", dose: 75, unit: "mg/kg/dose", description: "75 mg/kg/dose, Q12H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
+          {GA_min: 35, GA_max: Infinity, PNA_min: 0, PNA_max: 28, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity, frequency: "Q8H", dose: 50, unit: "mg/kg/dose", description: "50 mg/kg/dose, Q8H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"}
         ],
         'meningitis': [ 
-          {GA_min: 0, GA_max: 34, PNA_min: 0, PNA_max: 7, BW_min: 0, BW_max: Infinity        , frequency: "Q8H", dose: 100, unit: "mg/kg/dose", description: "100 mg/kg/dose, Q8H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
-          {GA_min: 0, GA_max: 34, PNA_min: 8, PNA_max:60, BW_min: 0, BW_max: Infinity        , frequency: "Q6H", dose: 75, unit: "mg/kg/dose", description: "75 mg/kg/dose, Q6H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
-          {GA_min: 35, GA_max: Infinity, PNA_min: 0, PNA_max: 7, BW_min: 0, BW_max: Infinity , frequency: "Q8H", dose: 100, unit: "mg/kg/dose", description: "100 mg/kg/dose, Q8H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
-          {GA_min: 35, GA_max: Infinity, PNA_min: 8, PNA_max: 60, BW_min: 0, BW_max: Infinity, frequency: "Q6H", dose: 75, unit: "mg/kg/dose", description: "75 mg/kg/dose, Q6H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"}
+          {GA_min: 0, GA_max: 34, PNA_min: 0, PNA_max: 7, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity        , frequency: "Q8H", dose: 100, unit: "mg/kg/dose", description: "100 mg/kg/dose, Q8H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
+          {GA_min: 0, GA_max: 34, PNA_min: 8, PNA_max:60, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity        , frequency: "Q6H", dose: 75, unit: "mg/kg/dose", description: "75 mg/kg/dose, Q6H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
+          {GA_min: 35, GA_max: Infinity, PNA_min: 0, PNA_max: 7, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity , frequency: "Q8H", dose: 100, unit: "mg/kg/dose", description: "100 mg/kg/dose, Q8H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
+          {GA_min: 35, GA_max: Infinity, PNA_min: 8, PNA_max: 60, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity, frequency: "Q6H", dose: 75, unit: "mg/kg/dose", description: "75 mg/kg/dose, Q6H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"}
         ]      
       },
       'Gentamicin'    : {
         'standard': [ 
-          {GA_min: 0, GA_max: 29, PNA_min: 0, PNA_max: 7, BW_min: 0, BW_max: Infinity        , frequency: "Q48H", dose: 5, unit: "mg/kg/dose", description: "5 mg/kg/dose, Q48H, DILUTE WITH N/S TO 2ML RUN 30 MINS"},
-          {GA_min: 0, GA_max: 29, PNA_min: 8, PNA_max: 28, BW_min: 0, BW_max: Infinity       , frequency: "Q36H", dose: 4, unit: "mg/kg/dose", description: "4 mg/kg/dose, Q36H, DILUTE WITH N/S TO 2ML RUN 30 MINS"},
-          {GA_min: 0, GA_max: 29, PNA_min: 29, PNA_max: Infinity, BW_min: 0, BW_max: Infinity, frequency: "Q24H", dose: 4, unit: "mg/kg/dose", description: "4 mg/kg/dose, Q24H, DILUTE WITH N/S TO 2ML RUN 30 MINS"},
-          {GA_min: 30, GA_max: 34, PNA_min: 0, PNA_max: 7, BW_min: 0, BW_max: Infinity       , frequency: "Q36H", dose: 4.5, unit: "mg/kg/dose", description: "4.5 mg/kg/dose, Q36H, DILUTE WITH N/S TO 2ML RUN 30 MINS"},
-          {GA_min: 30, GA_max: 34, PNA_min: 8, PNA_max: Infinity, BW_min: 0, BW_max: Infinity, frequency: "Q24H", dose: 4, unit: "mg/kg/dose", description: "4 mg/kg/dose, Q24H, DILUTE WITH N/S TO 2ML RUN 30 MINS"},
-          {GA_min: 35, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, BW_min: 0, BW_max: Infinity , frequency: "Q24H", dose: 4, unit: "mg/kg/dose", description: "4 mg/kg/dose, Q24H, DILUTE WITH N/S TO 2ML RUN 30 MINS"},
+          {GA_min: 0, GA_max: 29, PNA_min: 0, PNA_max: 7, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity        , frequency: "Q48H", dose: 5, unit: "mg/kg/dose", description: "5 mg/kg/dose, Q48H, DILUTE WITH N/S TO 2ML RUN 30 MINS"},
+          {GA_min: 0, GA_max: 29, PNA_min: 8, PNA_max: 28, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity       , frequency: "Q36H", dose: 4, unit: "mg/kg/dose", description: "4 mg/kg/dose, Q36H, DILUTE WITH N/S TO 2ML RUN 30 MINS"},
+          {GA_min: 0, GA_max: 29, PNA_min: 29, PNA_max: Infinity, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity, frequency: "Q24H", dose: 4, unit: "mg/kg/dose", description: "4 mg/kg/dose, Q24H, DILUTE WITH N/S TO 2ML RUN 30 MINS"},
+          {GA_min: 30, GA_max: 34, PNA_min: 0, PNA_max: 7, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity       , frequency: "Q36H", dose: 4.5, unit: "mg/kg/dose", description: "4.5 mg/kg/dose, Q36H, DILUTE WITH N/S TO 2ML RUN 30 MINS"},
+          {GA_min: 30, GA_max: 34, PNA_min: 8, PNA_max: Infinity, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity, frequency: "Q24H", dose: 4, unit: "mg/kg/dose", description: "4 mg/kg/dose, Q24H, DILUTE WITH N/S TO 2ML RUN 30 MINS"},
+          {GA_min: 35, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity , frequency: "Q24H", dose: 4, unit: "mg/kg/dose", description: "4 mg/kg/dose, Q24H, DILUTE WITH N/S TO 2ML RUN 30 MINS"}
         ]
       },
       'Cefotaxime'    : {
         'standard': [ 
-          {GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 7, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 50, unit: "mg/kg/dose", description: "50MG/KG/DOSE, Q12H, 用D/W泡成250MG/ML, DILUTED WITH N/S TO 2ML RUN 30 MINS"},
-          {GA_min: 0, GA_max: 31, PNA_min: 8, PNA_max: Infinity, BW_min: 0, BW_max: Infinity , frequency: "Q8H", dose: 50, unit: "mg/kg/dose", description: "50MG/KG/DOSE, Q8H, 用D/W泡成250MG/ML, DILUTED WITH N/S TO 2ML RUN 30 MINS"},
-          {GA_min: 32, GA_max: Infinity, PNA_min: 8, PNA_max: Infinity, BW_min: 0, BW_max: Infinity , frequency: "Q6H", dose: 50, unit: "mg/kg/dose", description: "50MG/KG/DOSE, Q6H, 用D/W泡成250MG/ML, DILUTED WITH N/S TO 2ML RUN 30 MINS"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 7, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 50, unit: "mg/kg/dose", description: "50MG/KG/DOSE, Q12H, 用D/W泡成250MG/ML, DILUTED WITH N/S TO 2ML RUN 30 MINS"},
+          {GA_min: 0, GA_max: 31, PNA_min: 8, PNA_max: Infinity, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity , frequency: "Q8H", dose: 50, unit: "mg/kg/dose", description: "50MG/KG/DOSE, Q8H, 用D/W泡成250MG/ML, DILUTED WITH N/S TO 2ML RUN 30 MINS"},
+          {GA_min: 32, GA_max: Infinity, PNA_min: 8, PNA_max: Infinity, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity , frequency: "Q6H", dose: 50, unit: "mg/kg/dose", description: "50MG/KG/DOSE, Q6H, 用D/W泡成250MG/ML, DILUTED WITH N/S TO 2ML RUN 30 MINS"}
         ],
         'meningitis':[
-          {GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 7, BW_min: 2000, BW_max: Infinity  , frequency: "Q8H", dose: 50, unit: "mg/kg/dose", description: "50MG/KG/DOSE, Q8H, 用D/W泡成250MG/ML, DILUTED WITH N/S TO 2ML RUN 30 MINS"},
-          {GA_min: 0, GA_max: Infinity, PNA_min: 8, PNA_max: Infinity, BW_min: 2000, BW_max: Infinity  , frequency: "Q6H", dose: 50, unit: "mg/kg/dose", description: "50MG/KG/DOSE, Q6H, 用D/W泡成250MG/ML, DILUTED WITH N/S TO 2ML RUN 30 MINS"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 7, PMA_min: 0, PMA_max: Infinity, BW_min: 2000, BW_max: Infinity  , frequency: "Q8H", dose: 50, unit: "mg/kg/dose", description: "50MG/KG/DOSE, Q8H, 用D/W泡成250MG/ML, DILUTED WITH N/S TO 2ML RUN 30 MINS"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 8, PNA_max: Infinity, PMA_min: 0, PMA_max: Infinity, BW_min: 2000, BW_max: Infinity  , frequency: "Q6H", dose: 50, unit: "mg/kg/dose", description: "50MG/KG/DOSE, Q6H, 用D/W泡成250MG/ML, DILUTED WITH N/S TO 2ML RUN 30 MINS"}
         ]
       },
-      'Ceftazidime'   : {},
-      'Vancomycin'    : {},
-      'Meropenem'     : {},
-      'Metronidazole' : {}
+      'Ceftazidime'   : {
+        'standard': [ 
+          {GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 28, PMA_min: 0, PMA_max: 29, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 30, unit: "mg/kg/dose", description: "30MG/KG/DOSE, Q12H, 加5ML DISTILLED WATER, 泡成90MG/ML, DILUTE至最終濃度45mg/ml, RUN 30 MINS"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 29, PNA_max: Infinity, PMA_min: 0, PMA_max: 29, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 30, unit: "mg/kg/dose", description: "30MG/KG/DOSE, Q8H, 加5ML DISTILLED WATER, 泡成90MG/ML, DILUTE至最終濃度45mg/ml, RUN 30 MINS"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 14, PMA_min: 30, PMA_max: 36, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 30, unit: "mg/kg/dose", description: "30MG/KG/DOSE, Q12H, 加5ML DISTILLED WATER, 泡成90MG/ML, DILUTE至最終濃度45mg/ml, RUN 30 MINS"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 15, PNA_max: Infinity, PMA_min: 30, PMA_max: 36, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 30, unit: "mg/kg/dose", description: "30MG/KG/DOSE, Q8H, 加5ML DISTILLED WATER, 泡成90MG/ML, DILUTE至最終濃度45mg/ml, RUN 30 MINS"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 7, PMA_min: 37, PMA_max: 44, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 30, unit: "mg/kg/dose", description: "30MG/KG/DOSE, Q12H, 加5ML DISTILLED WATER, 泡成90MG/ML, DILUTE至最終濃度45mg/ml, RUN 30 MINS"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 8, PNA_max: Infinity, PMA_min: 37, PMA_max: 44, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 30, unit: "mg/kg/dose", description: "30MG/KG/DOSE, Q8H, 加5ML DISTILLED WATER, 泡成90MG/ML, DILUTE至最終濃度45mg/ml, RUN 30 MINS"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, PMA_min: 45, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 30, unit: "mg/kg/dose", description: "30MG/KG/DOSE, Q8H, 加5ML DISTILLED WATER, 泡成90MG/ML, DILUTE至最終濃度45mg/ml, RUN 30 MINS"}
+        ],
+        'meningitis': [ 
+          {GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 7, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: 1999  , frequency: "Q12H", dose: 50, unit: "mg/kg/dose", description: "50MG/KG/DOSE, Q12H, 加5ML DISTILLED WATER, 泡成90MG/ML, DILUTE至最終濃度45mg/ml, RUN 30 MINS"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 7, PMA_min: 0, PMA_max: Infinity, BW_min: 2000, BW_max: Infinity  , frequency: "Q8H", dose: 50, unit: "mg/kg/dose", description: "50MG/KG/DOSE, Q8H, 加5ML DISTILLED WATER, 泡成90MG/ML, DILUTE至最終濃度45mg/ml, RUN 30 MINS"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 8, PNA_max: Infinity, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 50, unit: "mg/kg/dose", description: "50MG/KG/DOSE, Q8H, 加5ML DISTILLED WATER, 泡成90MG/ML, DILUTE至最終濃度45mg/ml, RUN 30 MINS"}
+        ]
+      },
+      'Vancomycin'    : {
+        'standard': [ 
+          {GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 21, PMA_min: 0, PMA_max: 29, BW_min: 0, BW_max: Infinity  , frequency: "Q18H", dose: 15, unit: "mg/kg/dose", description: "15MG/KG/DOSE, Q18H, DILUTE WITH D/W TO 50MG/ML THEN DILUTE 10倍, RUN 1 HR"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 22, PNA_max: Infinity, PMA_min: 0, PMA_max: 29, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 15, unit: "mg/kg/dose", description: "15MG/KG/DOSE, Q12H, DILUTE WITH D/W TO 50MG/ML THEN DILUTE 10倍, RUN 1 HR"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 14, PMA_min: 30, PMA_max: 36, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 15, unit: "mg/kg/dose", description: "15MG/KG/DOSE, Q12H, DILUTE WITH D/W TO 50MG/ML THEN DILUTE 10倍, RUN 1 HR"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 15, PNA_max: Infinity, PMA_min: 30, PMA_max: 36, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 15, unit: "mg/kg/dose", description: "15MG/KG/DOSE, Q8H, DILUTE WITH D/W TO 50MG/ML THEN DILUTE 10倍, RUN 1 HR"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 7, PMA_min: 37, PMA_max: 44, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 15, unit: "mg/kg/dose", description: "15MG/KG/DOSE, Q12H, DILUTE WITH D/W TO 50MG/ML THEN DILUTE 10倍, RUN 1 HR"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 8, PNA_max: Infinity, PMA_min: 37, PMA_max: 44, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 15, unit: "mg/kg/dose", description: "15MG/KG/DOSE, Q8H, DILUTE WITH D/W TO 50MG/ML THEN DILUTE 10倍, RUN 1 HR"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, PMA_min: 45, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q6H", dose: 15, unit: "mg/kg/dose", description: "15MG/KG/DOSE, Q6H, DILUTE WITH D/W TO 50MG/ML THEN DILUTE 10倍, RUN 1 HR"}
+        ]
+      },
+      'Meropenem'     : {
+        'standard': [ 
+          {GA_min:  0, GA_max: 31, PNA_min: 0, PNA_max: 13, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 20, unit: "mg/kg/dose", description: "20mg/kg/dose, Q12H, 稀釋至50mg/ml, Dilute with N/S to 10倍, run 1 hr", remark: "嚴格限水時: Dilute with N/S to 2.5倍"},
+          {GA_min:  0, GA_max: 31, PNA_min: 14, PNA_max: Infinity, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 20, unit: "mg/kg/dose", description: "20mg/kg/dose, Q8H, 稀釋至50mg/ml, Dilute with N/S to 10倍, run 1 hr", remark: "嚴格限水時: Dilute with N/S to 2.5倍"},
+          {GA_min: 32, GA_max: Infinity, PNA_min: 0, PNA_max: 13, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 20, unit: "mg/kg/dose", description: "20mg/kg/dose, Q8H, 稀釋至50mg/ml, Dilute with N/S to 10倍, run 1 hr", remark: "嚴格限水時: Dilute with N/S to 2.5倍"},
+          {GA_min: 32, GA_max: Infinity, PNA_min: 14, PNA_max: Infinity, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 30, unit: "mg/kg/dose", description: "30mg/kg/dose, Q8H, 稀釋至50mg/ml, Dilute with N/S to 10倍, run 1 hr", remark: "嚴格限水時: Dilute with N/S to 2.5倍"}
+        ],
+        'meningitis': [ 
+          {GA_min:  0, GA_max: 31, PNA_min: 0, PNA_max: 13, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 40, unit: "mg/kg/dose", description: "40mg/kg/dose, Q12H, 稀釋至50mg/ml, Dilute with N/S to 10倍, run 1 hr", remark: "嚴格限水時: Dilute with N/S to 2.5倍"},
+          {GA_min:  0, GA_max: 31, PNA_min: 14, PNA_max: Infinity, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 40, unit: "mg/kg/dose", description: "40mg/kg/dose, Q8H, 稀釋至50mg/ml, Dilute with N/S to 10倍, run 1 hr", remark: "嚴格限水時: Dilute with N/S to 2.5倍"},
+          {GA_min:  32, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 40, unit: "mg/kg/dose", description: "40mg/kg/dose, Q8H, 稀釋至50mg/ml, Dilute with N/S to 10倍, run 1 hr", remark: "嚴格限水時: Dilute with N/S to 2.5倍"}
+        ]
+      },
+      'Metronidazole' : {
+        'standard': [ 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, PMA_min: 0, PMA_max: 33, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 7.5, unit: "mg/kg/dose", description: "maintenance 7.5 mg/kg/dose, Q12H, run 30 min", remark: "原液5mg/ml, 不須稀釋, 但需loading 15mg/kg"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, PMA_min: 34, PMA_max: 40, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 7.5, unit: "mg/kg/dose", description: "maintenance 7.5 mg/kg/dose, Q8H, run 30 min", remark: "原液5mg/ml, 不須稀釋, 但需loading 15mg/kg"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, PMA_min: 41, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q6H", dose: 7.5, unit: "mg/kg/dose", description: "maintenance 7.5 mg/kg/dose, Q6H, run 30 min", remark: "原液5mg/ml, 不須稀釋, 但需loading 15mg/kg. Maintain也可10mg/kg/dose Q8H."}, 
+        ]
+      },
+      'Amikacin' :{
+        'standard': [ 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 7, PMA_min: 0, PMA_max: 28, BW_min: 0, BW_max: Infinity  , frequency: "Q48H", dose: 14, unit: "mg/kg/dose", description: "14mg/kg/dose, Q48H, dilute 50倍 run 1hr", remark: "可以D5W or N/S稀釋25~100倍至2.5~10mg/ml"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 8, PNA_max:28, PMA_min: 0, PMA_max: 28, BW_min: 0, BW_max: Infinity  , frequency: "Q36H", dose: 12, unit: "mg/kg/dose", description: "12mg/kg/dose, Q36H, dilute 50倍 run 1hr", remark: "可以D5W or N/S稀釋25~100倍至2.5~10mg/ml"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min:29, PNA_max:Infinity, PMA_min: 0, PMA_max: 28, BW_min: 0, BW_max: Infinity  , frequency: "Q24H", dose: 12, unit: "mg/kg/dose", description: "12mg/kg/dose, Q24H, dilute 50倍 run 1hr", remark: "可以D5W or N/S稀釋25~100倍至2.5~10mg/ml"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 7, PMA_min: 30, PMA_max: 34, BW_min: 0, BW_max: Infinity  , frequency: "Q36H", dose: 12, unit: "mg/kg/dose", description: "12mg/kg/dose, Q36H, dilute 50倍 run 1hr", remark: "可以D5W or N/S稀釋25~100倍至2.5~10mg/ml"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 8, PNA_max:Infinity, PMA_min: 30, PMA_max: 34, BW_min: 0, BW_max: Infinity  , frequency: "Q24H", dose: 12, unit: "mg/kg/dose", description: "12mg/kg/dose, Q24H, dilute 50倍 run 1hr", remark: "可以D5W or N/S稀釋25~100倍至2.5~10mg/ml"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 7, PMA_min: 35, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q24H", dose: 12, unit: "mg/kg/dose", description: "12mg/kg/dose, Q24H, dilute 50倍 run 1hr", remark: "可以D5W or N/S稀釋25~100倍至2.5~10mg/ml"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 8, PNA_max:Infinity, PMA_min: 35, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q18H", dose: 12, unit: "mg/kg/dose", description: "12mg/kg/dose, Q18H, dilute 50倍 run 1hr", remark: "可以D5W or N/S稀釋25~100倍至2.5~10mg/ml"}, 
+        ]
+      },
+      'Cefazolin' :{
+        'standard': [ 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 28, PMA_min: 0, PMA_max: 29, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q12H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min:29, PNA_max: Infinity, PMA_min: 0, PMA_max: 29, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q8H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 14, PMA_min: 30, PMA_max: 36, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q12H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min:15, PNA_max: Infinity, PMA_min: 30, PMA_max: 36, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q8H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 7, PMA_min: 37, PMA_max: 44, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q12H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 8, PNA_max: Infinity, PMA_min: 37, PMA_max: 44, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q8H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, PMA_min: 45, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q6H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q6H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins"} 
+        ]
+      },
+      'Oxacillin' :{
+        'standard': [ 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 28, PMA_min: 0, PMA_max: 29, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q12H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min:29, PNA_max: Infinity, PMA_min: 0, PMA_max: 29, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q8H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 14, PMA_min: 30, PMA_max: 36, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q12H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min:15, PNA_max: Infinity, PMA_min: 30, PMA_max: 36, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q8H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 7, PMA_min: 37, PMA_max: 44, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q12H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 8, PNA_max: Infinity, PMA_min: 37, PMA_max: 44, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q8H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, PMA_min: 45, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q6H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q6H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}
+        ],
+        'meningitis': [ 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 28, PMA_min: 0, PMA_max: 29, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 50, unit: "mg/kg/dose", description: "50mg/kg/dose, Q12H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min:29, PNA_max: Infinity, PMA_min: 0, PMA_max: 29, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 50, unit: "mg/kg/dose", description: "50mg/kg/dose, Q8H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 14, PMA_min: 30, PMA_max: 36, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 50, unit: "mg/kg/dose", description: "50mg/kg/dose, Q12H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min:15, PNA_max: Infinity, PMA_min: 30, PMA_max: 36, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 50, unit: "mg/kg/dose", description: "50mg/kg/dose, Q8H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 7, PMA_min: 37, PMA_max: 44, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 50, unit: "mg/kg/dose", description: "50mg/kg/dose, Q12H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 8, PNA_max: Infinity, PMA_min: 37, PMA_max: 44, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 50, unit: "mg/kg/dose", description: "50mg/kg/dose, Q8H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, PMA_min: 45, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q6H", dose: 50, unit: "mg/kg/dose", description: "50mg/kg/dose, Q6H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}
+        ]
+      },
+      'Tazocin' :{
+        'standard': [ 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 28      , PMA_min:  0, PMA_max: 29      , BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 112.5, unit: "mg/kg/dose", description: "Piperacillin 100mg/kg/dose, Q12H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min:29, PNA_max: Infinity, PMA_min:  0, PMA_max: 29      , BW_min: 0, BW_max: Infinity  , frequency: "Q8H" , dose: 112.5, unit: "mg/kg/dose", description: "Piperacillin 100mg/kg/dose, Q8H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 14      , PMA_min: 30, PMA_max: 36      , BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 112.5, unit: "mg/kg/dose", description: "Piperacillin 100mg/kg/dose, Q12H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min:15, PNA_max: Infinity, PMA_min: 30, PMA_max: 36      , BW_min: 0, BW_max: Infinity  , frequency: "Q8H" , dose: 112.5, unit: "mg/kg/dose", description: "Piperacillin 100mg/kg/dose, Q8H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 7       , PMA_min: 37, PMA_max: 44      , BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 112.5, unit: "mg/kg/dose", description: "Piperacillin 100mg/kg/dose, Q12H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 8, PNA_max: Infinity, PMA_min: 37, PMA_max: 44      , BW_min: 0, BW_max: Infinity  , frequency: "Q8H" , dose: 112.5, unit: "mg/kg/dose", description: "Piperacillin 100mg/kg/dose, Q8H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, PMA_min: 45, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q8H" , dose: 112.5, unit: "mg/kg/dose", description: "Piperacillin 100mg/kg/dose, Q8H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}
+        ]
+      }
     };
 
     // *****************************************
     // 計算常用antibiotics配置
     // *****************************************
     // 先找出該藥品根據體重GA年紀等條件的配方
-    function findAntiNBDrugSpec(drugName, condition, BW, GA, PNA) {
+    function findAntiNBDrugSpec(drugName, condition, BW, GA, PNA, PMA) {
       const antiDrugSpec = antiNBDrugSpecs[drugName];
       if (!antiDrugSpec || !antiDrugSpec[condition]) return null;
-      return antiDrugSpec[condition].find(spec => spec.BW_min <= BW && BW <= spec.BW_max && spec.GA_min <= GA && GA <= spec.GA_max && spec.PNA_min <= PNA && PNA <= spec.PNA_max) || null;
+      return antiDrugSpec[condition].find(spec => spec.BW_min <= BW && BW <= spec.BW_max && spec.GA_min <= GA && GA <= spec.GA_max && spec.PNA_min <= PNA && PNA <= spec.PNA_max && spec.PMA_min <= PMA && PMA <= spec.PMA_max) || null;
     }
 
     // 計算antibiotics配置
@@ -1109,31 +1270,38 @@
       document.getElementById('anti_NB_meningitis_dose_text').textContent = "";
       document.getElementById('anti_NB_standard_dose_description_text').textContent = "";
       document.getElementById('anti_NB_meningitis_dose_description_text').textContent = "";
-      
+      document.getElementById('anti_NB_dose_remark').textContent = "";
 
       //讀取輸入值
       const antiNBDrugName = document.getElementById('anti_NB_drug_name').value;
       const antiNBBW = parseFloat(document.getElementById('anti_NB_BW').value) || 0;
       const antiNBGAWeek = parseFloat(document.getElementById('anti_NB_gestational_age_week').value) || 0;
-      const antiNBGADay = parseFloat(document.getElementById('anti_NB_gestational_age_day').value) || 0;
+      const antiNBGADay = parseFloat(document.getElementById('anti_NB_gestational_age_day').value);
       const antiNBBirthday = new Date(document.getElementById('anti_NB_birthday').value);
-
+      console.log(!0);
 
       //檢查輸入值
-      if (!antiNBDrugName || !antiNBBW || !antiNBGAWeek || !antiNBBirthday) {
-        console.error("Missing input values");
-        document.getElementById('anti_NB_standard_dose_description_text').textContent = "Missing input values";
-        document.getElementById('anti_NB_meningitis_dose_description_text').textContent = "Missing input values";
+      if (!antiNBDrugName || !antiNBBW || !antiNBGAWeek || (antiNBGADay>=7) || !antiNBBirthday) {
+        console.error("Missing or incorrect inputs!");
+        console.log(`antiNBDrugName: ${antiNBDrugName}, antiNBBW: ${antiNBBW}, antiNBGAWeek: ${antiNBGAWeek}, antiNBGADay: ${antiNBGADay}, antiNBBirthday: ${antiNBBirthday}`);
+        document.getElementById('anti_NB_standard_dose_description_text').textContent = "Missing or incorrect input values";
+        document.getElementById('anti_NB_meningitis_dose_description_text').textContent = "Missing or incorrect input values";
         return;
       }
+
 
       //計算PNA
       const antiNBPNA = Math.floor((new Date() - antiNBBirthday) / (1000 * 60 * 60 * 24));
       console.log(`PNA: ${antiNBPNA}`);
+
+      //計算PMA
+      const antiNBPMAWeek = antiNBGAWeek + Math.floor( (antiNBPNA+antiNBGADay) / 7);
+      console.log(`PMA complete weeks: ${antiNBPMAWeek}`);
+
       
       //取得藥物資料
-      const antiNBDrugSpecStandardDose = findAntiNBDrugSpec(antiNBDrugName, 'standard', antiNBBW, antiNBGAWeek, antiNBPNA);
-      const antiNBDrugSpecMeningitisDose = findAntiNBDrugSpec(antiNBDrugName, 'meningitis', antiNBBW, antiNBGAWeek, antiNBPNA);
+      const antiNBDrugSpecStandardDose = findAntiNBDrugSpec(antiNBDrugName, 'standard', antiNBBW, antiNBGAWeek, antiNBPNA, antiNBPMAWeek);
+      const antiNBDrugSpecMeningitisDose = findAntiNBDrugSpec(antiNBDrugName, 'meningitis', antiNBBW, antiNBGAWeek, antiNBPNA, antiNBPMAWeek);
 
       // 若antiNBDrugSpecStandardDose有值，則計算；若無則顯示錯誤訊息
       if (antiNBDrugSpecStandardDose) {
@@ -1146,6 +1314,7 @@
         //輸出到網頁
         document.getElementById('anti_NB_standard_dose_text').textContent = antiNBDrugStandardDoseText;
         document.getElementById('anti_NB_standard_dose_description_text').textContent = antiNBDrugStandardDoseDescriptionText;
+        document.getElementById('anti_NB_dose_remark').textContent += antiNBDrugSpecStandardDose.remark;
       } else {
         //沒有standard dose, 顯示錯誤訊息
         console.error(`No standard dose suggestion found for ${antiNBDrugName} with BW=${antiNBBW}, GA=${antiNBGAWeek}w, PNA=${antiNBPNA}d.`);
@@ -1203,7 +1372,7 @@
           newDiv.innerHTML = `
             <span class="input-group-text justify-content-center" style="width: 15%;">Other</span>
             <select name="fluid_other_solution_base" class="form-select text-center" onchange="calculateFluid()">
-              <option value="" selected></option>
+              <option value=""></option>
               <option value="D/W">D/W base</option>
               <option value="D5W">D5W base</option>
               <option value="D10W">D10W base</option>
@@ -1220,7 +1389,7 @@
           newDiv.innerHTML = `
             <span class="input-group-text justify-content-center" style="width: 15%;">Other</span>
             <select name="fluid_other_in_IO_base" class="form-select text-center" onchange="calculateFluid()">
-              <option value="" selected></option>
+              <option value=""></option>
               <option value="3% NaCl">3% NaCl</option>
             </select>
             <input type="text" name="fluid_other_in_IO" class="form-control text-center" oninput="calculateFluid()" />
@@ -1254,8 +1423,9 @@
       console.log(`Today: ${today}`);
     }
 
-
+    // *****************************************
     //對每個.copy-item新增onclick事件，讓點擊後複製其data-content的內容，若沒有data-content，則複製其textContent
+    // *****************************************
     function addCopyEventListener() {
       document.querySelectorAll('.copy-item').forEach(item => {
         item.addEventListener('click', () => {
@@ -1269,7 +1439,40 @@
       });
     }
 
-    
+
+    // *****************************************    
+    // reset input
+    // *****************************************
+    function resetForm(elementID){
+      let targetDiv = document.getElementById(elementID); // 獲取指定的 div
+      if (!targetDiv) return;
+
+      let inputs = targetDiv.querySelectorAll("input, select");
+      inputs.forEach(input => {
+          if (input.type === "number" || input.type === "text") {
+              input.value = "";
+          } else if (input.tagName === "SELECT") {
+              input.selectedIndex = 0;
+          }
+      });
+
+      // 清除該區域內的計算結果
+      targetDiv.querySelectorAll(".copy-item").forEach(el => el.textContent = "");
+
+
+      // 載入今天日期
+      loadTodayDate('anti_NB_birthday');
+
+      // 頁面載入時先執行一次計算
+      calculateFluid();
+      calculateGIR();
+      calculateDex();
+      calculateUmbilicalCathLen();
+      calculateDrugPreperation();
+      calculateAntibioticsForNB();
+      addCopyEventListener();
+    }
+
     // 載入今天日期
     loadTodayDate('anti_NB_birthday');
 
@@ -1281,7 +1484,6 @@
     calculateDrugPreperation();
     calculateAntibioticsForNB();
     addCopyEventListener();
-
 
   </script>
 </body>
