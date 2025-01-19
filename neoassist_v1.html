@@ -1,0 +1,1353 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NeoAssist</title>
+  <!-- 引入 Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f4ece6;
+      font-family: 'Roboto', sans-serif;
+    }
+    .table-container {
+      margin-top: 30px;
+    }
+    h2 {
+      color: #5d4037;
+      margin-top: 40px;
+      text-align: center;
+    }
+    .order-content {
+      display: flex;
+      align-items: center;
+    }
+
+    /*把輸入框的上下箭頭移除*/
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { 
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+
+    .table-container {
+      display: none; /* 預設隱藏 */
+    }
+    .table-container.active {
+      display: block; /* 顯示選擇的表格 */
+    }
+
+    .nav-item {
+      border-bottom: 1px solid #6c757d; /* 灰色分行線，可根據需求調整顏色 */
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="container-fluid">
+    <div class="row">
+      <!-- 側邊欄 -->
+      <nav class="col-md-3 col-lg-2 d-md-block bg-dark sidebar" style="position: fixed; top: 0; left: 0; width: 100px; height: 100vh;">
+        <div class="position-sticky">
+          <ul class="nav flex-column text-white">
+            <li class="nav-item">
+              <button class="nav-link btn btn-dark text-start text-white w-100" onclick="showTable('fluidTable')">水份計算</button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link btn btn-dark text-start text-white w-100" onclick="showTable('drugTable')">藥物泡法</button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link btn btn-dark text-start text-white w-100" onclick="showTable('measurements')">生長測量</button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link btn btn-dark text-start text-white w-100" onclick="showTable('')">ＮＢ常用</button>
+            </li>
+          </ul>
+        </div>
+      </nav>
+    </div>
+  </div>
+
+
+  <div class="text-center" style="margin-left: 100px; display: flex; justify-content: center;">
+
+    <!-- 水份計算器 -->
+    <div id="fluidTable" class="table-container active">
+      <table class="table table-bordered align-middle">
+        <thead class="table-dark">
+          <tr>
+            <th colspan="2">水份計算</th>
+            <!-- <th style="width: 50%;">輸出</th> -->
+          </tr>
+        </thead>
+        <tbody>
+
+          <!--BW / TDF列-->
+          <tr>
+            <td>BW / TDF</td>
+            <td>
+              <div class="row">
+                <div class="col">
+                  <div class="input-group">
+                    <input type="number" id="bwFluid" class="form-control text-center" oninput="updateFluid()">
+                    <span class="input-group-text">g</span>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="input-group">
+                    <input type="number" id="tdf" class="form-control text-center" oninput="updateFluid()">
+                    <span class="input-group-text">ml/kg/day</span>
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+
+          <!--PO列-->
+          <tr>
+            <td>PO</td>
+            <td>
+              <div class="row">
+                <div class="col">
+                  <div class="input-group">
+                    <select id="HM" class="form-select text-center" style="background-color: #f8f9fa;" onchange="updateFluid()">
+                      <option value=""></option>
+                      <option value="HM">HM</option>
+                    </select> 
+                    <span class="input-group-text">/</span>
+                    <select id="formula" class="form-select text-center" style="background-color: #f8f9fa;" onchange="updateFluid()">
+                      <option value=""></option>
+                      <option value="16%PF">16%PF</option>
+                      <option value="15%PDF">15%PDF</option>
+                      <option value="14%RF">14%RF</option>
+                    </select> 
+                    <input type="text" id="po" class="form-control text-center" oninput="updateFluid()">
+                    <span class="input-group-text">ml/day</span>
+                  </div>    
+                </div>
+              </div>
+            </td>
+          </tr>
+
+          <!--TPN列-->
+          <tr>
+            <td>TPN</td>
+            <td>
+              <div class="row">
+                <div class="col">
+                  <div class="input-group">
+                    <select id="tpnAA" class="form-select text-center" style="background-color: #f8f9fa;" onchange="updateFluid()">
+                      <option value="0.025">AA 2.5</option>
+                      <option value="0.030">AA 3.0</option>
+                      <option value="0.033">AA 3.3</option>
+                      <option value="0.035">AA 3.5</option>
+                      <option value="0.040">AA 4.0</option>
+                      <option value="0.050">AA 5.0</option>
+                    </select> 
+                    <input type="number" id="tpnGrams" class="form-control text-center" oninput="updateFluid()">
+                    <span class="input-group-text">g/kg/day</span>
+                    <input type="number" id="tpnHours" min="0" max="24" class="form-control text-center" placeholder="-" oninput="updateFluid()">
+                    <span class="input-group-text">hrs</span>
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+
+          <!--LIPID列-->
+          <tr>
+            <td>Lipid</td>
+            <td>
+              <div class="row">
+                <div class="col">
+                  <div class="input-group">
+                    <select id="lipidChoice" class="form-select text-center" style="background-color: #f8f9fa;" onchange="updateFluid()">
+                      <option value="SMOF">SMOF</option>
+                      <option value="Omegaven">Omegaven</option>
+                    </select>             
+                    <input type="number" id="lipidGrams" class="form-control text-center" oninput="updateFluid()">
+                    <span class="input-group-text">g/kg/day</span>
+                    <input type="number" id="lipidHours" min="16" max="24" class="form-control text-center" placeholder="-" oninput="updateFluid()">
+                    <span class="input-group-text">hrs</span>
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+
+          <!--other-->
+          <tr>
+            <td>其他</td>
+            <td>
+              <div class="row">
+                <div class="col">
+                  <div class="input-group">
+                    <input type="text" id="mlHr" class="form-control text-center" oninput="updateFluid()">
+                    <span class="input-group-text">ml/hr</span>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="input-group">
+                    <input type="text" id="mlDay" class="form-control text-center" oninput="updateFluid()">
+                    <span class="input-group-text">ml/day</span>
+                  </div>    
+                </div>
+              </div>
+            </td>
+          </tr>
+
+
+          <!--普通IV列-->
+          <tr>
+            <td>普通IV</td>
+            <td>
+              <div class="row">
+                <div class="col">
+                  <select id="regularIVChoice" class="form-select text-center" onchange="updateFluid()">
+                    <option value=""></option>
+                    <option value="D10W">D10W</option>
+                    <option value="D5W">D5W</option>
+                    <option value="D0.225S(500) + 2PC D50W">D0.225S(500) + 2PC D50W</option>
+                    <option value="D0.225S(500)">D0.225S(500)</option>
+                  </select>    
+                </div>
+                <div class="col">
+                  <div class="input-group">
+                    <input type="number" id="regularIV" class="form-control text-center" oninput="updateFluid()">
+                    <span class="input-group-text">ml/hr</span>
+                  </div>      
+                </div>
+              </div>
+            </td>
+          </tr>
+          <!-- 輸出 -->
+          <tr>
+            <td rowspan="8">醫囑</td>
+            </td>
+            <td id="bwOutputCell" style="display: block;">
+              <div class="order-content">
+                <span id="bwOutput"></span>
+                <button class="btn btn-dark" style="margin-left: auto; " tabindex="999" onclick="copyToClipboard('bwOutput', this)">Copy</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td id="tdfOutputCell" style="display: none;">
+              <div class="order-content">
+                <span id="tdfOutput"></span>
+                <button class="btn btn-dark" style="margin-left: auto; " tabindex="999" onclick="copyToClipboard('tdfOutput', this)">Copy</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td id="poOutputCell" style="display: none;">
+              <div class="order-content">
+                <span id="poOutput"></span>
+                <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('poOutput', this)">Copy</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td id="tpnOutputCell" style="display: none;">
+              <div class="order-content">
+                <span id="tpnOutput"></span>
+                <button class="btn btn-dark" style="margin-left: auto; " tabindex="999" onclick="copyToClipboard('tpnOutput', this)">Copy</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td id="lipidOutputCell" style="display: none;">
+              <div class="order-content">
+                <span id="lipidOutput"></span>
+                <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('lipidOutput', this)">Copy</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td id="mlHrOutputCell" style="display: none;">
+              <div class="order-content">
+                <span id="mlHrOutput"></span>
+                <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('mlHrOutput', this)">Copy</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td id="mlDayOutputCell" style="display: none;">
+              <div class="order-content">
+                <span id="mlDayOutput"></span>
+                <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('mlDayOutput', this)">Copy</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td id="regularIVOutputCell" style="display: none;">
+              <div class="order-content">
+                <span id="regularIVOutput"></span>
+                <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('regularIVOutput', this)">Copy</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="row">
+
+        <!-- GIR 計算器 -->
+        <div class="col">
+          <table class="table table-bordered align-middle" id="GIRTable">
+            <thead class="table-dark">
+              <tr><th>GIR計算</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="row mb-1">
+                    <div class="input-group">
+                      <span class="input-group-text">BW</span>
+                      <input id="bwGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
+                      <span class="input-group-text">g</span>
+                    </div>    
+                  </div>
+                  <div class="row mb-1">
+                    <div class="input-group">
+                      <span class="input-group-text">Dextrose</span>
+                      <input name="dexForGIR" type="number" class="form-control text-center" value="10" oninput="calculateGIR()">
+                      <span class="input-group-text">%</span>
+                      <input name="rateForGIR" type="text" class="form-control text-center" oninput="calculateGIR()">
+                      <span class="input-group-text">ml/hr</span>
+                    </div>    
+                  </div>
+                  <div class="row mb-1">
+                    <div class="input-group">
+                      <span class="input-group-text">Dextrose</span>
+                      <input name="dexForGIR" type="number" class="form-control text-center" value="5" oninput="calculateGIR()">
+                      <span class="input-group-text">%</span>
+                      <input name="rateForGIR" type="text" class="form-control text-center" oninput="calculateGIR()">
+                      <span class="input-group-text">ml/hr</span>
+                    </div>    
+                  </div>
+                  <div class="row mb-1">
+                    <div class="input-group">
+                      <span class="input-group-text">Dextrose</span>
+                      <input name="dexForGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
+                      <span class="input-group-text">%</span>
+                      <input name="rateForGIR" type="text" class="form-control text-center" oninput="calculateGIR()">
+                      <span class="input-group-text">ml/hr</span>
+                    </div>    
+                  </div>
+                  <div class="row mb-1">
+                    <div class="input-group">
+                      <span class="input-group-text">Dextrose</span>
+                      <input name="dexForGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
+                      <span class="input-group-text">%</span>
+                      <input name="rateForGIR" type="text" class="form-control text-center" oninput="calculateGIR()">
+                      <span class="input-group-text">ml/hr</span>
+                    </div>    
+                  </div>
+                  <div class="row" id="addNewGIRLineButton">
+                    <div class="input-group text-center">
+                      <button class="btn btn-light" style="width: 100%; border-color: #e0e3e7;" onclick="addNewGIRLine()">+</button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div id="GIROutput" class="order-content">GIR = </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>    
+        </div>
+
+        <div class="col">
+          <div class="row">
+
+            <!-- 周邊IV dex 計算器 -->
+            <table class="table table-bordered align-middle">
+              <thead class="table-dark">
+                <tr><th>客製dextrose泡法</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div class="row">
+                      <div class="input-group mb-1">
+                        <span class="input-group-text">原液dextrose</span>
+                        <input id="initialDexConcentrationForDexCalc" type="number" class="form-control text-center" value="5" oninput="customizedDex()">
+                        <span class="input-group-text">%</span>
+                        <input id="initialDexAmountForDexCalc" type="number" class="form-control text-center" value="500" oninput="customizedDex()">
+                        <span class="input-group-text">ml</span>
+                      </div>  
+                    </div>
+                    <div class="row">
+                      <div class="input-group">
+                        <span class="input-group-text">加上</span>
+                        <input id="amountOfD50WForDexCalc" type="number" class="form-control text-center" oninput="customizedDex()">
+                        <span class="input-group-text">ml D50W (1pc=20ml)</span>
+                        <!-- <input type="number" class="form-control text-center" value="50"> -->
+                        <!-- <span class="input-group-text">%</span> -->
+                        <!-- <input type="number" class="form-control text-center" value="20"> -->
+                        <!-- <span class="input-group-text">ml</span> -->
+                      </div>  
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="row">
+                      <div id="customizedDexOutput" class="order-content">Dextrose = </div>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>  
+          </div>
+
+          <div class="row">
+            <!-- On line 深度, 可能包含各種line size depth-->
+            <table class="table table-bordered align-middle">
+              <thead class="table-dark">
+                <tr><th>UA UV 深度</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div class="input-group">
+                      <span class="input-group-text">BW</span>
+                      <input id="bwForLine" class="form-control text-center" type="number" oninput="depthOfLine()">
+                      <span class="input-group-text">g</span>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div id="depthUAUV" class="order-content">UA high: ___ cm, UA low: ___ cm, UV: ___ cm</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>            
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 藥物泡法 -->
+    <div id="drugTable" class="table-container">
+      <table class="table align-middle table-bordered">
+        <thead class="table-dark">
+          <tr>
+            <th>藥物泡法</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="row">
+                <div class="col">
+                  <div class="input-group">
+                    <input type="number" id="bwDrug" class="form-control text-center" oninput="updateDrugOrder()">
+                    <span class="input-group-text">kg</span>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="input-group">
+                    <select id="drug0" class="form-select text-center" title="" onchange="updateDrugOrder()">
+                      <option value="Dopamine"      >Dopamine       </option>
+                      <option value="Dobutamine"    >Dobutamine     </option>
+                      <option value="Milrinone"     >Milrinone      </option>
+                      <option value="Epinephrine"   >Epinephrine    </option>
+                      <option value="Midazolam"     >Midazolam      </option>
+                      <option value="Fentanyl"      >Fentanyl       </option>
+                      <option value="Bumetanide"    >Bumetanide     </option>
+                      <option value="Norepinephrine">Norepinephrine </option>
+                      <option value="Nicardipine"   >Nicardipine    </option>
+                      <option value="Nitroglycerin" >Nitroglycerin  </option>
+                      <option value="Labetalol"     >Labetalol      </option>
+                      <option value="PGE1"          >PGE1           </option>
+                      <option value="Vasopressin"   >Vasopressin    </option>
+                      <option value="Isoproterenol" >Isoproterenol  </option>
+                      <option value="Rocuronium"    >Rocuronium     </option>
+                      <option value="Cisatracurium" >Cisatracurium  </option>
+                      <option value="Morphine"      >Morphine       </option>
+                      <option value="Lorazepam"     >Lorazepam      </option>
+                      <option value="Ketamine"      >Ketamine       </option>
+                      <option value="Propofol"      >Propofol       </option>
+                      <option value="MgSO4"         >MgSO4          </option>
+                      <option value="Lidocaine"     >Lidocaine      </option>
+                      <!-- More options -->
+                    </select>
+                    <input type="text" id="drugExtractAmount" class="form-control text-center" oninput="updateDrugOrder()">
+                    <span class="input-group-text" id="drugExtractAmountUnit"></span>
+                  </div> 
+                </div> 
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <div class="row">
+                <div class="col">
+                  <div class="input-group">
+                    <span class="input-group-text">in</span>
+                    <select id="diluter0" class="form-select text-center" onchange="updateDrugOrder()">
+                      <option value="D5W">D5W</option>
+                      <option value="N/S">N/S</option>
+                      <option value="D/W">D/W</option>
+                    </select>  
+                    <span class="input-group-text">total</span>
+                    <input type="number" id="totalVolume0" class="form-control text-center" oninput="updateDrugOrder()">
+                    <span class="input-group-text">ml</span>
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <div class="row">
+                <div class="col">
+                  <div class="input-group">
+                    <span class="input-group-text">run</span> 
+                    <input type="number" id="flowRate" class="form-control text-center" oninput="updateDrugOrder()">
+                    <span class="input-group-text">ml/hr</span>
+                    <span class="input-group-text">=</span> 
+                    <input type="number" id="targetConcentrationRate" class="form-control text-center" oninput="updateDrugOrder()">
+                    <span id="rateUnit" class="input-group-text">mcg/kg/min</span>
+                  </div>    
+                </div>
+              </div>
+            </td>
+          </tr>
+
+          <!-- 醫囑 output -->
+          <tr>
+            <td colspan="6">
+              <div class="order-content">
+                <span id="orderText">醫囑</span>
+                <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('orderText', this)">COPY</button>
+              </div>
+            </td>
+          </tr>
+
+          <!-- 藥囑 output -->
+          <tr>
+            <td colspan="6">
+              <div class="order-content">
+                <span id="medText">藥囑</span>
+                <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('medText', this)">COPY</button>
+              </div>
+            </td>
+          </tr>
+
+          <!-- PURE LINE output -->
+          <tr>
+            <td colspan="6">
+              <div class="order-content">
+                <span id="purelineOrderText">Pure Line</span>
+                <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('purelineOrderText', this)">COPY</button>
+              </div>
+            </td>
+          </tr>
+
+        </tbody>
+      </table>
+
+      <!-- NB常用藥物 -->
+      <table class="table align-middle table-bordered">
+        <thead class="table-dark">
+          <tr>
+            <th>NB常用藥物 (測試中)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="row">
+                <div class="col">
+                  <select id="commonNBDrugChoice" class="form-select text-center" onchange="commonNBDrugCalc()">
+                    <option value="Ampicillin">Ampicillin</option>
+                    <option value="Gentamicin">Gentamicin</option>
+                    <option value="Cefotaxime">Cefotaxime</option>
+                    <option value="Ceftazidime">Ceftazidime</option>
+                    <option value="Vancomycin">Vancomycin</option>
+                    <option value="Meropenem">Meropenem</option>
+                    <option value="Metronidazole">Metronidazole</option>
+                  </select>
+                </div>
+                <div class="col">
+                  <div class="input-group mb-2">
+                    <span class="input-group-text">BW</span>
+                    <input id="bwForCommonNBDrug" class="form-control text-center" type="number" oninput="commonNBDrugCalc()">
+                    <span class="input-group-text">g</span>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col">
+                  <div class="input-group mb-1">
+                    <span class="input-group-text">GA</span>
+                    <input id="weeksOfGAForCommonNBDrug" class="form-control text-center" type="number" oninput="commonNBDrugCalc()">
+                    <span class="input-group-text">w</span>
+                    <input id="daysOfGAForCommonNBDrug" class="form-control text-center" type="number" oninput="commonNBDrugCalc()">
+                    <span class="input-group-text">d</span>
+                  </div>                      
+                </div>
+                <div class="col">
+                  <div class="input-group mb-1">
+                    <span class="input-group-text">Birthday</span>
+                    <input id="birthdayForCommonNBDrug" class="form-control text-center" type="date" oninput="commonNBDrugCalc()">
+                  </div>    
+                </div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <div class="row align-items-center">
+                <div class="col-2 border-end border-2">non-meningitis</div>
+                <div class="col-2 border-end border-2" id="nonMeningitisNBDose"></div>
+                <div class="col">
+                  <div class="order-content">
+                    <span id="nonMeningitisNBDoseDescription"></span>
+                    <button class="btn btn-dark" style="margin-left: auto; " tabindex="999" onclick="copyToClipboard('stdNBDose', this)">COPY</button>
+                  </div>
+                </div>
+              </div>
+            </td>  
+          </tr>
+          <tr>
+            <td>
+              <div class="row align-items-center">
+                <div class="col-2 border-end border-2">meningitis</div>
+                <div class="col-2 border-end border-2" id="meningitisNBDose"></div>
+                <div class="col">
+                  <div class="order-content">
+                    <span id="meningitisNBDoseDescription"></span>
+                    <button class="btn btn-dark" style="margin-left: auto; " tabindex="999" onclick="copyToClipboard('meningitisNBDose', this)">COPY</button>
+                  </div>
+                </div>
+              </div>
+            </td>  
+          </tr>
+          <tr>
+            <td>
+              <div class="row align-items-center">
+                <div class="col-2 border-end border-2">說明</div>
+                <div class="col">
+                  <div class="order-content">
+                    <span id="textbookDoseDescription"></span>
+                  </div>
+                </div>
+              </div>
+            </td>  
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 生長測量 -->
+    <div id="measurements" class="table-container">
+      <table class="table align-middle table-bordered">
+        <thead class="table-dark">
+          <tr>
+            <th>生長測量 (僅限內網使用)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="order-content">
+                <span>本網站使用的生長曲線數據參數由 Dr.Fenton 提供，特此感謝。 (Creative Commons license)</span>
+              </div>
+              <div class="order-content">
+                <span>Fenton TR, Kim JH. A systematic review and meta-analysis to revise the Fenton growth chart for preterm infants. BMC Pediatr. 2013;13:59.</span> 
+              </div>
+            </td>
+          </tr>          
+          <tr>
+            <td>
+              <div class="row">
+                <div class="col">
+                  <div class="input-group">
+                    <input type="number" id="gestationalAgebyWeek" class="form-control text-center" oninput="measurementsOfPreterms()">
+                    <span class="input-group-text">weeks</span>
+                    <input type="number" id="gestationalAgePlusDay" class="form-control text-center" oninput="measurementsOfPreterms()">
+                    <span class="input-group-text">days</span>
+                  </div>
+                </div>
+              <div class="col">
+                <div class="input-group">
+                  <span class="input-group-text">sex: </span>
+                  <select id="sex" class="form-select text-center" onchange="measurementsOfPreterms()">
+                    <option value="" selected></option>
+                    <option value="male">boy</option>
+                    <option value="female">female</option>
+                  </select>  
+                </div>
+              </div>
+            </td>
+          </tr>      
+          <tr>
+            <td>
+              <div class="row">
+                <div class="col">
+                  <div class="input-group">
+                    <span class="input-group-text">體重</span>
+                    <input type="text" id="birthWeight" class="form-control text-center" oninput="measurementsOfPreterms()">
+                  </div>
+                </div>
+              <div class="col">
+                <div class="input-group">
+                  <span class="input-group-text">身長</span>
+                  <input type="text" id="birthHeight" class="form-control text-center" oninput="measurementsOfPreterms()">
+                </div>
+              </div>
+              <div class="col">
+                <div class="input-group">
+                  <span class="input-group-text">頭圍</span>
+                  <input type="text" id="birthHeadCircumference" class="form-control text-center" oninput="measurementsOfPreterms()">
+                </div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <div class="order-content">
+                <div id="measurementsOfPretermsOutput" style="text-align: left;"></div>
+                <button class="btn btn-dark" style="margin-left: auto; " onclick="copyToClipboard('measurementsOfPretermsOutput', this)">Copy</button>
+              </div>
+            </td>
+          </tr>  
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+<!-- 引入script -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.4.0/math.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jstat@1.9.2/dist/jstat.min.js"></script>
+<script src="./scripts/lms_data.js"></script>
+<script src="https://gitcdn.github.io/bootstrap-toggle/2.2.2/js/bootstrap-toggle.min.js"></script>
+
+<script>
+  // 更新fluid計算
+  function updateFluid() {
+
+    //先歸零
+    document.getElementById('bwOutput').textContent = "";
+    document.getElementById('tdfOutput').textContent = "";
+    document.getElementById('poOutput').textContent = "";
+    document.getElementById('tpnOutput').textContent = "";
+    document.getElementById('lipidOutput').textContent = "";
+    document.getElementById('mlHrOutput').textContent = "";
+    document.getElementById('mlDayOutput').textContent = "";
+    document.getElementById('regularIVOutput').textContent = "";
+    
+
+    //讀取輸入值
+    const bwFluid = parseFloat(document.getElementById('bwFluid').value) || 0;
+    const tdf = parseFloat(document.getElementById('tdf').value) || 0;
+    const po = document.getElementById('po').value;
+    const HM = document.getElementById('HM').value;
+    const formula = document.getElementById('formula').value;
+    const tpnAA = document.getElementById('tpnAA').value;
+    const tpnGramsInput = document.getElementById('tpnGrams').value;
+    const tpnHours = document.getElementById('tpnHours').value || 24; 
+    const lipidChoice = document.getElementById('lipidChoice').value;
+    const lipidGrams = parseFloat(document.getElementById('lipidGrams').value) || 0;
+    const lipidHours = document.getElementById('lipidHours').value || 20;
+    const mlHr = document.getElementById('mlHr').value;
+    const mlDay = document.getElementById('mlDay').value;
+    const regularIVInput = document.getElementById('regularIV').value;
+    const regularIVChoice = document.getElementById('regularIVChoice').value || "普通IV";
+    const lipidSpec = {
+      "SMOF": {density: 1/5, unit: "g/ml"},
+      "Omegaven": {density: 1/10, unit: "g/ml"}
+    };
+    const tpnMap = {
+      "0.025": "TPN",
+      "0.030": "TPN [AA 3.0]",
+      "0.033": "TPN [AA 3.3]",
+      "0.035": "TPN [AA 3.5]",
+      "0.040": "TPN [AA 4.0]",
+      "0.050": "TPN [N0]"
+    };
+
+    // 當 A 有值時，禁用 B；當 B 有值時，禁用 A；如果兩者都沒有值，兩者都啟用
+    const regularIVInputDiv = document.getElementById('regularIV');
+    const tpnGramsInputDiv = document.getElementById('tpnGrams');
+    if (regularIVInputDiv.value !== "") {
+      tpnGramsInputDiv.disabled = true;
+    } else if (tpnGramsInputDiv.value !== "") {
+      regularIVInputDiv.disabled = true;
+    } else {
+      regularIVInputDiv.disabled = false;
+      tpnGramsInputDiv.disabled = false;
+    }
+
+
+
+    // BW 輸出
+    let bwOutput = bwFluid==0 ? "" : `BW: ${bwFluid} g`;
+    
+    // TDF 輸出
+    let totalTDF = (tdf*bwFluid/1000).toFixed(1);
+    let tdfOutput = tdf==0 ? "" : `Total daily fluid: ${tdf} ml/kg/day = total ${totalTDF} ml/day`;;
+
+    // PO 輸出 
+    let [parseResult, poTotal] = parsePO(po, HM, formula);
+
+    // SMOF/Omegaven 輸出
+    let targetLipidAmount = lipidGrams*bwFluid/1000/lipidSpec[lipidChoice].density;
+    let validLipidHours = Math.min(23, Math.max(16, lipidHours)); //確保輸入值在16~23之間
+    let lipidRate = (targetLipidAmount/validLipidHours).toFixed(1);
+    let lipidTotal = lipidRate*validLipidHours;
+    let lipidOutput = "";
+    let minDiff = Math.abs(lipidTotal-targetLipidAmount);
+    let bestHour = validLipidHours;
+    const acceptedError = 0.5;
+    const maxLipidHour = 23;
+    for (let i=16; i<=validLipidHours && i<=maxLipidHour; i++){
+      lipidRate = (targetLipidAmount/i).toFixed(1);
+      lipidTotal = lipidRate*i;
+      const diff = Math.abs(lipidTotal-targetLipidAmount);
+      if (diff<minDiff || diff < acceptedError){
+        minDiff=diff;
+        bestHour=i;
+      }
+      // console.log(`target ${targetLipidAmount}, current ${lipidTotal}, current hr ${i}`);
+      // console.log(`minDiff ${minDiff.toFixed(1)}, bestHour = ${bestHour}`);
+    }
+    lipidRate = (lipidGrams*bwFluid/1000/lipidSpec[lipidChoice].density/bestHour).toFixed(1);
+    lipidTotal = lipidRate*bestHour;
+    lipidOutput = `${lipidChoice} ${lipidGrams}g/kg/day = ${lipidRate} ml/hr run ${bestHour} hrs`;
+    lipidOutput = lipidRate==0? "":lipidOutput ;
+
+
+    // ml/hr 輸出示例
+    let mlHrTotal = (calculateExpression(mlHr)*24 || 0).toFixed(1);
+    let mlhrOutput = `other line: ${mlHr}ml/hr = total ${mlHrTotal}ml/day`;
+    mlhrOutput = mlHr==0? "":mlhrOutput;
+
+    // ml/day 輸出示例
+    let totalmlDay = calculateExpression(mlDay) || 0;
+    let mlDayOutput = `other in I/O: ${totalmlDay} ml/day`;
+    mlDayOutput = totalmlDay==0? "":mlDayOutput;
+
+
+    // TPN and 普通IV 輸出
+    let tpnGrams = parseFloat(tpnGramsInput) || 0;
+    let tpnRate = 0;
+    let tpnTotal = 0;
+    let tpnHoursOutput = "";
+    let tpnOutput = "";
+    let regularIVRate = parseFloat(regularIVInput) || 0;
+    let regularIVTotal = 0;
+    let regularIVOutput = "";
+
+    if(tpnGramsInput){
+      //有設定tpn gram數，表示非補不足，先計算TPN再計算普通IV流速
+      tpnRate = (tpnGrams*bwFluid/1000/tpnAA/tpnHours).toFixed(1);
+      tpnTotal = tpnRate*tpnHours;
+      tpnHoursOutput = tpnHours==24? "":` run ${tpnHours} hrs`;
+      tpnOutput += `${tpnMap[tpnAA]} ${tpnGrams}g/kg/day = ${tpnRate}ml/hr${tpnHoursOutput}`;
+      tpnOutput = tpnGrams==0 ? "" : tpnOutput ;
+
+      regularIVRate = ((totalTDF-poTotal-tpnTotal-lipidTotal-mlHrTotal-mlDay)/24).toFixed(1);
+      regularIVOutput += `${regularIVChoice} run ${regularIVRate}ml/hr`;
+      regularIVOutput = regularIVRate==0? "":regularIVOutput;
+
+    } else{
+      //未設定tpn gram數，表示補不足，先計算普通IV流速再計算TPN
+      regularIVTotal = (regularIVRate*24).toFixed(1);
+      regularIVOutput += `${regularIVChoice} run ${regularIVRate}ml/hr`;
+      regularIVOutput = regularIVRate==0? "":regularIVOutput;
+
+      tpnTotal = totalTDF-poTotal-lipidTotal-mlHrTotal-mlDay-regularIVTotal;
+      tpnRate = (tpnTotal/tpnHours).toFixed(1);
+      tpnGrams = (tpnRate*24*tpnAA/(bwFluid/1000)).toFixed(2);
+      tpnHoursOutput = tpnHours==24? "":` run ${tpnHours} hrs`;
+      tpnOutput += `${tpnMap[tpnAA]} (補) ${tpnGrams}g/kg/day = ${tpnRate}ml/hr${tpnHoursOutput}`;
+      tpnOutput = tpnRate==0 ? "" : tpnOutput ;
+      
+    }
+
+
+    //輸出 order
+    document.getElementById('bwOutput').textContent = bwOutput; //最少留一列，所以第一列不隱藏
+    updateOutput('tdfOutput', tdfOutput);
+    updateOutput('poOutput', parseResult);
+    updateOutput('tpnOutput', tpnOutput);
+    updateOutput('lipidOutput', lipidOutput);
+    updateOutput('mlHrOutput', mlhrOutput);
+    updateOutput('mlDayOutput', mlDayOutput);
+    updateOutput('regularIVOutput', regularIVOutput);
+  };
+
+  // 更新GIR
+  function calculateGIR() {
+    let dexGIRInputs = document.querySelectorAll('[name="dexForGIR"]');
+    let rateGIRInputs = document.querySelectorAll('[name="rateForGIR"]');
+    let GIROutput = document.getElementById('GIROutput');
+    // let bwFluid = parseFloat(document.getElementById('bwFluid').value) || 0;
+    let bwGIR = document.getElementById('bwGIR').value || 0; //unit: grams
+    let totalGIR = 0;
+
+    for (let i = 0; i < dexGIRInputs.length; i++) {
+      // Parse the values of dex and rate as floats
+      let dexValue = parseFloat(dexGIRInputs[i].value) || 0; // Default to 0 if parsing fails
+      let rateValue = calculateExpression(rateGIRInputs[i].value) || 0; // Default to 0 if parsing fails
+            
+      // Multiply dex * rate and add to the total
+      totalGIR += dexValue * rateValue;
+    }
+    
+    totalGIR /= (6*bwGIR/1000);
+    GIROutput.innerHTML = `GIR = ${totalGIR.toFixed(2)}`;
+  }
+
+  // 增加一行GIR line
+  function addNewGIRLine() {
+    // Get the element you want to insert before
+    let referenceNode = document.getElementById('addNewGIRLineButton');
+
+    // Get the parent of the reference node (in this case, #container)
+    let parent = referenceNode.parentNode;
+
+    // Create a new row for the inputs
+    let newDiv = document.createElement('div');
+    newDiv.classList.add('row', 'mb-1'); //加入row mb-1屬性class
+    newDiv.innerHTML = `
+      <div class="input-group">
+        <span class="input-group-text">Dextrose</span>
+        <input name="dexForGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
+        <span class="input-group-text">%</span>
+        <input name="rateForGIR" type="text" class="form-control text-center" oninput="calculateGIR()">
+        <span class="input-group-text">ml/hr</span>
+      </div>    
+    `;
+    parent.insertBefore(newDiv, referenceNode);
+  }    
+
+  // 計算客製化dex
+  function customizedDex() {
+    let initialDex = parseFloat(document.getElementById('initialDexConcentrationForDexCalc').value) || 0;
+    let initialAmount = parseFloat(document.getElementById('initialDexAmountForDexCalc').value) || 0;
+    let amountD50W = parseFloat(document.getElementById('amountOfD50WForDexCalc').value) || 0;
+    let customizedDexOutputDiv = document.getElementById('customizedDexOutput');
+    let resultDex=0;
+    console.log(`${initialDex} ${initialAmount} ${amountD50W} ${(initialDex/100)*initialAmount+(50/100)*amountD50W} ${(initialAmount+amountD50W)}`);
+
+    resultDex = ( (initialDex/100)*initialAmount+(50/100)*amountD50W ) / (initialAmount+amountD50W) * 100;
+    customizedDexOutputDiv.innerHTML = `Dextrose = ${resultDex.toFixed(2)} %`;
+  }  
+  
+  // 計算UA UV深度
+  function depthOfLine() {
+    let depthUAUVDiv = document.getElementById('depthUAUV');
+    depthUAUVDiv.innerHTML="UA high: ___ cm, UA low: ___ cm, UV: ___ cm";
+
+    let bwForLineValue = parseFloat(document.getElementById('bwForLine').value) || 0;
+    let depthUAHigh = (bwForLineValue/1000)*3+9;
+    let depthUALow = (bwForLineValue/1000)+7;
+    let depthUV = (depthUAHigh/2+1);
+
+    if (bwForLineValue !== 0) {
+      depthUAUVDiv.innerHTML = `UA high: ${depthUAHigh.toFixed(1)} cm, UA low: ${depthUALow.toFixed(1)} cm, UV: ${depthUV.toFixed(1)} cm`;
+    }
+  }
+
+  // 設定藥物資料
+  const drugSpecs = {
+    'Dopamine'      : { concentration: 40     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+    'Dobutamine'    : { concentration: 12.5   , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+    'Milrinone'     : { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+    'Epinephrine'   : { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},
+    'Midazolam'     : { concentration: 5      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+    'Fentanyl'      : { concentration: 0.05   , unit: 'mg/ml' , rateUnit: 'mcg/kg/hr'  , decimalPlace: 3},
+    'Bumetanide'    : { concentration: 0.25   , unit: 'mg/ml' , rateUnit: 'mcg/kg/hr'  , decimalPlace: 1},
+    'Norepinephrine': { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},
+    'Nicardipine'   : { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+    'Nitroglycerin' : { concentration: 0.5    , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}, //小數點待確定
+    'Labetalol'     : { concentration: 5      , unit: 'mg/ml' , rateUnit: 'mg/kg/hr'   , decimalPlace: 2}, //小數點待確定
+    'PGE1'          : { concentration: 0.5    , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},
+    'Vasopressin'   : { concentration: 20     , unit: 'U/ml'  , rateUnit: 'mU/kg/min'  , decimalPlace: 0},
+    'Isoproterenol' : { concentration: 0.2    , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+    'Rocuronium'    : { concentration: 10     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+    'Cisatracurium' : { concentration: 2      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+    'Morphine'      : { concentration: 10     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}, //小數點待確定
+    'Lorazepam'     : { concentration: 2      , unit: 'mg/ml' , rateUnit: 'mg/kg/hr'   , decimalPlace: 2}, //小數點待確定
+    'Ketamine'      : { concentration: 50     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+    'Propofol'      : { concentration: 10     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}, //小數點待確定
+    'MgSO4'         : { concentration: 100    , unit: 'mg/ml' , rateUnit: 'mg/kg/hr'   , decimalPlace: 1},
+    'Lidocaine'     : { concentration: 50     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}  //小數點待確定
+  };
+
+  // 更新藥物濃度及計算抽取量
+  function updateDrugOrder() {
+    const drug = document.getElementById("drug0").value;
+    const originalConcentration = drugSpecs[drug].concentration;
+    const originalUnit = drugSpecs[drug].unit;
+    const targetRateUnit = drugSpecs[drug].rateUnit;
+    const decimal = drugSpecs[drug].decimalPlace;
+    document.getElementById("drugExtractAmountUnit").textContent = originalUnit.replace("/ml","");
+    document.getElementById("drug0").title = `${originalConcentration} ${originalUnit}`;
+    document.getElementById("rateUnit").textContent = `(${targetRateUnit})`;    
+
+    const bwDrug = parseFloat(document.getElementById("bwDrug").value);
+    const drugExtractAmount = parseFloat(document.getElementById("drugExtractAmount").value);
+    const flowRate = parseFloat(document.getElementById("flowRate").value);
+    const targetConcentrationRate = parseFloat(document.getElementById("targetConcentrationRate").value);
+    const totalVolume = parseFloat(document.getElementById("totalVolume0").value);
+    const diluter = document.getElementById("diluter0").value;
+    let orderText = "醫囑";
+    let medText = "藥囑";
+    let purelineOrderText = "Pure Line";
+
+    // 當 A 有值時，禁用 B；當 B 有值時，禁用 A；如果兩者都沒有值，兩者都啟用
+    const drugExtractAmountDiv = document.getElementById('drugExtractAmount');
+    const targetConcentrationRateDiv = document.getElementById('targetConcentrationRate');
+    if (drugExtractAmountDiv.value !== "") {
+      targetConcentrationRateDiv.disabled = true;
+    } else if (targetConcentrationRateDiv.value !== "") {
+      drugExtractAmountDiv.disabled = true;
+    } else {
+      drugExtractAmountDiv.disabled = false;
+      targetConcentrationRateDiv.disabled = false;
+    }
+
+    if (drug && bwDrug && flowRate && (drugExtractAmount||targetConcentrationRate) && totalVolume) {
+
+      //計算重量單位轉換
+      const unitOringinal = originalUnit.split("/")[0];
+      const unitTarget  = targetRateUnit.split("/")[0];
+      const unitComb = `${unitOringinal}-${unitTarget}`;
+      let unitConversionRatio = 1;
+      switch (unitComb) {
+        case 'mg-mcg': unitConversionRatio = 1/1000; break;
+        case 'U-mU'  : unitConversionRatio = 1/1000; break;
+        case 'mg-mg' : unitConversionRatio = 1; break;
+        default: unitConversionRatio = 1; break;
+      }
+      
+      //計算時間單位轉換
+      const timeTarget = targetRateUnit.split("/")[2];
+      let timeConversionRatio = 1;
+      if (timeTarget === 'min') timeConversionRatio = 60;
+      
+      //若沒有指定drugExtractAmount, 用targetConcentrationRate回推
+      const extractAmount = drugExtractAmount
+        ? drugExtractAmount
+        : ( targetConcentrationRate * timeConversionRatio * bwDrug * unitConversionRatio / flowRate * totalVolume).toFixed(decimal);  //計算提取量    
+
+      //若指定drugExtractAmount, 用則算出targetConcentrationRate
+      const concentrationRate = drugExtractAmount
+        ? ((drugExtractAmount/totalVolume)*flowRate/unitConversionRatio/bwDrug/timeConversionRatio).toFixed(2)
+        : targetConcentrationRate;
+
+      const extractedVolume = ( totalVolume - extractAmount / originalConcentration).toFixed(1); //計算溶劑體積
+      const pureLineConcentration = ( 1 * originalConcentration / unitConversionRatio / bwDrug / timeConversionRatio).toFixed(1);
+
+      orderText = `${drug} ${extractAmount+unitOringinal} in ${diluter} ${extractedVolume}ml (total ${totalVolume}ml), run ${flowRate}ml/hr = ${concentrationRate + targetRateUnit} `;
+      medText = `${drug} ${extractAmount+unitOringinal} in ${diluter} ${extractedVolume}ml (total ${totalVolume}ml), run as order`;
+      purelineOrderText =  `${drug} 1 ml/hr = ${pureLineConcentration + " " + targetRateUnit}`;     
+    }
+
+    document.getElementById("orderText").textContent = orderText;
+    document.getElementById("medText").textContent = medText;
+    document.getElementById("purelineOrderText").textContent = purelineOrderText;
+
+  }
+
+
+  // 設定藥物資料
+  const commonNBDrugs = {
+    'Ampicillin'    : { 
+      'non-meningitis': [ 
+        {GA_min: 0, GA_max: 34, PNA_min: 0, PNA_max: 7, BW_min: 0, BW_max: Infinity        , frequency: "Q12H", dose: 50, unit: "mg/kg/dose", description: "50 mg/kg/dose, Q12H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
+        {GA_min: 0, GA_max: 34, PNA_min: 8, PNA_max: 28, BW_min: 0, BW_max: Infinity       , frequency: "Q12H", dose: 75, unit: "mg/kg/dose", description: "75 mg/kg/dose, Q12H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
+        {GA_min: 35, GA_max: Infinity, PNA_min: 0, PNA_max: 28, BW_min: 0, BW_max: Infinity, frequency: "Q8H", dose: 50, unit: "mg/kg/dose", description: "50 mg/kg/dose, Q8H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"}
+      ],
+      'meningitis': [ 
+        {GA_min: 0, GA_max: 34, PNA_min: 0, PNA_max: 7, BW_min: 0, BW_max: Infinity        , frequency: "Q8H", dose: 100, unit: "mg/kg/dose", description: "100 mg/kg/dose, Q8H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
+        {GA_min: 0, GA_max: 34, PNA_min: 8, PNA_max:60, BW_min: 0, BW_max: Infinity        , frequency: "Q6H", dose: 75, unit: "mg/kg/dose", description: "75 mg/kg/dose, Q6H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
+        {GA_min: 35, GA_max: Infinity, PNA_min: 0, PNA_max: 7, BW_min: 0, BW_max: Infinity , frequency: "Q8H", dose: 100, unit: "mg/kg/dose", description: "100 mg/kg/dose, Q8H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
+        {GA_min: 35, GA_max: Infinity, PNA_min: 8, PNA_max: 60, BW_min: 0, BW_max: Infinity, frequency: "Q6H", dose: 75, unit: "mg/kg/dose", description: "75 mg/kg/dose, Q6H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"}
+      ]      
+    },
+    'Gentamicin'    : {},
+    'Cefotaxime'    : {},
+    'Ceftazidime'   : {},
+    'Vancomycin'    : {},
+    'Meropenem'     : {},
+    'Metronidazole' : {}
+  };
+
+  // 查找NB常用藥物的劑量
+  function findDose (drugName, condition, GA, PNA, BW){
+    const drugData = commonNBDrugs[drugName];
+    if (!drugData || !drugData[condition]) return null;
+
+    return drugData[condition].find(r => GA >= r.GA_min && GA <= r.GA_max && PNA >= r.PNA_min && PNA <= r.PNA_max && BW >= r.BW_min && BW <= r.BW_max) || null;
+  }
+
+  // 設定常用NB藥物資料
+  function commonNBDrugCalc(){
+    const drugChoice = document.getElementById('commonNBDrugChoice').value;
+    const birthdayForCommonNBDrug = document.getElementById('birthdayForCommonNBDrug').value;
+    const bwForCommonNBDrug = document.getElementById('bwForCommonNBDrug').value;
+    const weeksOfGAForCommonNBDrug = document.getElementById('weeksOfGAForCommonNBDrug').value;
+    const daysOfGAForCommonNBDrug = document.getElementById('daysOfGAForCommonNBDrug').value;
+    let nonMeningitisNBDoseDiv = document.getElementById('nonMeningitisNBDose');
+    let nonMeningitisNBDoseDescriptionDiv = document.getElementById('nonMeningitisNBDoseDescription');
+    let meningitisNBDoseDiv = document.getElementById('meningitisNBDose');
+    let meningitisNBDoseDescriptionDiv = document.getElementById('meningitisNBDoseDescription');
+    let textbookDoseDescriptionDiv = document.getElementById('textbookDoseDescription');
+
+    nonMeningitisNBDoseDiv.innerHTML="";
+    nonMeningitisNBDoseDescriptionDiv.innerHTML="";
+    meningitisNBDoseDiv.innerHTML="";
+    meningitisNBDoseDescriptionDiv.innerHTML="";
+    
+    const today = new Date();
+    const birthday = new Date(birthdayForCommonNBDrug);
+    //計算PNA in ms (以毫秒為單位)
+    const diffInMs = today-birthday;
+    const postnatalAge = Math.floor(diffInMs / (1000*60*60*24));
+
+
+
+    let nonMeningitisDose = findDose(drugChoice, 'non-meningitis', weeksOfGAForCommonNBDrug, postnatalAge, bwForCommonNBDrug);
+    let nonMeningitisDoseGiven = (nonMeningitisDose.dose*(bwForCommonNBDrug/1000)/3).toFixed(1);
+    if (nonMeningitisDose.description) {
+      nonMeningitisNBDoseDiv.innerHTML = `${nonMeningitisDoseGiven} mg ${nonMeningitisDose.frequency}`;
+      nonMeningitisNBDoseDescriptionDiv.innerHTML = nonMeningitisDose.description;
+    }
+
+    let meningitisDose = findDose(drugChoice, 'meningitis', weeksOfGAForCommonNBDrug, postnatalAge, bwForCommonNBDrug);
+    let meningitisDoseGiven = (meningitisDose.dose*(bwForCommonNBDrug/1000)/3).toFixed(1);
+    if (meningitisDose.description) {
+      meningitisNBDoseDiv.innerHTML = `${meningitisDoseGiven} mg ${meningitisDose.frequency}`;
+      meningitisNBDoseDescriptionDiv.innerHTML = meningitisDose.description;
+    }
+
+  }
+
+  // 複製按鈕
+  function copyToClipboard(id, button) {
+    const textToCopy = document.getElementById(id).textContent;
+    const originalText = button.textContent;
+
+    navigator.clipboard.writeText(textToCopy);
+    button.textContent = "Copied";
+    setTimeout(() => {
+      button.textContent = originalText;
+    }, 500);
+    button.blur();
+  }
+
+  // 加減乘除
+  function calculateExpression(expression) {
+    // 移除掉多餘的空格
+    expression = expression.replace(/\s+/g, "");
+
+    // 移除結尾的 +, -, *, / 符號
+    expression = expression.replace(/[+\-*\/]$/, "");
+
+    try {
+        // 使用 math.js 的 evaluate 方法計算表達式
+        let result = math.evaluate(expression); // 評估數學表達式
+        return result;
+    } catch (error) {
+        console.error("表達式錯誤:", error);
+        return 0; // 若計算過程中有錯誤，返回 null
+    }
+  }
+
+  // 解析PO
+  function parsePO(expression, HM, formula) {
+    const regex = /^(\d+\s*\*\s*\d+)(\s*\+\s*\d+\s*\*\s*\d+)*$/;
+    const matchPattern = /(\d+)\s*\*\s*(\d+)/g;
+    const poOutputDiv = document.getElementById("poOutput");
+    
+    let poOutput = [];
+    let poResult = "";
+    let totalIntake = calculateExpression(expression);
+    
+    //若為空值，回傳0
+    if (expression==="") {
+      return ["", 0];
+    }
+    //若為0，回傳NPO
+    if (expression==0) {
+      return ["Diet: NPO with OG decompression", 0];
+    }
+
+    // 先檢查是否符合 A*B (+ C*D + E*F ...) 格式
+    if (!regex.test(expression)) {
+        poResult = `Diet: ${totalIntake} ml/day`;
+        return [poResult, totalIntake]; // 若格式不正確，提前返回
+    }
+
+    // 使用正則表達式解析 "數字 * 數字" 格式
+    let match;
+    while ((match = matchPattern.exec(expression)) !== null) {
+        const [_, base, multiplier] = match;
+        poOutput.push({ base: parseInt(base), multiplier: parseInt(multiplier) });
+    }
+
+    // 計算 multiplier 的總和
+    const multiplierSum = poOutput.reduce((sum, item) => sum + item.multiplier, 0);
+    // 檢查 multiplierSum 是否能被 24 整除
+    if (24 % multiplierSum !== 0) {
+      poResult = `Diet: ${totalIntake} ml/day`;
+      return [poResult, totalIntake];
+    }
+
+    // 生成結果描述
+    poResult = poOutput.map((result) => `${result.base} ml * ${result.multiplier} meals`).join(" then ");
+    // 移除最後一個元素 (最後一個*幾餐)
+    let poResultArray = poResult.split(" * ");
+    poResultArray.pop(); 
+    poResult = poResultArray.join(" * ");
+ 
+    // 加上餵食頻率
+    poResult += ` / Q${24/multiplierSum}H`;
+
+    // 加上奶品
+    let diet = HM && formula ? `${HM}/${formula}` : HM || formula || '';
+    poResult =  diet ? `${diet}  ${poResult}` : poResult;
+
+    // 加上總量 = total ml/day
+    poResult = `Diet: ${poResult} (= total ${totalIntake} ml/day)`;
+    
+
+    return [poResult, totalIntake];
+  }
+
+  // validate input
+  function validateInput(input, min, max) {
+    return input >= min && input <= max;
+  }
+
+  // 顯示選擇的表格並隱藏其他表格
+  function showTable(tableId) {
+    // 取得所有的表格容器
+    const tables = document.querySelectorAll('.table-container');
+    tables.forEach((table) => {
+      table.classList.remove('active'); // 隱藏所有表格
+    });
+    // 顯示選擇的表格
+    document.getElementById(tableId).classList.add('active');
+  }
+
+  // Function to update text content and hide the element if it's empty
+  function updateOutput(id, value) {
+    const element = document.getElementById(id);
+    const cellOfElement = document.getElementById(id+"Cell");
+    if (value === "" ) {
+      cellOfElement.style.display = "none"; // Hide the element if value is an empty string
+    } else {
+      cellOfElement.style.display = "block"; // Show the element if value is not empty
+      element.textContent = value; // Update the text content
+    }
+  }
+
+  // lmsData
+  // const lmsData = {
+  //   //因資料保密僅開放內網存取
+  // };
+
+  // // 使用 async/await 來載入外部 JSON 檔案並返回資料
+  // async function loadJSON(filename) {
+  //     try {
+  //         const response = await fetch(filename);
+  //         const data = await response.json();
+  //         return data;  // 返回 JSON 資料
+  //     } catch (error) {
+  //         console.error('Error loading lms JSON:', error);
+  //         return null;  // 如果發生錯誤，返回 null
+  //     }
+  // }
+
+
+  // 獲取 LMS 參數並計算 Z-Score
+  function getZScore(parameter, sex, daysSinceGA22w0d, value) {
+    // console.log(lmsData);
+    const lms = lmsData[parameter][sex][daysSinceGA22w0d];
+    if (lms) {
+      const {L, M, S, percentile_3, percentile_10, percentile_50, percentile_90, percentile_97} = lms;
+      if (L === 0) {
+        return Math.log(value / M) / S;  //L趨近於0時使用極限公式
+      } else {
+        return ((Math.pow(value / M, L) - 1) / (S * L));  //常規公式
+      }
+    } else {
+      return null;  // 沒有對應的數據
+    }
+  }
+
+  // 處理數字後綴
+  function getOrdinalSuffix(number) {
+    const suffixes = ["th", "st", "nd", "rd"];
+    const value = number % 100;
+
+    // 選擇後綴，特別處理 11, 12, 13 這些例外數字
+    return number + (suffixes[(value - 20) % 10] || suffixes[value] || suffixes[0]);
+  }
+
+  function measurementsOfPreterms() {
+    const gestationalAgebyWeek = parseInt(document.getElementById("gestationalAgebyWeek").value);
+    const gestationalAgePlusDay = parseInt(document.getElementById("gestationalAgePlusDay").value);
+    const sex = document.getElementById("sex").value;
+    const birthWeight = parseFloat(document.getElementById("birthWeight").value);
+    const birthHeight = parseFloat(document.getElementById("birthHeight").value);
+    const birthHeadCircumference = parseFloat(document.getElementById("birthHeadCircumference").value);
+
+    // 換算成距離GA 22w0d 差幾天
+    let daysSinceGA22w0d = (gestationalAgebyWeek-22)*7+gestationalAgePlusDay;
+    // console.log(`距離22w0d差${daysSinceGA22w0d}天`);
+
+    // 計算 Z-score
+    const weightZScore = getZScore('weight', sex, daysSinceGA22w0d, birthWeight);
+    const heightZScore = getZScore('height', sex, daysSinceGA22w0d, birthHeight);
+    const headCircumferenceZScore = getZScore('hc', sex, daysSinceGA22w0d, birthHeadCircumference);
+
+    // 計算百分位 (若 Z-score 為 null 則設定百分位為 null)
+    const weightPercentile = weightZScore !== null ? (jStat.normal.cdf(weightZScore, 0, 1) * 100) : null;
+    const heightPercentile = heightZScore !== null ? (jStat.normal.cdf(heightZScore, 0, 1) * 100) : null;
+    const headCircumferencePercentile = headCircumferenceZScore !== null ? (jStat.normal.cdf(headCircumferenceZScore, 0, 1) * 100) : null;
+
+    const resultText = `
+      GA: ${gestationalAgebyWeek} weeks + ${gestationalAgePlusDay} day${gestationalAgePlusDay > 1 ? "s" : ""} <br>
+      Gender: ${sex} <br> 
+      BBW: ${birthWeight}g (= ${weightPercentile !== null ? getOrdinalSuffix(Math.trunc(weightPercentile)) : "N/A"} percentile, Z-score ${weightZScore !== null ? weightZScore.toFixed(2) : "N/A"})<br>
+      BBL: ${birthHeight}cm (= ${heightPercentile !== null ? getOrdinalSuffix(Math.trunc(heightPercentile)) : "N/A"} percentile, Z-score ${heightZScore !== null ? heightZScore.toFixed(2) : "N/A"})<br>
+      BHC: ${birthHeadCircumference}cm (= ${headCircumferencePercentile !== null ? getOrdinalSuffix(Math.trunc(headCircumferencePercentile)) : "N/A"} percentile, Z-score ${headCircumferenceZScore !== null ? headCircumferenceZScore.toFixed(2) : "N/A"})
+    `;
+
+    // Display
+    document.getElementById("measurementsOfPretermsOutput").innerHTML = resultText;
+  } 
+
+  // 在 DOM 加載完成後調用函數
+  document.addEventListener("DOMContentLoaded", function() {
+    updateDrugOrder(); // 初始化選擇的藥物濃度
+    updateFluid(); // 初始化fluid
+    calculateGIR(); // 初始化GIR
+    customizedDex();
+    depthOfLine();
+  });
+
+
+</script>
+</body>
+</html>
