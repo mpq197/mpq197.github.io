@@ -196,16 +196,16 @@
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;"></span>
                   <select id="fluid_TPN_dex" class="form-select text-center" onchange="calculateFluid()">
-                    <option value="0.025">Dex 2.5</option>
-                    <option value="0.05">Dex 5.0</option>
-                    <option value="0.075">Dex 7.5</option>
-                    <option value="0.1">Dex 10.0</option>
-                    <option value="0.125">Dex 12.5</option>
-                    <option value="0.15">Dex 15.0</option>
-                    <option value="0.175">Dex 17.5</option>
-                    <option value="0.2">Dex 20.0</option>
-                    <option value="0.225">Dex 22.5</option>
-                    <option value="0.25">Dex 25.0</option>
+                    <option value="2.5">Dex 2.5</option>
+                    <option value="5">Dex 5.0</option>
+                    <option value="7.5">Dex 7.5</option>
+                    <option value="10" selected>Dex 10.0</option>
+                    <option value="12.5">Dex 12.5</option>
+                    <option value="15">Dex 15.0</option>
+                    <option value="17.5">Dex 17.5</option>
+                    <option value="20">Dex 20.0</option>
+                    <option value="22.5">Dex 22.5</option>
+                    <option value="25">Dex 25.0</option>
                   </select>
                   <select id="fluid_TPN_Na" class="form-select text-center" onchange="calculateFluid()">
                     <option value="0" >Na  0</option>
@@ -294,6 +294,9 @@
                     <option value="D10W">D10W</option>
                     <option value="D0.225S(500)">D0.225S(500)</option>
                     <option value="D0.225S(500) + 2PC D50W">D0.225S(500) + 2PC D50W</option>
+                    <option value="Dex 2.5% in 0.45 Saline">Dex 2.5% in 0.45 saline</option>
+                    <option value="H/S">H/S</option>
+                    <option value="N/S">N/S</option>
                   </select>
                   <input type="number" id="fluid_regular_IV_rate" class="form-control text-center" oninput="calculateFluid()" />
                   <span class="input-group-text  justify-content-center" style="width: 15%;">ml/hr</span>
@@ -309,6 +312,7 @@
                   <span class="input-group-text copy-item flex-fill justify-content-center" id="fluid_nutrition_Kcal">Kcal</span>
                 </div> -->
                 <div class="input-group d-flex mt-2 mb-2">
+                  <span class="input-group-text flex-fill justify-content-center" id="fluid_nutrition_GIR">GIR ___</span>
                   <span class="input-group-text flex-fill justify-content-center" id="fluid_nutrition_Na">Na ___</span>
                   <span class="input-group-text flex-fill justify-content-center" id="fluid_nutrition_K">K ___</span>
                   <span class="input-group-text flex-fill justify-content-center" id="fluid_nutrition_Ca">Ca ___</span>
@@ -346,7 +350,7 @@
                 </div>
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">Dex</span>
-                  <input name="GIR_dex" type="number" class="form-control text-center" value="10" oninput="calculateGIR()">
+                  <input name="GIR_dex" id="GIR_dex_default_10_percent" type="number" class="form-control text-center" value="10" oninput="calculateGIR()">
                   <span class="input-group-text">%</span>
                   <input name="GIR_rate" type="text" class="form-control text-center" oninput="calculateGIR()">
                   <span class="input-group-text" style="width: 10%;">ml/hr</span>
@@ -354,7 +358,7 @@
                 </div>   
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">Dex</span>
-                  <input name="GIR_dex" type="number" class="form-control text-center" value="5" oninput="calculateGIR()">
+                  <input name="GIR_dex" id="GIR_dex_default_5_percent" type="number" class="form-control text-center" value="5" oninput="calculateGIR()">
                   <span class="input-group-text">%</span>
                   <input name="GIR_rate" type="text" class="form-control text-center" oninput="calculateGIR()">
                   <span class="input-group-text" style="width: 10%;">ml/hr</span>
@@ -684,7 +688,7 @@
       const fluidRegularIVType = document.getElementById('fluid_regular_IV_type').value || "普通IV";
       let fluidRegularIVRate = parseFloat(document.getElementById('fluid_regular_IV_rate').value) || 0;
       
-
+      let fluidTotalGIR = 0;
       let fluidTotalNa = 0;
       let fluidTotalK  = 0;
       let fluidTotalCa = 0;
@@ -711,14 +715,9 @@
       // Only one of fluidTPNGrams and fluidRegularIVRate can be entered
       const fluidRegularIVRateDIV = document.getElementById('fluid_regular_IV_rate');
       const fluidTPNGramsDIV = document.getElementById('fluid_TPN_grams');
-      if (fluidTPNGramsDIV.value !== "") {
-        fluidRegularIVRateDIV.disabled = true;
-      } else if (fluidRegularIVRateDIV.value !== "") {
-        fluidTPNGramsDIV.disabled = true;
-      } else {
-        fluidRegularIVRateDIV.disabled = false;
-        fluidTPNGramsDIV.disabled = false;
-      }
+      fluidRegularIVRateDIV.disabled = fluidTPNGramsDIV.value !== "";
+      fluidTPNGramsDIV.disabled = fluidRegularIVRateDIV.value !== "";
+
 
 
       // *****************************************
@@ -776,12 +775,12 @@
         fluidOtherSolutionTotalVolume += rateValue*24;
         //再算成分
         let baseValue = fluidOtherSolutionBase[i].value;
-        if      (baseValue === "L/R" ) { fluidTotalNa = rateValue*24/1000*130; } // L/R 1000ml = 130mEq Na
-        else if (baseValue === "H/S" ) { fluidTotalNa = rateValue*24/1000*77 ; } // H/S 1000ml = 77mEq Na
-        else if (baseValue === "N/S" ) { fluidTotalNa = rateValue*24/1000*154; } // N/S 1000ml = 154mEq Na
+        if      (baseValue === "L/R" ) { fluidTotalNa += rateValue*24/1000*130; } // L/R 1000ml = 130mEq Na
+        else if (baseValue === "H/S" ) { fluidTotalNa += rateValue*24/1000*77 ; } // H/S 1000ml = 77mEq Na
+        else if (baseValue === "N/S" ) { fluidTotalNa += rateValue*24/1000*154; } // N/S 1000ml = 154mEq Na
         else if (baseValue === "D/W" ) { }
-        else if (baseValue === "D5W" ) { }
-        else if (baseValue === "D10W") { }
+        else if (baseValue === "D5W" ) { fluidTotalGIR += rateValue*5;}
+        else if (baseValue === "D10W") { fluidTotalGIR += rateValue*10;}
       }
       console.log(`Total Other Solution: ${fluidOtherSolutionTotalVolume} ml/day`);
       
@@ -903,23 +902,47 @@
       //已計算other in I/O離子
       //已計算other solution離子
 
-      //計算TPN離子
+      //計算TPN離子, GIR
+      fluidTotalGIR+= fluidTPNRate*fluidTPNDex;
       fluidTotalNa += fluidTPNTotalVolume/1000*fluidTPNNa;
       fluidTotalK  += fluidTPNTotalVolume/1000*fluidTPNK;
       fluidTotalCa += fluidTPNTotalVolume/1000*fluidTPNCa;
       fluidTotalP  += fluidTPNTotalVolume/1000*fluidTPNP;
       fluidTotalMg += fluidTPNTotalVolume/1000*fluidTPNMg;
+
+      //計算regular IV離子, GIR
+      switch (fluidRegularIVType) {
+        case 'D0.225S(500)'           : {
+          fluidTotalNa += fluidRegularIVTotalVolume/1000*38.5; // D0.225S(500) 1000ml = 38.5mEq Na
+          fluidTotalGIR += fluidRegularIVRate*5;
+          break;
+        } 
+        case 'D0.225S(500) + 2PC D50W': {
+          fluidTotalNa += fluidRegularIVTotalVolume/1000*38.5; // D0.225S(500) 1000ml = 38.5mEq Na
+          fluidTotalGIR += fluidRegularIVRate*8.33;
+          break;
+        } 
+        case 'Dex 2.5% in 0.45 Saline': {
+          fluidTotalNa += fluidRegularIVTotalVolume/1000*77; // H/S 1000ml = 77 mEq Na
+          fluidTotalGIR += fluidRegularIVRate*2.5;
+          break;
+        } 
+        case 'D5W' : {fluidTotalGIR += fluidRegularIVRate*5; break;}
+        case 'D10W': {fluidTotalGIR += fluidRegularIVRate*10; break;}
+        case 'H/S' : {fluidTotalNa  += fluidRegularIVTotalVolume/1000*77;   break;} // H/S 1000ml = 77 mEq Na
+        case 'N/S' : {fluidTotalNa  += fluidRegularIVTotalVolume/1000*154;  break;} // N/S 1000ml = 154 mEq Na; 
+      }
       
-      //計算regular IV離子
-      if (fluidRegularIVType === "D0.225S(500)") fluidTotalNa += fluidRegularIVTotalVolume/1000*77; // D0.225S(500) 1000ml = 77mEq Na
-      else if (fluidRegularIVType === "D0.225S(500) + 2PC D50W") fluidTotalNa += fluidRegularIVTotalVolume/1000*77; // D0.225S(500) 1000ml = 77mEq Na
 
       let fluidTotalNaPerKg = fluidBW > 0 ? (fluidTotalNa/(fluidBW/1000)).toFixed(1) : "___";
       let fluidTotalKPerKg  = fluidBW > 0 ? (fluidTotalK /(fluidBW/1000)).toFixed(1) : "___";
       let fluidTotalCaPerKg = fluidBW > 0 ? (fluidTotalCa/(fluidBW/1000)).toFixed(1) : "___";
       let fluidTotalPPerKg  = fluidBW > 0 ? (fluidTotalP /(fluidBW/1000)).toFixed(1) : "___";
       let fluidTotalMgPerKg = fluidBW > 0 ? (fluidTotalMg/(fluidBW/1000)).toFixed(1) : "___";
+      
 
+      //計算GIR
+      fluidTotalGIR = fluidBW > 0 ? fluidTotalGIR/(6*fluidBW/1000) : "___";
 
       // *****************************************
       //           將計算結果輸出到網頁
@@ -943,6 +966,7 @@
       //將GIR ?, Na ? mEq, K ? mmol, Ca ? mEq, P ? mmol, Mg mEq 輸出到網頁
       // document.getElementById('fluid_nutrition_GIR').textContent = `GIR`;
       // document.getElementById('fluid_nutrition_Kcal').textContent = `Kcal`;
+      document.getElementById('fluid_nutrition_GIR').textContent = `GIR ${fluidTotalGIR.toFixed(2)}`;
       document.getElementById('fluid_nutrition_Na').textContent = `Na ${fluidTotalNaPerKg}`;
       document.getElementById('fluid_nutrition_K').textContent = `K ${fluidTotalKPerKg}`;
       document.getElementById('fluid_nutrition_Ca').textContent = `Ca ${fluidTotalCaPerKg}`;
@@ -1459,17 +1483,39 @@
       // 清除該區域內的計算結果
       targetDiv.querySelectorAll(".copy-item").forEach(el => el.textContent = "");
 
-
-      // 載入今天日期
-      loadTodayDate('anti_NB_birthday');
-
-      // 頁面載入時先執行一次計算
-      calculateFluid();
-      calculateGIR();
-      calculateDex();
-      calculateUmbilicalCathLen();
-      calculateDrugPreperation();
-      calculateAntibioticsForNB();
+      // 重新載入預設值
+      switch(elementID){
+        case 'fluid_content':
+          document.getElementById('fluid_TPN_dex').selectedIndex = 3; //index 3 = 10%
+          document.getElementById('fluid_TPN_Na').selectedIndex = 4;  //index 4 = 40;
+          document.getElementById('fluid_TPN_K').selectedIndex = 2;   //index 2 = 20;
+          document.getElementById('fluid_TPN_Ca').selectedIndex = 0;  //index 0 = 20;
+          document.getElementById('fluid_TPN_P').selectedIndex = 2;   //index 2 =  9;
+          document.getElementById('fluid_TPN_Mg').selectedIndex = 2;  //index 2 =  4;
+          calculateFluid();
+          break;
+        case 'GIR_content':
+          document.getElementById('GIR_dex_default_10_percent').value = 10;
+          document.getElementById('GIR_dex_default_5_percent').value = 5;
+          calculateGIR();
+          break;
+        case 'dex_content':
+          document.getElementById('dextrose_original_concentration').value = 5;
+          document.getElementById('dextrose_original_amount').value = 500;
+          document.getElementById('dextrose_add_concentration').value = 50;
+          calculateDex();
+          break;
+        case 'umbilical_cath_len_content':
+          calculateUmbilicalCathLen();
+          break;
+        case 'drug_content':
+          calculateDrugPreperation();
+          break;
+        case 'anti_NB_content':
+          loadTodayDate('anti_NB_birthday');
+          calculateAntibioticsForNB();
+          break
+      }
       addCopyEventListener();
     }
 
