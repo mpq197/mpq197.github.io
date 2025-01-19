@@ -1,32 +1,91 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- 
+    代辦事項
+    1. 新增ICD10搜尋功能
+    2. 新增問診重點等文件下載
+    3. 自動轉換成體重
+    4. local storage
+    5. insulin?
+  -->
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NeoAssist</title>
   <!-- 引入 Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
   <style>
     body {
-      background-color: #f4ece6;
+      background-color: #f1e6d8;
       font-family: 'Roboto', sans-serif;
+      color: #333333;
     }
-    .table-container {
-      margin-top: 30px;
+
+    .card {
+      background-color: #faf9f8;
+      margin-bottom: 10px;
     }
-    h2 {
-      color: #5d4037;
-      margin-top: 40px;
-      text-align: center;
+
+    .card-header {
+      background-color: #333333;
+      color: white;
     }
-    .order-content {
+
+    .nav-tabs {
       display: flex;
-      align-items: center;
+      justify-content: space-between;
+      border-color: #333333;
+      /* 選項平均分配 */
+    }
+
+    .nav-tabs .nav-item {
+      flex: 1;
+      /* 每個項目占同等比例 */
+      text-align: center;
+      /* 文字置中 */
+    }
+
+    .nav-tabs .nav-link {
+      color: #777777;
+      width: 100%;
+      /* 填滿父容器寬度 */
+      text-align: center;
+      /* 文字置中 */
+      border-radius: 0%;
+    }
+
+    .nav-tabs .nav-link.active {
+      background-color: #333333;
+      border-color: #333333;
+      color: white;
+    }
+
+    .nav-tabs .nav-link:hover {
+      border-color: #333333;
+    }
+
+    .input-group {
+      margin-bottom: 5px;
+    }
+
+    /* .input-group-text {
+      background-color: #f3ece4;
+    } */
+
+    /* 修改聚焦時的邊框顏色，並確保樣式優先級 */
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border-color: #333333 !important;
+      box-shadow: 0 0 0 0.2rem #333333 !important;
+      /* 強制使用深棕色邊框陰影 */
     }
 
     /*把輸入框的上下箭頭移除*/
-    input[type=number]::-webkit-inner-spin-button, 
-    input[type=number]::-webkit-outer-spin-button { 
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
       -webkit-appearance: none;
       margin: 0;
     }
@@ -34,1320 +93,1461 @@
       -moz-appearance: textfield;
     }
 
-    .table-container {
-      display: none; /* 預設隱藏 */
-    }
-    .table-container.active {
-      display: block; /* 顯示選擇的表格 */
-    }
-
-    .nav-item {
-      border-bottom: 1px solid #6c757d; /* 灰色分行線，可根據需求調整顏色 */
+    /* 移除預設的向下箭頭 */
+    .form-select {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      background-image: none !important;
+      padding-right: 0.75rem !important;
     }
 
+    .copy-item {
+      background-color: #faf9f8;
+      border-color: #dee2e6;
+      cursor: pointer;
+    }
+
+    .copy-item:hover,
+    input:hover,
+    .form-select:hover {
+      background-color: #e9e7e5 !important;
+      /* 統一的 Hover 顏色 */
+      color: #333333;
+      /* 保持文字顏色一致 */
+    }
   </style>
 </head>
+
 <body>
+  <!-- 分頁導航欄 -->
+  <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="fluidTab" data-bs-toggle="tab" data-bs-target="#fluidContent" type="button"
+        role="tab" aria-controls="fluidContent" aria-selected="true">
+        水分計算
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="medicationTab" data-bs-toggle="tab" data-bs-target="#medicationContent" type="button"
+        role="tab" aria-controls="medicationContent" aria-selected="false">
+        藥物泡法
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="growthTab" data-bs-toggle="tab" data-bs-target="#growthContent" type="button"
+        role="tab" aria-controls="growthContent" aria-selected="false">
+        生長測量
+      </button>
+    </li>
+  </ul>
 
-  <div class="container-fluid">
-    <div class="row">
-      <!-- 側邊欄 -->
-      <nav class="col-md-3 col-lg-2 d-md-block bg-dark sidebar" style="position: fixed; top: 0; left: 0; width: 100px; height: 100vh;">
-        <div class="position-sticky">
-          <ul class="nav flex-column text-white">
-            <li class="nav-item">
-              <button class="nav-link btn btn-dark text-start text-white w-100" onclick="showTable('fluidTable')">水份計算</button>
-            </li>
-            <li class="nav-item">
-              <button class="nav-link btn btn-dark text-start text-white w-100" onclick="showTable('drugTable')">藥物泡法</button>
-            </li>
-            <li class="nav-item">
-              <button class="nav-link btn btn-dark text-start text-white w-100" onclick="showTable('measurements')">生長測量</button>
-            </li>
-            <li class="nav-item">
-              <button class="nav-link btn btn-dark text-start text-white w-100" onclick="showTable('')">ＮＢ常用</button>
-            </li>
-          </ul>
-        </div>
-      </nav>
-    </div>
-  </div>
-
-
-  <div class="text-center" style="margin-left: 100px; display: flex; justify-content: center;">
-
-    <!-- 水份計算器 -->
-    <div id="fluidTable" class="table-container active">
-      <table class="table table-bordered align-middle">
-        <thead class="table-dark">
-          <tr>
-            <th colspan="2">水份計算</th>
-            <!-- <th style="width: 50%;">輸出</th> -->
-          </tr>
-        </thead>
-        <tbody>
-
-          <!--BW / TDF列-->
-          <tr>
-            <td>BW / TDF</td>
-            <td>
-              <div class="row">
-                <div class="col">
-                  <div class="input-group">
-                    <input type="number" id="bwFluid" class="form-control text-center" oninput="updateFluid()">
-                    <span class="input-group-text">g</span>
-                  </div>
+  <!-- 分頁內容區域 -->
+  <div class="tab-content" id="mainTabContent">
+    <!-- 分頁 1: 水分計算 -->
+    <div class="tab-pane show active" id="fluidContent" role="tabpanel" aria-labelledby="fluidTab">
+      <div class="container mt-4">
+        <div class="row mb-3">
+          <div class="col">
+            <div class="card h-100" id="fluid_content">
+              <div class="card-header text-center">水分計算</div>
+              <div class="card-body pb-0">
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">BW</span>
+                  <input type="number" id="fluid_BW" class="form-control text-center" oninput="calculateFluid()" />
+                  <span class="input-group-text  justify-content-center" style="width: 15%;">g</span>
                 </div>
-                <div class="col">
-                  <div class="input-group">
-                    <input type="number" id="tdf" class="form-control text-center" oninput="updateFluid()">
-                    <span class="input-group-text">ml/kg/day</span>
-                  </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">TDF</span>
+                  <input type="number" id="fluid_TDF" class="form-control text-center" oninput="calculateFluid()" />
+                  <span class="input-group-text  justify-content-center" style="width: 15%;">ml/kg/day</span>
                 </div>
-              </div>
-            </td>
-          </tr>
-
-          <!--PO列-->
-          <tr>
-            <td>PO</td>
-            <td>
-              <div class="row">
-                <div class="col">
-                  <div class="input-group">
-                    <select id="HM" class="form-select text-center" style="background-color: #f8f9fa;" onchange="updateFluid()">
-                      <option value=""></option>
-                      <option value="HM">HM</option>
-                    </select> 
-                    <span class="input-group-text">/</span>
-                    <select id="formula" class="form-select text-center" style="background-color: #f8f9fa;" onchange="updateFluid()">
-                      <option value=""></option>
-                      <option value="16%PF">16%PF</option>
-                      <option value="15%PDF">15%PDF</option>
-                      <option value="14%RF">14%RF</option>
-                    </select> 
-                    <input type="text" id="po" class="form-control text-center" oninput="updateFluid()">
-                    <span class="input-group-text">ml/day</span>
-                  </div>    
-                </div>
-              </div>
-            </td>
-          </tr>
-
-          <!--TPN列-->
-          <tr>
-            <td>TPN</td>
-            <td>
-              <div class="row">
-                <div class="col">
-                  <div class="input-group">
-                    <select id="tpnAA" class="form-select text-center" style="background-color: #f8f9fa;" onchange="updateFluid()">
-                      <option value="0.025">AA 2.5</option>
-                      <option value="0.030">AA 3.0</option>
-                      <option value="0.033">AA 3.3</option>
-                      <option value="0.035">AA 3.5</option>
-                      <option value="0.040">AA 4.0</option>
-                      <option value="0.050">AA 5.0</option>
-                    </select> 
-                    <input type="number" id="tpnGrams" class="form-control text-center" oninput="updateFluid()">
-                    <span class="input-group-text">g/kg/day</span>
-                    <input type="number" id="tpnHours" min="0" max="24" class="form-control text-center" placeholder="-" oninput="updateFluid()">
-                    <span class="input-group-text">hrs</span>
-                  </div>
-                </div>
-              </div>
-            </td>
-          </tr>
-
-          <!--LIPID列-->
-          <tr>
-            <td>Lipid</td>
-            <td>
-              <div class="row">
-                <div class="col">
-                  <div class="input-group">
-                    <select id="lipidChoice" class="form-select text-center" style="background-color: #f8f9fa;" onchange="updateFluid()">
-                      <option value="SMOF">SMOF</option>
-                      <option value="Omegaven">Omegaven</option>
-                    </select>             
-                    <input type="number" id="lipidGrams" class="form-control text-center" oninput="updateFluid()">
-                    <span class="input-group-text">g/kg/day</span>
-                    <input type="number" id="lipidHours" min="16" max="24" class="form-control text-center" placeholder="-" oninput="updateFluid()">
-                    <span class="input-group-text">hrs</span>
-                  </div>
-                </div>
-              </div>
-            </td>
-          </tr>
-
-          <!--other-->
-          <tr>
-            <td>其他</td>
-            <td>
-              <div class="row">
-                <div class="col">
-                  <div class="input-group">
-                    <input type="text" id="mlHr" class="form-control text-center" oninput="updateFluid()">
-                    <span class="input-group-text">ml/hr</span>
-                  </div>
-                </div>
-                <div class="col">
-                  <div class="input-group">
-                    <input type="text" id="mlDay" class="form-control text-center" oninput="updateFluid()">
-                    <span class="input-group-text">ml/day</span>
-                  </div>    
-                </div>
-              </div>
-            </td>
-          </tr>
-
-
-          <!--普通IV列-->
-          <tr>
-            <td>普通IV</td>
-            <td>
-              <div class="row">
-                <div class="col">
-                  <select id="regularIVChoice" class="form-select text-center" onchange="updateFluid()">
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">PO</span>
+                  <select id="fluid_PO_HM" class="form-select text-center" onchange="calculateFluid()">
+                    <option value="HM">HM</option>
                     <option value=""></option>
-                    <option value="D10W">D10W</option>
+                  </select>
+                  <span class="input-group-text" style="background-color: #ffffff;">/</span>
+                  <select id="fluid_PO_formula" class="form-select text-center" onchange="calculateFluid()">
+                    <option value="16%PF">16%PF</option>
+                    <option value="15%PDF">15%PDF</option>
+                    <option value="14%RF">14%RF</option>
+                    <option value=""></option>
+                  </select>
+                  <input type="text" id="fluid_PO" class="form-control text-center" oninput="calculateFluid()" />
+                  <span class="input-group-text  justify-content-center" style="width: 15%;">ml/day</span>
+                </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">TPN</span>
+                  <select id="fluid_TPN_AA" class="form-select text-center" onchange="calculateFluid()">
+                    <option value="0.025">AA 2.5</option>
+                    <option value="0.030">AA 3.0</option>
+                    <option value="0.033">AA 3.3</option>
+                    <option value="0.035">AA 3.5</option>
+                    <option value="0.040">AA 4.0</option>
+                    <option value="0.050">AA 5.0</option>
+                  </select>
+                  <input type="number" id="fluid_TPN_grams" class="form-control text-center" oninput="calculateFluid()" />
+                  <span class="input-group-text">g/kg/day</span>
+                  <input type="number" id="fluid_TPN_hours" min="0" max="24" class="form-control text-center" placeholder="-" oninput="calculateFluid()" />
+                  <span class="input-group-text  justify-content-center" style="width: 15%;">hrs</span>
+                </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;"></span>
+                  <select id="fluid_TPN_dex" class="form-select text-center" onchange="calculateFluid()">
+                    <option value="2.5">Dex 2.5</option>
+                    <option value="5">Dex 5.0</option>
+                    <option value="7.5">Dex 7.5</option>
+                    <option value="10" selected>Dex 10.0</option>
+                    <option value="12.5">Dex 12.5</option>
+                    <option value="15">Dex 15.0</option>
+                    <option value="17.5">Dex 17.5</option>
+                    <option value="20">Dex 20.0</option>
+                    <option value="22.5">Dex 22.5</option>
+                    <option value="25">Dex 25.0</option>
+                  </select>
+                  <select id="fluid_TPN_Na" class="form-select text-center" onchange="calculateFluid()">
+                    <option value="0" >Na  0</option>
+                    <option value="10">Na 10</option>
+                    <option value="20">Na 20</option>
+                    <option value="30">Na 30</option>
+                    <option value="40" selected>Na 40</option>
+                    <option value="50">Na 50</option>
+                    <option value="60">Na 60</option>
+                    <option value="60">Na 70</option>
+                    <option value="60">Na 80</option>
+                  </select>
+                  <select id="fluid_TPN_K" class="form-select text-center" onchange="calculateFluid()">
+                    <option value="0" >K  0</option>
+                    <option value="10">K 10</option>
+                    <option value="20" selected>K 20</option>
+                    <option value="30">K 30</option>
+                    <option value="40">K 40</option>
+                    <option value="50">K 50</option>
+                    <option value="60">K 60</option>
+                    <option value="70">K 70</option>
+                    <option value="80">K 80</option>
+                  </select>
+                  <select id="fluid_TPN_Ca" class="form-select text-center" onchange="calculateFluid()">
+                    <option value="20" selected>Ca 20</option>
+                    <option value="30">Ca 30</option>
+                    <option value="40">Ca 40</option>
+                  </select>
+                  <select id="fluid_TPN_P" class="form-select text-center" onchange="calculateFluid()">
+                    <option value="0">P 0</option>
+                    <option value="6">P 6</option>
+                    <option value="9" selected>P 9</option>
+                    <option value="10">P 10</option>
+                    <option value="13.5">P 13.5</option>
+                    <option value="15">P 15</option>
+                    <option value="20">P 20</option>
+                  </select>
+                  <select id="fluid_TPN_Mg" class="form-select text-center" onchange="calculateFluid()">
+                    <option value="0">Mg 0</option>
+                    <option value="2">Mg 2</option>
+                    <option value="4" selected>Mg 4</option>
+                  </select>
+                  <span class="input-group-text  justify-content-center" style="width: 15%;"></span>
+                </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">Lipid</span>
+                  <select id="fluid_lipid_type" class="form-select text-center" onchange="calculateFluid()">
+                    <option value="SMOF">SMOF</option>
+                    <option value="Omegaven">Omegaven</option>
+                  </select>
+                  <input type="number" id="fluid_lipid_grams" class="form-control text-center" oninput="calculateFluid()" />
+                  <span class="input-group-text">g/kg/day</span>
+                  <input type="number" id="fluid_lipid_hours" min="16" max="24" class="form-control text-center" placeholder="-" oninput="calculateFluid()" />
+                  <span class="input-group-text  justify-content-center" style="width: 15%;">hrs</span>
+                </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">Other</span>
+                  <select name="fluid_other_in_IO_base" class="form-select text-center" onchange="calculateFluid()">
+                    <option value=""></option>
+                    <option value="3% NaCl">3% NaCl</option>
+                  </select>
+                  <input type="text" name="fluid_other_in_IO" class="form-control text-center" oninput="calculateFluid()" />
+                  <span class="input-group-text  justify-content-center" style="width: 10%;">ml/day</span>
+                  <button class="btn btn-light" style="border-color: #e0e3e7; width: 5%;" onclick="addNewElement(this, 'fluid_other_in_IO')">+</button>
+                </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">Other</span>
+                  <select name="fluid_other_solution_base" class="form-select text-center" onchange="calculateFluid()">
+                    <option value=""></option>
+                    <option value="D/W">D/W base</option>
+                    <option value="D5W">D5W base</option>
+                    <option value="D10W">D10W base</option>
+                    <option value="H/S">H/S base</option>
+                    <option value="N/S">N/S base</option>
+                    <option value="L/R">L/R base</option>
+                  </select>
+                  <input type="text" name="fluid_other_solution_rate" class="form-control text-center" oninput="calculateFluid()" />
+                  <span class="input-group-text justify-content-center" style="width:10%">ml/hr</span>
+                  <button class="btn btn-light" style="border-color: #e0e3e7; width: 5%;" onclick="addNewElement(this, 'fluid_other_solution')">+</button>
+                </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">普通IV</span>
+                  <select id="fluid_regular_IV_type" class="form-select text-center" onchange="calculateFluid()">
+                    <option value=""></option>
                     <option value="D5W">D5W</option>
-                    <option value="D0.225S(500) + 2PC D50W">D0.225S(500) + 2PC D50W</option>
+                    <option value="D10W">D10W</option>
                     <option value="D0.225S(500)">D0.225S(500)</option>
-                  </select>    
+                    <option value="D0.225S(500) + 2PC D50W">D0.225S(500) + 2PC D50W</option>
+                    <option value="Dex 2.5% in 0.45 Saline">Dex 2.5% in 0.45 saline</option>
+                    <option value="H/S">H/S</option>
+                    <option value="N/S">N/S</option>
+                  </select>
+                  <input type="number" id="fluid_regular_IV_rate" class="form-control text-center" oninput="calculateFluid()" />
+                  <span class="input-group-text  justify-content-center" style="width: 15%;">ml/hr</span>
                 </div>
-                <div class="col">
-                  <div class="input-group">
-                    <input type="number" id="regularIV" class="form-control text-center" oninput="updateFluid()">
-                    <span class="input-group-text">ml/hr</span>
-                  </div>      
+              </div>
+              <div class="card-footer">
+                <div class="input-group d-flex mt-2 mb-2">
+                  <span class="input-group-text flex-fill justify-content-center" id="fluid_nutrition_GIR">GIR ___</span>
+                  <span class="input-group-text flex-fill justify-content-center" id="fluid_nutrition_Na">Na ___</span>
+                  <span class="input-group-text flex-fill justify-content-center" id="fluid_nutrition_K">K ___</span>
+                  <span class="input-group-text flex-fill justify-content-center" id="fluid_nutrition_Ca">Ca ___</span>
+                  <span class="input-group-text flex-fill justify-content-center" id="fluid_nutrition_P">P ___</span>
+                  <span class="input-group-text flex-fill justify-content-center" id="fluid_nutrition_Mg">Mg ___</span>
+                  <span class="input-group-text justify-content-center text-truncate" style="width: 15%;">mEq/kg/day</span>
                 </div>
-              </div>
-            </td>
-          </tr>
-          <!-- 輸出 -->
-          <tr>
-            <td rowspan="8">醫囑</td>
-            </td>
-            <td id="bwOutputCell" style="display: block;">
-              <div class="order-content">
-                <span id="bwOutput"></span>
-                <button class="btn btn-dark" style="margin-left: auto; " tabindex="999" onclick="copyToClipboard('bwOutput', this)">Copy</button>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td id="tdfOutputCell" style="display: none;">
-              <div class="order-content">
-                <span id="tdfOutput"></span>
-                <button class="btn btn-dark" style="margin-left: auto; " tabindex="999" onclick="copyToClipboard('tdfOutput', this)">Copy</button>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td id="poOutputCell" style="display: none;">
-              <div class="order-content">
-                <span id="poOutput"></span>
-                <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('poOutput', this)">Copy</button>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td id="tpnOutputCell" style="display: none;">
-              <div class="order-content">
-                <span id="tpnOutput"></span>
-                <button class="btn btn-dark" style="margin-left: auto; " tabindex="999" onclick="copyToClipboard('tpnOutput', this)">Copy</button>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td id="lipidOutputCell" style="display: none;">
-              <div class="order-content">
-                <span id="lipidOutput"></span>
-                <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('lipidOutput', this)">Copy</button>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td id="mlHrOutputCell" style="display: none;">
-              <div class="order-content">
-                <span id="mlHrOutput"></span>
-                <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('mlHrOutput', this)">Copy</button>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td id="mlDayOutputCell" style="display: none;">
-              <div class="order-content">
-                <span id="mlDayOutput"></span>
-                <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('mlDayOutput', this)">Copy</button>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td id="regularIVOutputCell" style="display: none;">
-              <div class="order-content">
-                <span id="regularIVOutput"></span>
-                <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('regularIVOutput', this)">Copy</button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div class="row">
-
-        <!-- GIR 計算器 -->
-        <div class="col">
-          <table class="table table-bordered align-middle" id="GIRTable">
-            <thead class="table-dark">
-              <tr><th>GIR計算</th></tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>
-                  <div class="row mb-1">
-                    <div class="input-group">
-                      <span class="input-group-text">BW</span>
-                      <input id="bwGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
-                      <span class="input-group-text">g</span>
-                    </div>    
+                <div class="row">
+                  <div class="col-10">
+                    <ul class="list-group mt-2 mb-2" id="fluid_order_output">
+                      <li class="list-group-item copy-item" name="fluid_order_outputs">BW:</li>
+                      <li class="list-group-item copy-item" name="fluid_order_outputs">Total daily fluid:</li>
+                    </ul>    
                   </div>
-                  <div class="row mb-1">
-                    <div class="input-group">
-                      <span class="input-group-text">Dextrose</span>
-                      <input name="dexForGIR" type="number" class="form-control text-center" value="10" oninput="calculateGIR()">
-                      <span class="input-group-text">%</span>
-                      <input name="rateForGIR" type="text" class="form-control text-center" oninput="calculateGIR()">
-                      <span class="input-group-text">ml/hr</span>
-                    </div>    
-                  </div>
-                  <div class="row mb-1">
-                    <div class="input-group">
-                      <span class="input-group-text">Dextrose</span>
-                      <input name="dexForGIR" type="number" class="form-control text-center" value="5" oninput="calculateGIR()">
-                      <span class="input-group-text">%</span>
-                      <input name="rateForGIR" type="text" class="form-control text-center" oninput="calculateGIR()">
-                      <span class="input-group-text">ml/hr</span>
-                    </div>    
-                  </div>
-                  <div class="row mb-1">
-                    <div class="input-group">
-                      <span class="input-group-text">Dextrose</span>
-                      <input name="dexForGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
-                      <span class="input-group-text">%</span>
-                      <input name="rateForGIR" type="text" class="form-control text-center" oninput="calculateGIR()">
-                      <span class="input-group-text">ml/hr</span>
-                    </div>    
-                  </div>
-                  <div class="row mb-1">
-                    <div class="input-group">
-                      <span class="input-group-text">Dextrose</span>
-                      <input name="dexForGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
-                      <span class="input-group-text">%</span>
-                      <input name="rateForGIR" type="text" class="form-control text-center" oninput="calculateGIR()">
-                      <span class="input-group-text">ml/hr</span>
-                    </div>    
-                  </div>
-                  <div class="row" id="addNewGIRLineButton">
-                    <div class="input-group text-center">
-                      <button class="btn btn-light" style="width: 100%; border-color: #e0e3e7;" onclick="addNewGIRLine()">+</button>
+                  <div class="col-2" style="padding-left: 0%;">
+                    <div class="d-flex flex-column justify-content-center align-items-center h-100">
+                      <!-- 原本的 Reset 按鈕 -->
+                      <button class="btn btn-secondary w-75 h-50" onclick="resetForm('fluid_content')">Reset</button>
                     </div>
                   </div>
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <div id="GIROutput" class="order-content">GIR = </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>    
-        </div>
-
-        <div class="col">
-          <div class="row">
-
-            <!-- 周邊IV dex 計算器 -->
-            <table class="table table-bordered align-middle">
-              <thead class="table-dark">
-                <tr><th>客製dextrose泡法</th></tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>
-                    <div class="row">
-                      <div class="input-group mb-1">
-                        <span class="input-group-text">原液dextrose</span>
-                        <input id="initialDexConcentrationForDexCalc" type="number" class="form-control text-center" value="5" oninput="customizedDex()">
-                        <span class="input-group-text">%</span>
-                        <input id="initialDexAmountForDexCalc" type="number" class="form-control text-center" value="500" oninput="customizedDex()">
-                        <span class="input-group-text">ml</span>
-                      </div>  
-                    </div>
-                    <div class="row">
-                      <div class="input-group">
-                        <span class="input-group-text">加上</span>
-                        <input id="amountOfD50WForDexCalc" type="number" class="form-control text-center" oninput="customizedDex()">
-                        <span class="input-group-text">ml D50W (1pc=20ml)</span>
-                        <!-- <input type="number" class="form-control text-center" value="50"> -->
-                        <!-- <span class="input-group-text">%</span> -->
-                        <!-- <input type="number" class="form-control text-center" value="20"> -->
-                        <!-- <span class="input-group-text">ml</span> -->
-                      </div>  
-                    </div>
-                  </td>
-                </tr>
-                <tr>
-                  <td>
-                    <div class="row">
-                      <div id="customizedDexOutput" class="order-content">Dextrose = </div>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>  
+                </div> 
+              </div>
+            </div>
           </div>
-
-          <div class="row">
-            <!-- On line 深度, 可能包含各種line size depth-->
-            <table class="table table-bordered align-middle">
-              <thead class="table-dark">
-                <tr><th>UA UV 深度</th></tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>
-                    <div class="input-group">
-                      <span class="input-group-text">BW</span>
-                      <input id="bwForLine" class="form-control text-center" type="number" oninput="depthOfLine()">
-                      <span class="input-group-text">g</span>
+        </div>
+        <div class="row mb-3">
+          <div class="col">
+            <div class="card h-100" id="GIR_content">
+              <div class="card-header text-center">GIR計算</div>
+              <div class="card-body pb-0">
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">BW</span>
+                  <input type="number" id="GIR_BW" class="form-control text-center" oninput="calculateGIR()" />
+                  <span class="input-group-text  justify-content-center" style="width: 15%;">g</span>
+                </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">Dex</span>
+                  <input name="GIR_dex" id="GIR_dex_default_10_percent" type="number" class="form-control text-center" value="10" oninput="calculateGIR()">
+                  <span class="input-group-text">%</span>
+                  <input name="GIR_rate" type="text" class="form-control text-center" oninput="calculateGIR()">
+                  <span class="input-group-text" style="width: 10%;">ml/hr</span>
+                  <button class="btn btn-light" style="border-color: #e0e3e7; width: 5%;" onclick="addNewElement(this, 'GIR_dex')">+</button>
+                </div>   
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">Dex</span>
+                  <input name="GIR_dex" id="GIR_dex_default_5_percent" type="number" class="form-control text-center" value="5" oninput="calculateGIR()">
+                  <span class="input-group-text">%</span>
+                  <input name="GIR_rate" type="text" class="form-control text-center" oninput="calculateGIR()">
+                  <span class="input-group-text" style="width: 10%;">ml/hr</span>
+                  <button class="btn btn-light" style="border-color: #e0e3e7; width: 5%;" onclick="addNewElement(this, 'GIR_dex')">+</button>
+                </div>   
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">Dex</span>
+                  <input name="GIR_dex" type="number" class="form-control text-center" oninput="calculateGIR()">
+                  <span class="input-group-text">%</span>
+                  <input name="GIR_rate" type="text" class="form-control text-center" oninput="calculateGIR()">
+                  <span class="input-group-text" style="width: 10%;">ml/hr</span>
+                  <button class="btn btn-light" style="border-color: #e0e3e7; width: 5%;" onclick="addNewElement(this, 'GIR_dex')">+</button>
+                </div>   
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">Dex</span>
+                  <input name="GIR_dex" type="number" class="form-control text-center" oninput="calculateGIR()">
+                  <span class="input-group-text">%</span>
+                  <input name="GIR_rate" type="text" class="form-control text-center" oninput="calculateGIR()">
+                  <span class="input-group-text" style="width: 10%;">ml/hr</span>
+                  <button class="btn btn-light" style="border-color: #e0e3e7; width: 5%;" onclick="addNewElement(this, 'GIR_dex')">+</button>
+                </div>   
+              </div>
+              <div class="card-footer">
+                <div class="row">
+                  <div class="col-10">
+                    <div class="input-group d-flex mt-2 mb-2">
+                      <span class="input-group-text copy-item flex-fill justify-content-center" id="GIR_result">GIR 0.0</span>
+                    </div>    
+                  </div>
+                  <div class="col-2" style="padding-left: 0%;">
+                    <div class="d-flex justify-content-center align-items-center h-100">
+                      <button class="btn btn-secondary" onclick="resetForm('GIR_content')">Reset</button>
+                    </div>    
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="card h-100" id="dex_content">
+              <div class="card-header text-center">普通點滴dextrose計算</div>
+              <div class="card-body d-flex align-items-center pb-0">
+                <div>
+                  <div class="input-group">
+                    <span class="input-group-text justify-content-center" style="width: 15%;">Dex</span>
+                    <input type="number" id="dextrose_original_concentration" class="form-control text-center" value="5" oninput="calculateDex()" />
+                    <span class="input-group-text  justify-content-center" style="width: 15%;">%</span>
+                    <input type="number" id="dextrose_original_amount" class="form-control text-center" value="500" oninput="calculateDex()" />
+                    <span class="input-group-text  justify-content-center" style="width: 15%;">ml</span>                  
+                  </div>
+                  <div class="input-group">
+                    <span class="input-group-text justify-content-center w-100" style="background-color: transparent; border: 0cm;">+</span>          
+                  </div>
+                  <div class="input-group">
+                    <span class="input-group-text justify-content-center" style="width: 15%;">Dex</span>
+                    <input type="number" id="dextrose_add_concentration" class="form-control text-center" value="50" oninput="calculateDex()"/>
+                    <span class="input-group-text  justify-content-center" style="width: 15%;">%</span>
+                    <input type="number" id="dextrose_add_amount" class="form-control text-center" oninput="calculateDex()" />
+                    <span class="input-group-text  justify-content-center" style="width: 15%;">ml</span>                  
+                  </div>
+                  <div class="input-group">
+                    <span class="input-group-text justify-content-center w-100" style="background-color: transparent; border: 0cm;">| |</span>          
+                  </div>
+                </div>
+              </div>
+              <div class="card-footer">
+                <div class="row">
+                  <div class="col-10">
+                    <div class="input-group d-flex mt-2 mb-2">
+                      <span class="input-group-text copy-item flex-fill justify-content-center" id="dextrose_concentration_final">Dextrose = 0.00 %</span>
+                    </div>    
+                  </div>
+                  <div class="col-2" style="padding-left: 0%;">
+                    <div class="d-flex justify-content-center align-items-center h-100">
+                      <button class="btn btn-secondary" onclick="resetForm('dex_content')">Reset</button>
+                    </div>    
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="row mb-4">
+          <div class="col">
+            <div class="card h-100" id="umbilical_cath_len_content">
+              <div class="card-header text-center">UA、UV深度計算</div>
+              <div class="card-body pb-0">
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">BW</span>
+                  <input type="number" id="umbilical_cath_len_BW" class="form-control text-center" oninput="calculateUmbilicalCathLen()" />
+                  <span class="input-group-text  justify-content-center" style="width: 15%;">g</span>
+                </div>
+              </div>
+              <div class="card-footer">
+                <div class="row">
+                  <div class="col-10">
+                    <div class="input-group d-flex mt-2 mb-2">
+                      <span class="input-group-text justify-content-center" style="width:30%;">UA</span>
+                      <span class="input-group-text copy-item flex-fill justify-content-center" id="umbilical_cath_len_UA"></span>
+                    </div>  
+                    <div class="input-group d-flex mt-2 mb-2">
+                      <span class="input-group-text justify-content-center" style="width:30%;">UV</span>
+                      <span class="input-group-text copy-item flex-fill justify-content-center" id="umbilical_cath_len_UV"></span>
                     </div>
-                  </td>
-                </tr>
-                <tr>
-                  <td>
-                    <div id="depthUAUV" class="order-content">UA high: ___ cm, UA low: ___ cm, UV: ___ cm</div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>            
+                  </div>
+                  <div class="col-2" style="padding-left: 0%;">
+                    <div class="d-flex justify-content-center align-items-center h-100">
+                      <button class="btn btn-secondary" onclick="resetForm('umbilical_cath_len_content')">Reset</button>
+                    </div>    
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-
     </div>
 
-    <!-- 藥物泡法 -->
-    <div id="drugTable" class="table-container">
-      <table class="table align-middle table-bordered">
-        <thead class="table-dark">
-          <tr>
-            <th>藥物泡法</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>
-              <div class="row">
-                <div class="col">
-                  <div class="input-group">
-                    <input type="number" id="bwDrug" class="form-control text-center" oninput="updateDrugOrder()">
-                    <span class="input-group-text">kg</span>
-                  </div>
+    <!-- 分頁 2: 藥物泡法 -->
+    <div class="tab-pane" id="medicationContent" role="tabpanel" aria-labelledby="medicationTab">
+      <div class="container mt-4">
+        <div class="row mb-3">
+          <div class="col">
+            <div class="card h-100" id="drug_content">
+              <div class="card-header text-center">藥物泡法</div>
+              <div class="card-body pb-0">
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">BW</span>
+                  <input type="text" id="drug_BW" class="form-control text-center" oninput="calculateDrugPreperation()"/>
+                  <span class="input-group-text justify-content-center" style="width: 15%;">kg</span>
                 </div>
-                <div class="col">
-                  <div class="input-group">
-                    <select id="drug0" class="form-select text-center" title="" onchange="updateDrugOrder()">
-                      <option value="Dopamine"      >Dopamine       </option>
-                      <option value="Dobutamine"    >Dobutamine     </option>
-                      <option value="Milrinone"     >Milrinone      </option>
-                      <option value="Epinephrine"   >Epinephrine    </option>
-                      <option value="Midazolam"     >Midazolam      </option>
-                      <option value="Fentanyl"      >Fentanyl       </option>
-                      <option value="Bumetanide"    >Bumetanide     </option>
-                      <option value="Norepinephrine">Norepinephrine </option>
-                      <option value="Nicardipine"   >Nicardipine    </option>
-                      <option value="Nitroglycerin" >Nitroglycerin  </option>
-                      <option value="Labetalol"     >Labetalol      </option>
-                      <option value="PGE1"          >PGE1           </option>
-                      <option value="Vasopressin"   >Vasopressin    </option>
-                      <option value="Isoproterenol" >Isoproterenol  </option>
-                      <option value="Rocuronium"    >Rocuronium     </option>
-                      <option value="Cisatracurium" >Cisatracurium  </option>
-                      <option value="Morphine"      >Morphine       </option>
-                      <option value="Lorazepam"     >Lorazepam      </option>
-                      <option value="Ketamine"      >Ketamine       </option>
-                      <option value="Propofol"      >Propofol       </option>
-                      <option value="MgSO4"         >MgSO4          </option>
-                      <option value="Lidocaine"     >Lidocaine      </option>
-                      <!-- More options -->
-                    </select>
-                    <input type="text" id="drugExtractAmount" class="form-control text-center" oninput="updateDrugOrder()">
-                    <span class="input-group-text" id="drugExtractAmountUnit"></span>
-                  </div> 
-                </div> 
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <div class="row">
-                <div class="col">
-                  <div class="input-group">
-                    <span class="input-group-text">in</span>
-                    <select id="diluter0" class="form-select text-center" onchange="updateDrugOrder()">
-                      <option value="D5W">D5W</option>
-                      <option value="N/S">N/S</option>
-                      <option value="D/W">D/W</option>
-                    </select>  
-                    <span class="input-group-text">total</span>
-                    <input type="number" id="totalVolume0" class="form-control text-center" oninput="updateDrugOrder()">
-                    <span class="input-group-text">ml</span>
-                  </div>
-                </div>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <div class="row">
-                <div class="col">
-                  <div class="input-group">
-                    <span class="input-group-text">run</span> 
-                    <input type="number" id="flowRate" class="form-control text-center" oninput="updateDrugOrder()">
-                    <span class="input-group-text">ml/hr</span>
-                    <span class="input-group-text">=</span> 
-                    <input type="number" id="targetConcentrationRate" class="form-control text-center" oninput="updateDrugOrder()">
-                    <span id="rateUnit" class="input-group-text">mcg/kg/min</span>
-                  </div>    
-                </div>
-              </div>
-            </td>
-          </tr>
-
-          <!-- 醫囑 output -->
-          <tr>
-            <td colspan="6">
-              <div class="order-content">
-                <span id="orderText">醫囑</span>
-                <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('orderText', this)">COPY</button>
-              </div>
-            </td>
-          </tr>
-
-          <!-- 藥囑 output -->
-          <tr>
-            <td colspan="6">
-              <div class="order-content">
-                <span id="medText">藥囑</span>
-                <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('medText', this)">COPY</button>
-              </div>
-            </td>
-          </tr>
-
-          <!-- PURE LINE output -->
-          <tr>
-            <td colspan="6">
-              <div class="order-content">
-                <span id="purelineOrderText">Pure Line</span>
-                <button class="btn btn-dark" style="margin-left: auto; " tabindex="999"onclick="copyToClipboard('purelineOrderText', this)">COPY</button>
-              </div>
-            </td>
-          </tr>
-
-        </tbody>
-      </table>
-
-      <!-- NB常用藥物 -->
-      <table class="table align-middle table-bordered">
-        <thead class="table-dark">
-          <tr>
-            <th>NB常用藥物 (測試中)</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>
-              <div class="row">
-                <div class="col">
-                  <select id="commonNBDrugChoice" class="form-select text-center" onchange="commonNBDrugCalc()">
-                    <option value="Ampicillin">Ampicillin</option>
-                    <option value="Gentamicin">Gentamicin</option>
-                    <option value="Cefotaxime">Cefotaxime</option>
-                    <option value="Ceftazidime">Ceftazidime</option>
-                    <option value="Vancomycin">Vancomycin</option>
-                    <option value="Meropenem">Meropenem</option>
-                    <option value="Metronidazole">Metronidazole</option>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">Drug</span>
+                  <select id="drug_name" class="form-select text-center" title="" onchange="calculateDrugPreperation()">
+                    <option value="Dopamine"      >Dopamine       </option>
+                    <option value="Dobutamine"    >Dobutamine     </option>
+                    <option value="Milrinone"     >Milrinone      </option>
+                    <option value="Epinephrine"   >Epinephrine    </option>
+                    <option value="Midazolam"     >Midazolam      </option>
+                    <option value="Fentanyl"      >Fentanyl       </option>
+                    <option value="Bumetanide"    >Bumetanide     </option>
+                    <option value="Norepinephrine">Norepinephrine </option>
+                    <option value="Nicardipine"   >Nicardipine    </option>
+                    <option value="Nitroglycerin" >Nitroglycerin  </option>
+                    <option value="Labetalol"     >Labetalol      </option>
+                    <option value="PGE1"          >PGE1           </option>
+                    <option value="Vasopressin"   >Vasopressin    </option>
+                    <option value="Isoproterenol" >Isoproterenol  </option>
+                    <option value="Rocuronium"    >Rocuronium     </option>
+                    <option value="Cisatracurium" >Cisatracurium  </option>
+                    <option value="Morphine"      >Morphine       </option>
+                    <option value="Lorazepam"     >Lorazepam      </option>
+                    <option value="Ketamine"      >Ketamine       </option>
+                    <option value="Propofol"      >Propofol       </option>
+                    <option value="MgSO4"         >MgSO4          </option>
+                    <option value="Lidocaine"     >Lidocaine      </option>
+                    <!-- More options -->
                   </select>
+                  <input type="text" id="drug_extract_amount" class="form-control text-center" oninput="calculateDrugPreperation()" />
+                  <span class="input-group-text justify-content-center" style="width: 15%;" id="drug_extract_amount_unit">mg</span>
                 </div>
-                <div class="col">
-                  <div class="input-group mb-2">
-                    <span class="input-group-text">BW</span>
-                    <input id="bwForCommonNBDrug" class="form-control text-center" type="number" oninput="commonNBDrugCalc()">
-                    <span class="input-group-text">g</span>
-                  </div>
-                </div>
-              </div>
-              <div class="row">
-                <div class="col">
-                  <div class="input-group mb-1">
-                    <span class="input-group-text">GA</span>
-                    <input id="weeksOfGAForCommonNBDrug" class="form-control text-center" type="number" oninput="commonNBDrugCalc()">
-                    <span class="input-group-text">w</span>
-                    <input id="daysOfGAForCommonNBDrug" class="form-control text-center" type="number" oninput="commonNBDrugCalc()">
-                    <span class="input-group-text">d</span>
-                  </div>                      
-                </div>
-                <div class="col">
-                  <div class="input-group mb-1">
-                    <span class="input-group-text">Birthday</span>
-                    <input id="birthdayForCommonNBDrug" class="form-control text-center" type="date" oninput="commonNBDrugCalc()">
-                  </div>    
-                </div>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <div class="row align-items-center">
-                <div class="col-2 border-end border-2">non-meningitis</div>
-                <div class="col-2 border-end border-2" id="nonMeningitisNBDose"></div>
-                <div class="col">
-                  <div class="order-content">
-                    <span id="nonMeningitisNBDoseDescription"></span>
-                    <button class="btn btn-dark" style="margin-left: auto; " tabindex="999" onclick="copyToClipboard('stdNBDose', this)">COPY</button>
-                  </div>
-                </div>
-              </div>
-            </td>  
-          </tr>
-          <tr>
-            <td>
-              <div class="row align-items-center">
-                <div class="col-2 border-end border-2">meningitis</div>
-                <div class="col-2 border-end border-2" id="meningitisNBDose"></div>
-                <div class="col">
-                  <div class="order-content">
-                    <span id="meningitisNBDoseDescription"></span>
-                    <button class="btn btn-dark" style="margin-left: auto; " tabindex="999" onclick="copyToClipboard('meningitisNBDose', this)">COPY</button>
-                  </div>
-                </div>
-              </div>
-            </td>  
-          </tr>
-          <tr>
-            <td>
-              <div class="row align-items-center">
-                <div class="col-2 border-end border-2">說明</div>
-                <div class="col">
-                  <div class="order-content">
-                    <span id="textbookDoseDescription"></span>
-                  </div>
-                </div>
-              </div>
-            </td>  
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- 生長測量 -->
-    <div id="measurements" class="table-container">
-      <table class="table align-middle table-bordered">
-        <thead class="table-dark">
-          <tr>
-            <th>生長測量 (僅限內網使用)</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>
-              <div class="order-content">
-                <span>本網站使用的生長曲線數據參數由 Dr.Fenton 提供，特此感謝。 (Creative Commons license)</span>
-              </div>
-              <div class="order-content">
-                <span>Fenton TR, Kim JH. A systematic review and meta-analysis to revise the Fenton growth chart for preterm infants. BMC Pediatr. 2013;13:59.</span> 
-              </div>
-            </td>
-          </tr>          
-          <tr>
-            <td>
-              <div class="row">
-                <div class="col">
-                  <div class="input-group">
-                    <input type="number" id="gestationalAgebyWeek" class="form-control text-center" oninput="measurementsOfPreterms()">
-                    <span class="input-group-text">weeks</span>
-                    <input type="number" id="gestationalAgePlusDay" class="form-control text-center" oninput="measurementsOfPreterms()">
-                    <span class="input-group-text">days</span>
-                  </div>
-                </div>
-              <div class="col">
                 <div class="input-group">
-                  <span class="input-group-text">sex: </span>
-                  <select id="sex" class="form-select text-center" onchange="measurementsOfPreterms()">
-                    <option value="" selected></option>
-                    <option value="male">boy</option>
-                    <option value="female">female</option>
+                  <span class="input-group-text justify-content-center" style="width: 15%;">In</span>
+                  <select id="drug_diluter_name" class="form-select text-center" onchange="calculateDrugPreperation()">
+                    <option value="D5W">D5W</option>
+                    <option value="N/S">N/S</option>
+                    <option value="D/W">D/W</option>
                   </select>  
+                  <span class="input-group-text justify-content-center">total</span>
+                  <input type="number" id="drug_total_final_volume" class="form-control text-center" oninput="calculateDrugPreperation()" />
+                  <span class="input-group-text justify-content-center" style="width: 15%;">ml</span>
+                </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">Run</span>
+                  <input type="text" id="drug_infusion_rate" class="form-control text-center" oninput="calculateDrugPreperation()" />
+                  <span class="input-group-text justify-content-center">ml/hr</span>
+                  <span class="input-group-text justify-content-center">=</span>
+                  <input type="number" id="drug_infusion_final_rate" class="form-control text-center" oninput="calculateDrugPreperation()" />
+                  <span class="input-group-text justify-content-center" id="drug_infusion_final_rate_unit" style="min-width: 15%;">mcg/kg/min</span>
                 </div>
               </div>
-            </td>
-          </tr>      
-          <tr>
-            <td>
-              <div class="row">
-                <div class="col">
-                  <div class="input-group">
-                    <span class="input-group-text">體重</span>
-                    <input type="text" id="birthWeight" class="form-control text-center" oninput="measurementsOfPreterms()">
+              <div class="card-footer">
+                <div class="row">
+                  <div class="col-10">
+                    <ul class="list-group mt-2 mb-2">
+                      <li class="list-group-item copy-item" id="drug_text_for_order">&nbsp;</li>
+                      <li class="list-group-item copy-item" id="drug_text_for_med">&nbsp;</li>
+                      <li class="list-group-item copy-item" id="drug_text_for_pure_line">&nbsp;</li>
+                    </ul>        
+                  </div>
+                  <div class="col-2" style="padding-left: 0%;">
+                    <div class="d-flex justify-content-center align-items-center h-100">
+                      <button class="btn btn-secondary" onclick="resetForm('drug_content')">Reset</button>
+                    </div>    
                   </div>
                 </div>
-              <div class="col">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="row mb-3">
+          <div class="col">
+            <div class="card h-100" id="anti_NB_content">
+              <div class="card-header text-center">NB常用抗生素泡法 (測試版，請參考手冊驗算)</div>
+              <div class="card-body pb-0">
                 <div class="input-group">
-                  <span class="input-group-text">身長</span>
-                  <input type="text" id="birthHeight" class="form-control text-center" oninput="measurementsOfPreterms()">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">BW</span>
+                  <input type="text" id="anti_NB_BW" class="form-control text-center" oninput="calculateAntibioticsForNB()"/>
+                  <span class="input-group-text justify-content-center" style="width: 15%;">g</span>
+                </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">Drug</span>
+                  <select id="anti_NB_drug_name" class="form-select text-center" title="" onchange="calculateAntibioticsForNB()">
+                    <option value="Ampicillin"    >Ampicillin   </option>
+                    <option value="Gentamicin"    >Gentamicin   </option>
+                    <option value="Cefotaxime"    >Cefotaxime   </option>
+                    <option value="Ceftazidime"   >Ceftazidime  </option>
+                    <option value="Vancomycin"    >Vancomycin   </option>
+                    <option value="Meropenem"     >Meropenem    </option>
+                    <option value="Metronidazole" >Metronidazole</option>
+                    <option value="Amikacin"      >Amikacin</option>
+                    <option value="Cefazolin"     >Cefazolin</option>
+                    <option value="Oxacillin"     >Oxacillin</option>
+                    <option value="Tazocin"       >Tazocin</option>
+                    <!-- <option value="Teicoplanin"   >Teicoplanin</option> -->
+                    <!-- More options -->
+                  </select>
+                  <span class="input-group-text justify-content-center" style="width: 15%;" id="drug_extract_amount_unit"> </span>
+                </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;" id="drug_extract_amount_unit">GA</span>
+                  <input type="text" id="anti_NB_gestational_age_week" class="form-control text-center" oninput="calculateAntibioticsForNB()" />
+                  <span class="input-group-text justify-content-center" id="drug_extract_amount_unit">week</span>
+                  <input type="text" id="anti_NB_gestational_age_day" class="form-control text-center" oninput="calculateAntibioticsForNB()" />
+                  <span class="input-group-text justify-content-center" style="width: 15%;" >day</span>
+                </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">Birthday</span>
+                  <input type="date" id="anti_NB_birthday" class="form-control text-center" oninput="calculateAntibioticsForNB()" value=/>
+                  <span class="input-group-text justify-content-center" style="width: 15%;" id="drug_extract_amount_unit"> </span>
                 </div>
               </div>
-              <div class="col">
-                <div class="input-group">
-                  <span class="input-group-text">頭圍</span>
-                  <input type="text" id="birthHeadCircumference" class="form-control text-center" oninput="measurementsOfPreterms()">
+              <div class="card-footer">
+                <div class="row">
+                  <div class="col-10">
+                    <div class="input-group flex-nowrap">
+                      <span class="input-group-text justify-content-center" style="min-width: 15%;">Standard</span>
+                      <span class="input-group-text justify-content-center text-truncate" style="width: 20%;" id="anti_NB_standard_dose_text"></span>
+                      <span class="input-group-text flex-fill text-truncate copy-item" id="anti_NB_standard_dose_description_text"></span>
+                    </div>
+                    <div class="input-group flex-nowrap">
+                      <span class="input-group-text justify-content-center" style="min-width: 15%;">Meningitis</span>
+                      <span class="input-group-text justify-content-center text-truncate" style="width: 20%;" id="anti_NB_meningitis_dose_text"></span>
+                      <span class="input-group-text flex-fill text-truncate copy-item" id="anti_NB_meningitis_dose_description_text"></span>
+                    </div>
+                    <div class="input-group">
+                      <span class="input-group-text justify-content-center" style="width: 15%;">Description</span>
+                      <span class="input-group-text flex-fill text-truncate" id="anti_NB_dose_remark"></span>
+                    </div>
+                  </div>
+                  <div class="col-2" style="padding-left: 0%;">
+                    <div class="d-flex justify-content-center align-items-center h-100">
+                      <button class="btn btn-secondary" onclick="resetForm('anti_NB_content')">Reset</button>
+                    </div>    
+                  </div>
                 </div>
               </div>
-            </td>
-          </tr>
-          <tr>
-            <td>
-              <div class="order-content">
-                <div id="measurementsOfPretermsOutput" style="text-align: left;"></div>
-                <button class="btn btn-dark" style="margin-left: auto; " onclick="copyToClipboard('measurementsOfPretermsOutput', this)">Copy</button>
+            </div>
+          </div>
+        </div>
+        <!-- <div class="row mb-3">
+          <div class="col">
+            <div class="card h-100">
+              <div class="card-header text-center">ICD-10 搜尋</div>
+              <div class="card-body">
+                <div class="input-group mb-3">
+                  <input type="text" id="icd10SearchInput" class="form-control" placeholder="輸入 ICD-10 代碼或關鍵字...">
+                  <button class="btn btn-dark" onclick="searchICD10()">搜尋</button>
+                </div>
+                <ul id="icd10Results" class="list-group"></ul>
               </div>
-            </td>
-          </tr>  
-        </tbody>
-      </table>
+            </div>
+            </div>
+          </div>
+        </div> -->
+        
+      </div>
     </div>
 
+    <!-- 其他分頁內容保持不變 -->
+    <!-- ... -->
   </div>
 
-<!-- 引入script -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.4.0/math.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jstat@1.9.2/dist/jstat.min.js"></script>
-<script src="./scripts/lms_data.js"></script>
-<script src="https://gitcdn.github.io/bootstrap-toggle/2.2.2/js/bootstrap-toggle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.0.0/math.min.js"></script>
+  <script>
+    //*****************************************
+    //水分 水分計算 = 計算水分
+    //*****************************************
+    function calculateFluid() {
 
-<script>
-  // 更新fluid計算
-  function updateFluid() {
-
-    //先歸零
-    document.getElementById('bwOutput').textContent = "";
-    document.getElementById('tdfOutput').textContent = "";
-    document.getElementById('poOutput').textContent = "";
-    document.getElementById('tpnOutput').textContent = "";
-    document.getElementById('lipidOutput').textContent = "";
-    document.getElementById('mlHrOutput').textContent = "";
-    document.getElementById('mlDayOutput').textContent = "";
-    document.getElementById('regularIVOutput').textContent = "";
-    
-
-    //讀取輸入值
-    const bwFluid = parseFloat(document.getElementById('bwFluid').value) || 0;
-    const tdf = parseFloat(document.getElementById('tdf').value) || 0;
-    const po = document.getElementById('po').value;
-    const HM = document.getElementById('HM').value;
-    const formula = document.getElementById('formula').value;
-    const tpnAA = document.getElementById('tpnAA').value;
-    const tpnGramsInput = document.getElementById('tpnGrams').value;
-    const tpnHours = document.getElementById('tpnHours').value || 24; 
-    const lipidChoice = document.getElementById('lipidChoice').value;
-    const lipidGrams = parseFloat(document.getElementById('lipidGrams').value) || 0;
-    const lipidHours = document.getElementById('lipidHours').value || 20;
-    const mlHr = document.getElementById('mlHr').value;
-    const mlDay = document.getElementById('mlDay').value;
-    const regularIVInput = document.getElementById('regularIV').value;
-    const regularIVChoice = document.getElementById('regularIVChoice').value || "普通IV";
-    const lipidSpec = {
-      "SMOF": {density: 1/5, unit: "g/ml"},
-      "Omegaven": {density: 1/10, unit: "g/ml"}
-    };
-    const tpnMap = {
-      "0.025": "TPN",
-      "0.030": "TPN [AA 3.0]",
-      "0.033": "TPN [AA 3.3]",
-      "0.035": "TPN [AA 3.5]",
-      "0.040": "TPN [AA 4.0]",
-      "0.050": "TPN [N0]"
-    };
-
-    // 當 A 有值時，禁用 B；當 B 有值時，禁用 A；如果兩者都沒有值，兩者都啟用
-    const regularIVInputDiv = document.getElementById('regularIV');
-    const tpnGramsInputDiv = document.getElementById('tpnGrams');
-    if (regularIVInputDiv.value !== "") {
-      tpnGramsInputDiv.disabled = true;
-    } else if (tpnGramsInputDiv.value !== "") {
-      regularIVInputDiv.disabled = true;
-    } else {
-      regularIVInputDiv.disabled = false;
-      tpnGramsInputDiv.disabled = false;
-    }
-
-
-
-    // BW 輸出
-    let bwOutput = bwFluid==0 ? "" : `BW: ${bwFluid} g`;
-    
-    // TDF 輸出
-    let totalTDF = (tdf*bwFluid/1000).toFixed(1);
-    let tdfOutput = tdf==0 ? "" : `Total daily fluid: ${tdf} ml/kg/day = total ${totalTDF} ml/day`;;
-
-    // PO 輸出 
-    let [parseResult, poTotal] = parsePO(po, HM, formula);
-
-    // SMOF/Omegaven 輸出
-    let targetLipidAmount = lipidGrams*bwFluid/1000/lipidSpec[lipidChoice].density;
-    let validLipidHours = Math.min(23, Math.max(16, lipidHours)); //確保輸入值在16~23之間
-    let lipidRate = (targetLipidAmount/validLipidHours).toFixed(1);
-    let lipidTotal = lipidRate*validLipidHours;
-    let lipidOutput = "";
-    let minDiff = Math.abs(lipidTotal-targetLipidAmount);
-    let bestHour = validLipidHours;
-    const acceptedError = 0.5;
-    const maxLipidHour = 23;
-    for (let i=16; i<=validLipidHours && i<=maxLipidHour; i++){
-      lipidRate = (targetLipidAmount/i).toFixed(1);
-      lipidTotal = lipidRate*i;
-      const diff = Math.abs(lipidTotal-targetLipidAmount);
-      if (diff<minDiff || diff < acceptedError){
-        minDiff=diff;
-        bestHour=i;
-      }
-      // console.log(`target ${targetLipidAmount}, current ${lipidTotal}, current hr ${i}`);
-      // console.log(`minDiff ${minDiff.toFixed(1)}, bestHour = ${bestHour}`);
-    }
-    lipidRate = (lipidGrams*bwFluid/1000/lipidSpec[lipidChoice].density/bestHour).toFixed(1);
-    lipidTotal = lipidRate*bestHour;
-    lipidOutput = `${lipidChoice} ${lipidGrams}g/kg/day = ${lipidRate} ml/hr run ${bestHour} hrs`;
-    lipidOutput = lipidRate==0? "":lipidOutput ;
-
-
-    // ml/hr 輸出示例
-    let mlHrTotal = (calculateExpression(mlHr)*24 || 0).toFixed(1);
-    let mlhrOutput = `other line: ${mlHr}ml/hr = total ${mlHrTotal}ml/day`;
-    mlhrOutput = mlHr==0? "":mlhrOutput;
-
-    // ml/day 輸出示例
-    let totalmlDay = calculateExpression(mlDay) || 0;
-    let mlDayOutput = `other in I/O: ${totalmlDay} ml/day`;
-    mlDayOutput = totalmlDay==0? "":mlDayOutput;
-
-
-    // TPN and 普通IV 輸出
-    let tpnGrams = parseFloat(tpnGramsInput) || 0;
-    let tpnRate = 0;
-    let tpnTotal = 0;
-    let tpnHoursOutput = "";
-    let tpnOutput = "";
-    let regularIVRate = parseFloat(regularIVInput) || 0;
-    let regularIVTotal = 0;
-    let regularIVOutput = "";
-
-    if(tpnGramsInput){
-      //有設定tpn gram數，表示非補不足，先計算TPN再計算普通IV流速
-      tpnRate = (tpnGrams*bwFluid/1000/tpnAA/tpnHours).toFixed(1);
-      tpnTotal = tpnRate*tpnHours;
-      tpnHoursOutput = tpnHours==24? "":` run ${tpnHours} hrs`;
-      tpnOutput += `${tpnMap[tpnAA]} ${tpnGrams}g/kg/day = ${tpnRate}ml/hr${tpnHoursOutput}`;
-      tpnOutput = tpnGrams==0 ? "" : tpnOutput ;
-
-      regularIVRate = ((totalTDF-poTotal-tpnTotal-lipidTotal-mlHrTotal-mlDay)/24).toFixed(1);
-      regularIVOutput += `${regularIVChoice} run ${regularIVRate}ml/hr`;
-      regularIVOutput = regularIVRate==0? "":regularIVOutput;
-
-    } else{
-      //未設定tpn gram數，表示補不足，先計算普通IV流速再計算TPN
-      regularIVTotal = (regularIVRate*24).toFixed(1);
-      regularIVOutput += `${regularIVChoice} run ${regularIVRate}ml/hr`;
-      regularIVOutput = regularIVRate==0? "":regularIVOutput;
-
-      tpnTotal = totalTDF-poTotal-lipidTotal-mlHrTotal-mlDay-regularIVTotal;
-      tpnRate = (tpnTotal/tpnHours).toFixed(1);
-      tpnGrams = (tpnRate*24*tpnAA/(bwFluid/1000)).toFixed(2);
-      tpnHoursOutput = tpnHours==24? "":` run ${tpnHours} hrs`;
-      tpnOutput += `${tpnMap[tpnAA]} (補) ${tpnGrams}g/kg/day = ${tpnRate}ml/hr${tpnHoursOutput}`;
-      tpnOutput = tpnRate==0 ? "" : tpnOutput ;
+      //讀取輸入值
+      const fluidBW = parseFloat(document.getElementById('fluid_BW').value) || 0;
+      const fluidTDF = parseFloat(document.getElementById('fluid_TDF').value) || 0;
+      const fluidPO = document.getElementById('fluid_PO').value;
+      const fluidPOHM = document.getElementById('fluid_PO_HM').value;
+      const fluidPOFormula = document.getElementById('fluid_PO_formula').value;
+      const fluidTPNAA = document.getElementById('fluid_TPN_AA').value;
+      let fluidTPNGrams = document.getElementById('fluid_TPN_grams').value;
+      const fluidTPNHours = parseFloat(document.getElementById('fluid_TPN_hours').value) || 24;
+      const fluidTPNDex = parseFloat(document.getElementById('fluid_TPN_dex').value) || 10;
+      const fluidTPNNa = parseFloat(document.getElementById('fluid_TPN_Na').value) || 40;
+      const fluidTPNK = parseFloat(document.getElementById('fluid_TPN_K').value) || 20;
+      const fluidTPNCa = parseFloat(document.getElementById('fluid_TPN_Ca').value) || 20;
+      const fluidTPNP = parseFloat(document.getElementById('fluid_TPN_P').value) || 9;
+      const fluidTPNMg = parseFloat(document.getElementById('fluid_TPN_Mg').value) || 2;
+      const fluidLipidType = document.getElementById('fluid_lipid_type').value;
+      const fluidLipidGrams = parseFloat(document.getElementById('fluid_lipid_grams').value) || 0;
+      const fluidLipidHours = parseFloat(document.getElementById('fluid_lipid_hours').value) || 20;
+      let fluidOtherInIO = document.querySelectorAll('[name="fluid_other_in_IO"]');
+      let fluidOtherInIOBase = document.querySelectorAll('[name="fluid_other_in_IO_base"]');
+      // const fluidOtherInIO = document.getElementById('fluid_other_in_IO').value;
+      let fluidOtherSolutionBase = document.querySelectorAll('[name="fluid_other_solution_base"]');
+      let fluidOtherSolutionRate = document.querySelectorAll('[name="fluid_other_solution_rate"]');
+      // const fluidOtherSolutionBase = document.getElementById('fluid_other_solution_base').value;
+      // const fluidOtherSolutionRate = parseFloat(document.getElementById('fluid_other_solution_rate').value) || 0;
+      const fluidRegularIVType = document.getElementById('fluid_regular_IV_type').value || "普通IV";
+      let fluidRegularIVRate = parseFloat(document.getElementById('fluid_regular_IV_rate').value) || 0;
       
-    }
+      let fluidTotalGIR = 0;
+      let fluidTotalNa = 0;
+      let fluidTotalK  = 0;
+      let fluidTotalCa = 0;
+      let fluidTotalP  = 0;
+      let fluidTotalMg = 0;
+      
 
+      //設定SMOF密度
+      const fluidLipidSpec = {
+        "SMOF": {density: 1/5, unit: "g/ml"},
+        "Omegaven": {density: 1/10, unit: "g/ml"}
+      };
 
-    //輸出 order
-    document.getElementById('bwOutput').textContent = bwOutput; //最少留一列，所以第一列不隱藏
-    updateOutput('tdfOutput', tdfOutput);
-    updateOutput('poOutput', parseResult);
-    updateOutput('tpnOutput', tpnOutput);
-    updateOutput('lipidOutput', lipidOutput);
-    updateOutput('mlHrOutput', mlhrOutput);
-    updateOutput('mlDayOutput', mlDayOutput);
-    updateOutput('regularIVOutput', regularIVOutput);
-  };
+      //設定TPN配方說明
+      const fluidTpnAAMap = {
+        "0.025": "TPN",
+        "0.030": "TPN [AA 3.0]",
+        "0.033": "TPN [AA 3.3]",
+        "0.035": "TPN [AA 3.5]",
+        "0.040": "TPN [AA 4.0]",
+        "0.050": "TPN [N0]"
+      };
 
-  // 更新GIR
-  function calculateGIR() {
-    let dexGIRInputs = document.querySelectorAll('[name="dexForGIR"]');
-    let rateGIRInputs = document.querySelectorAll('[name="rateForGIR"]');
-    let GIROutput = document.getElementById('GIROutput');
-    // let bwFluid = parseFloat(document.getElementById('bwFluid').value) || 0;
-    let bwGIR = document.getElementById('bwGIR').value || 0; //unit: grams
-    let totalGIR = 0;
+      // Only one of fluidTPNGrams and fluidRegularIVRate can be entered
+      const fluidRegularIVRateDIV = document.getElementById('fluid_regular_IV_rate');
+      const fluidTPNGramsDIV = document.getElementById('fluid_TPN_grams');
+      fluidRegularIVRateDIV.disabled = fluidTPNGramsDIV.value !== "";
+      fluidTPNGramsDIV.disabled = fluidRegularIVRateDIV.value !== "";
 
-    for (let i = 0; i < dexGIRInputs.length; i++) {
-      // Parse the values of dex and rate as floats
-      let dexValue = parseFloat(dexGIRInputs[i].value) || 0; // Default to 0 if parsing fails
-      let rateValue = calculateExpression(rateGIRInputs[i].value) || 0; // Default to 0 if parsing fails
-            
-      // Multiply dex * rate and add to the total
-      totalGIR += dexValue * rateValue;
-    }
-    
-    totalGIR /= (6*bwGIR/1000);
-    GIROutput.innerHTML = `GIR = ${totalGIR.toFixed(2)}`;
-  }
+      // *****************************************
+      // 歸零GIR, 離子統計
+      // *****************************************
 
-  // 增加一行GIR line
-  function addNewGIRLine() {
-    // Get the element you want to insert before
-    let referenceNode = document.getElementById('addNewGIRLineButton');
+        //先將name=fluid_order_outputs都移除
+        let fluidOrderOutputs = document.querySelectorAll('[name="fluid_order_outputs"]');
+        fluidOrderOutputs.forEach(output => {
+          output.remove();
+        });      
+        
+        document.getElementById('fluid_nutrition_GIR').textContent = `GIR ___`;
+        document.getElementById('fluid_nutrition_Na').textContent = `Na ___`;
+        document.getElementById('fluid_nutrition_K').textContent = `K ___`;
+        document.getElementById('fluid_nutrition_Ca').textContent = `Ca ___`;
+        document.getElementById('fluid_nutrition_P').textContent = `P ___`;
+        document.getElementById('fluid_nutrition_Mg').textContent = `Mg ___`;
 
-    // Get the parent of the reference node (in this case, #container)
-    let parent = referenceNode.parentNode;
+      // *****************************************
+      //               計算fluid過程
+      // *****************************************
+      console.log("***************開始水分計算***************")
+      console.log(`BW: ${fluidBW} g`);
+      //計算TDF總量
+      let fluidTotalTDF = (fluidTDF*fluidBW/1000).toFixed(1);
+      console.log(`Total daily fluid: ${fluidTDF} ml/kg/day = total ${fluidTotalTDF} ml/day`);
+      //計算PO總量
+      let fluidTotalPO = fluidPO === "" ? 0 : parseExpression(fluidPO);      
+      console.log(`Diet: ${fluidTotalPO} ml/day`);
+      //計算Lipid總量
+      let fluidLipidTotalVolumeGoal = fluidLipidGrams*fluidBW/1000/fluidLipidSpec[fluidLipidType].density;
+      let fluidLipidValidHours = Math.min(23, Math.max(16, fluidLipidHours)); //確保輸入值在16~23之間
+      let fluidLipidRate = (fluidLipidTotalVolumeGoal/fluidLipidValidHours).toFixed(1)
+      let fluidLipidTotalVolume = fluidLipidRate*fluidLipidValidHours;
+      let fluidLipidMinDiff = Math.abs(fluidLipidTotalVolume-fluidLipidTotalVolumeGoal);
+      let fluidLipidBestHour = fluidLipidValidHours;
+      const fluidLipidAcceptedError = 0.5;
+      const fluidLipidMaxHour = 23;
+      for (let i=16; i<=fluidLipidValidHours && i<=fluidLipidMaxHour; i++){
+        fluidLipidRate = (fluidLipidTotalVolumeGoal/i).toFixed(1);
+        fluidLipidTotalVolume = fluidLipidRate*i;
+        const fluidLipidTotalVolumeDiff = Math.abs(fluidLipidTotalVolume-fluidLipidTotalVolumeGoal);
+        if (fluidLipidTotalVolumeDiff<fluidLipidMinDiff || fluidLipidTotalVolumeDiff < fluidLipidAcceptedError){
+          fluidLipidMinDiff=fluidLipidTotalVolumeDiff;
+          fluidLipidBestHour=i;
+        }
+        // console.log(`target ${fluidLipidTotalVolumeGoal}, current ${fluidLipidTotalVolume}, current hr ${i}`);
+        // console.log(`minDiff ${fluidLipidMinDiff.toFixed(1)}, bestHour = ${fluidLipidBestHour}`);
+      }
+      fluidLipidRate = (fluidLipidGrams*fluidBW/1000/fluidLipidSpec[fluidLipidType].density/fluidLipidBestHour).toFixed(1); //由best hour還原速率
+      fluidLipidTotalVolume = fluidLipidRate*fluidLipidBestHour; //由best hour還原總量
+      
 
-    // Create a new row for the inputs
-    let newDiv = document.createElement('div');
-    newDiv.classList.add('row', 'mb-1'); //加入row mb-1屬性class
-    newDiv.innerHTML = `
-      <div class="input-group">
-        <span class="input-group-text">Dextrose</span>
-        <input name="dexForGIR" type="number" class="form-control text-center" oninput="calculateGIR()">
-        <span class="input-group-text">%</span>
-        <input name="rateForGIR" type="text" class="form-control text-center" oninput="calculateGIR()">
-        <span class="input-group-text">ml/hr</span>
-      </div>    
-    `;
-    parent.insertBefore(newDiv, referenceNode);
-  }    
+      //計算fluid other in I/O 總量
+      let fluidOtherInIOTotalVolume = 0;
+      for (let i = 0; i < fluidOtherInIO.length; i++) {
+        let eachVolume = parseExpression(fluidOtherInIO[i].value) || 0;
+        //算總量
+        fluidOtherInIOTotalVolume += eachVolume;
+        // base value 用於計算Na intake
+        let baseValue = fluidOtherInIOBase[i].value;
+        if (baseValue === "3% NaCl") { fluidTotalNa += eachVolume*77/1000;} // 3% NaCl 1000ml = 77mEq Na
+      }
+      console.log(`Other in I/O: ${fluidOtherInIOTotalVolume} ml/day`);
 
-  // 計算客製化dex
-  function customizedDex() {
-    let initialDex = parseFloat(document.getElementById('initialDexConcentrationForDexCalc').value) || 0;
-    let initialAmount = parseFloat(document.getElementById('initialDexAmountForDexCalc').value) || 0;
-    let amountD50W = parseFloat(document.getElementById('amountOfD50WForDexCalc').value) || 0;
-    let customizedDexOutputDiv = document.getElementById('customizedDexOutput');
-    let resultDex=0;
-    console.log(`${initialDex} ${initialAmount} ${amountD50W} ${(initialDex/100)*initialAmount+(50/100)*amountD50W} ${(initialAmount+amountD50W)}`);
+      //計算fluid Other Solution總量
+      let fluidOtherSolutionTotalVolume = 0;
+      for (let i = 0; i < fluidOtherSolutionBase.length; i++) {
+        //先算總量
+        let rateValue = parseExpression(fluidOtherSolutionRate[i].value) || 0;
+        fluidOtherSolutionTotalVolume += rateValue*24;
+        //再算成分
+        let baseValue = fluidOtherSolutionBase[i].value;
+        if      (baseValue === "L/R" ) { fluidTotalNa += rateValue*24/1000*130; } // L/R 1000ml = 130mEq Na
+        else if (baseValue === "H/S" ) { fluidTotalNa += rateValue*24/1000*77 ; } // H/S 1000ml = 77mEq Na
+        else if (baseValue === "N/S" ) { fluidTotalNa += rateValue*24/1000*154; } // N/S 1000ml = 154mEq Na
+        else if (baseValue === "D/W" ) { }
+        else if (baseValue === "D5W" ) { fluidTotalGIR += rateValue*5;}
+        else if (baseValue === "D10W") { fluidTotalGIR += rateValue*10;}
+      }
+      console.log(`Total Other Solution: ${fluidOtherSolutionTotalVolume} ml/day`);
+      
+      //計算fluid Regular IV and TPN
+      let fluidTPNRate = 0;
+      let fluidTPNTotalVolume = 0;
+      let fluidRegularIVTotalVolume = 0;
+      let fluidTPNMakeUp = "";
 
-    resultDex = ( (initialDex/100)*initialAmount+(50/100)*amountD50W ) / (initialAmount+amountD50W) * 100;
-    customizedDexOutputDiv.innerHTML = `Dextrose = ${resultDex.toFixed(2)} %`;
-  }  
-  
-  // 計算UA UV深度
-  function depthOfLine() {
-    let depthUAUVDiv = document.getElementById('depthUAUV');
-    depthUAUVDiv.innerHTML="UA high: ___ cm, UA low: ___ cm, UV: ___ cm";
+      //fluidTPNGrams有值，表示非補不足，先計算TPN再計算普通IV流速
+      if (fluidTPNGrams || fluidTPNGrams === 0){ 
+        fluidTPNGrams = fluidTPNGrams || 0;
+        fluidTPNRate = (fluidTPNGrams*fluidBW/1000/fluidTPNAA/fluidTPNHours).toFixed(1);
+        fluidTPNTotalVolume = fluidTPNRate*fluidTPNHours;
 
-    let bwForLineValue = parseFloat(document.getElementById('bwForLine').value) || 0;
-    let depthUAHigh = (bwForLineValue/1000)*3+9;
-    let depthUALow = (bwForLineValue/1000)+7;
-    let depthUV = (depthUAHigh/2+1);
+        //計算普通IV流速
+        fluidRegularIVRate = ((fluidTotalTDF-fluidTotalPO-fluidTPNTotalVolume-fluidLipidTotalVolume-fluidOtherInIOTotalVolume-fluidOtherSolutionTotalVolume)/24).toFixed(1);
+        fluidRegularIVTotalVolume = fluidRegularIVRate*24;
+      } else { 
+        //未設定tpn gram數，表示補不足，先計算普通IV流速再計算TPN
+        fluidRegularIVTotalVolume = (fluidRegularIVRate*24).toFixed(1);
+        fluidTPNTotalVolume = fluidTotalTDF-fluidTotalPO-fluidLipidTotalVolume-fluidOtherInIOTotalVolume-fluidOtherSolutionTotalVolume-fluidRegularIVTotalVolume;
+        fluidTPNRate = (fluidTPNTotalVolume/fluidTPNHours).toFixed(1);
+        fluidTPNGrams = (fluidTPNRate*fluidTPNHours*fluidTPNAA/(fluidBW/1000)).toFixed(2);
+        fluidTPNMakeUp = " (補)";
+      }
+      console.log(`Regular IV: ${fluidRegularIVRate} ml/hr`);
+      console.log(`TPN ${fluidTPNGrams} g/kg/day = ${fluidTPNRate} ml/hr run ${fluidTPNHours} hrs`);
+      console.log("***************結束水分計算***************")
+                   
+      // *****************************************
+      //           將計算結果轉成文字輸出
+      // *****************************************
+      console.log("***************開始文字輸出***************")
+      let fluidOrderArray = [];
+      // BW: ? g
+      let fluidOrderOutputBW = fluidBW === 0 ? "BW:" : `BW: ${fluidBW} g`;
+      fluidOrderArray.push(fluidOrderOutputBW);
+      console.log(`BW: ${fluidOrderOutputBW}`);
 
-    if (bwForLineValue !== 0) {
-      depthUAUVDiv.innerHTML = `UA high: ${depthUAHigh.toFixed(1)} cm, UA low: ${depthUALow.toFixed(1)} cm, UV: ${depthUV.toFixed(1)} cm`;
-    }
-  }
+      // TDF: ? ml/kg/day = total ? ml/day
+      let fluidOrderOutputTDF = fluidTDF === 0 ? "Total daily fluid:" : `Total daily fluid: ${fluidTDF} ml/kg/day = total ${fluidTotalTDF} ml/day`;
+      fluidOrderArray.push(fluidOrderOutputTDF);
+      console.log(`Total daily fluid: ${fluidOrderOutputTDF}`);
 
-  // 設定藥物資料
-  const drugSpecs = {
-    'Dopamine'      : { concentration: 40     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
-    'Dobutamine'    : { concentration: 12.5   , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
-    'Milrinone'     : { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
-    'Epinephrine'   : { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},
-    'Midazolam'     : { concentration: 5      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
-    'Fentanyl'      : { concentration: 0.05   , unit: 'mg/ml' , rateUnit: 'mcg/kg/hr'  , decimalPlace: 3},
-    'Bumetanide'    : { concentration: 0.25   , unit: 'mg/ml' , rateUnit: 'mcg/kg/hr'  , decimalPlace: 1},
-    'Norepinephrine': { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},
-    'Nicardipine'   : { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
-    'Nitroglycerin' : { concentration: 0.5    , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}, //小數點待確定
-    'Labetalol'     : { concentration: 5      , unit: 'mg/ml' , rateUnit: 'mg/kg/hr'   , decimalPlace: 2}, //小數點待確定
-    'PGE1'          : { concentration: 0.5    , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},
-    'Vasopressin'   : { concentration: 20     , unit: 'U/ml'  , rateUnit: 'mU/kg/min'  , decimalPlace: 0},
-    'Isoproterenol' : { concentration: 0.2    , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
-    'Rocuronium'    : { concentration: 10     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
-    'Cisatracurium' : { concentration: 2      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
-    'Morphine'      : { concentration: 10     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}, //小數點待確定
-    'Lorazepam'     : { concentration: 2      , unit: 'mg/ml' , rateUnit: 'mg/kg/hr'   , decimalPlace: 2}, //小數點待確定
-    'Ketamine'      : { concentration: 50     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
-    'Propofol'      : { concentration: 10     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}, //小數點待確定
-    'MgSO4'         : { concentration: 100    , unit: 'mg/ml' , rateUnit: 'mg/kg/hr'   , decimalPlace: 1},
-    'Lidocaine'     : { concentration: 50     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}  //小數點待確定
-  };
+      // PO: Diet: ? ml/day
+      let fluidOrderOutputPO = "";
+      const fluidPOPattern = /^(\d+\s*\*\s*\d+)(\s*\+\s*\d+\s*\*\s*\d+)*$/; // "A*B + C*D + E*F ...", where A B ... are numbers  
+      if (fluidPO == "") { fluidOrderOutputPO = "";} 
+      else if (fluidPO === 0) { fluidOrderOutputPO = "Diet: NPO with OG decompression";} //若輸入為0則NPO
+      else if (!fluidPOPattern.test(fluidPO)) { console.log("Invalid PO format"); fluidOrderOutputPO = `Diet: ${fluidTotalPO} ml/day`;}
+      else {
 
-  // 更新藥物濃度及計算抽取量
-  function updateDrugOrder() {
-    const drug = document.getElementById("drug0").value;
-    const originalConcentration = drugSpecs[drug].concentration;
-    const originalUnit = drugSpecs[drug].unit;
-    const targetRateUnit = drugSpecs[drug].rateUnit;
-    const decimal = drugSpecs[drug].decimalPlace;
-    document.getElementById("drugExtractAmountUnit").textContent = originalUnit.replace("/ml","");
-    document.getElementById("drug0").title = `${originalConcentration} ${originalUnit}`;
-    document.getElementById("rateUnit").textContent = `(${targetRateUnit})`;    
+        //抓出PO裡面的數字組合 A*B + C*D + E*F ... 
+        const fluidPOComponentsPattern = /(\d+)\s*\*\s*(\d+)/g; // match all A*B, where A B are numbers
+        let fluidPOComponentsMatch;
+        let fluidPOComponentsPairs = [];
+        while ((fluidPOComponentsMatch = fluidPOComponentsPattern.exec(fluidPO)) !== null) {
+          const [_, base, multiplier] = fluidPOComponentsMatch;
+          fluidPOComponentsPairs.push({ base: parseInt(base), multiplier: parseInt(multiplier) });
+        }
+        
+        // 計算總共幾餐 = Q?H feeding, ? = 24/總餐數
+        let fluidPOMultiplierSum = fluidPOComponentsPairs.reduce((sum, item) => sum + item.multiplier, 0);
+        if (24 % fluidPOMultiplierSum !== 0) { fluidOrderOutputPO = `Diet: ${fluidTotalPO} ml/day`; } //若不能整除24則直接輸出總量
+        else{
+          fluidOrderOutputPO = fluidPOComponentsPairs.map(({ base, multiplier }) => `${base}ml * ${multiplier} meals`).join(" then ");
+          fluidOrderOutputPO.split(" then ").slice(0, -1).join(" then "); //移除最後一個元素 (最後一個*幾餐)
+          fluidOrderOutputPO += ` / Q${24/fluidPOMultiplierSum}H`;  //加上餵食頻率
+          // 加上奶品
+          let fluidPOMilkType = fluidPOHM && fluidPOFormula ?  `${fluidPOHM}/${fluidPOFormula}` : fluidPOHM || fluidPOFormula || '';
+          fluidOrderOutputPO = fluidPOMilkType ? `${fluidPOMilkType} ${fluidOrderOutputPO}` : fluidOrderOutputPO;
+          // 加上PO總量
+          fluidOrderOutputPO = `Diet: ${fluidOrderOutputPO} = (total ${fluidTotalPO}ml/day )`;
+        }
+      }
+      fluidOrderArray.push(fluidOrderOutputPO);
+      console.log(`Diet: ${fluidOrderOutputPO}`);     
 
-    const bwDrug = parseFloat(document.getElementById("bwDrug").value);
-    const drugExtractAmount = parseFloat(document.getElementById("drugExtractAmount").value);
-    const flowRate = parseFloat(document.getElementById("flowRate").value);
-    const targetConcentrationRate = parseFloat(document.getElementById("targetConcentrationRate").value);
-    const totalVolume = parseFloat(document.getElementById("totalVolume0").value);
-    const diluter = document.getElementById("diluter0").value;
-    let orderText = "醫囑";
-    let medText = "藥囑";
-    let purelineOrderText = "Pure Line";
+      // TPN: ? g/kg/day = ? ml/hr run ? hrs
+      let fluidOrderOutputTPNHours = fluidTPNHours ===24? "":`run ${fluidTPNHours}hrs`;
+      let fluidOrderOutputTPN = `${fluidTpnAAMap[fluidTPNAA]}${fluidTPNMakeUp} ${fluidTPNGrams}g/kg/day=${fluidTPNRate}ml/hr ${fluidOrderOutputTPNHours}`;
+      fluidOrderOutputTPN = fluidTPNGrams==0 ? "":fluidOrderOutputTPN;
+      fluidOrderOutputTPN = fluidBW > 0 ? fluidOrderOutputTPN : ""; //若BW=0則不顯示TPN，避免出現NaN
+      fluidOrderArray.push(fluidOrderOutputTPN);
+      console.log(`TPN: ${fluidOrderOutputTPN}`);      
 
-    // 當 A 有值時，禁用 B；當 B 有值時，禁用 A；如果兩者都沒有值，兩者都啟用
-    const drugExtractAmountDiv = document.getElementById('drugExtractAmount');
-    const targetConcentrationRateDiv = document.getElementById('targetConcentrationRate');
-    if (drugExtractAmountDiv.value !== "") {
-      targetConcentrationRateDiv.disabled = true;
-    } else if (targetConcentrationRateDiv.value !== "") {
-      drugExtractAmountDiv.disabled = true;
-    } else {
-      drugExtractAmountDiv.disabled = false;
-      targetConcentrationRateDiv.disabled = false;
-    }
+      // Lipid: ? g/kg/day = total ? g/day
+      let fluidOrderOutputLipid = `${fluidLipidType} ${fluidLipidGrams}g/kg/day = ${fluidLipidRate} ml/hr run ${fluidLipidBestHour} hrs`;
+      fluidOrderOutputLipid = fluidLipidGrams==0 ? "":fluidOrderOutputLipid;
+      fluidOrderArray.push(fluidOrderOutputLipid);
+      console.log(`Lipid: ${fluidOrderOutputLipid}`); 
 
-    if (drug && bwDrug && flowRate && (drugExtractAmount||targetConcentrationRate) && totalVolume) {
+      // Other in I/O: ? ml/day
+      let fluidOrderOutputOtherInIO = fluidOtherInIOTotalVolume === 0 ? "" : `Other in I/O: ${fluidOtherInIOTotalVolume} ml/day`;
+      fluidOrderArray.push(fluidOrderOutputOtherInIO);
+      console.log(`Other in I/O: ${fluidOrderOutputOtherInIO} ml/day`);
 
-      //計算重量單位轉換
-      const unitOringinal = originalUnit.split("/")[0];
-      const unitTarget  = targetRateUnit.split("/")[0];
-      const unitComb = `${unitOringinal}-${unitTarget}`;
-      let unitConversionRatio = 1;
-      switch (unitComb) {
-        case 'mg-mcg': unitConversionRatio = 1/1000; break;
-        case 'U-mU'  : unitConversionRatio = 1/1000; break;
-        case 'mg-mg' : unitConversionRatio = 1; break;
-        default: unitConversionRatio = 1; break;
+      // other solution: ? ml/hr
+      let fluidOrderOutputOtherSolution = fluidOtherSolutionTotalVolume === 0 ? "" : `Total Other Solution run ${(fluidOtherSolutionTotalVolume/24).toFixed(1)} ml/hr = ${fluidOtherSolutionTotalVolume.toFixed(1)} ml/day`;
+      fluidOrderArray.push(fluidOrderOutputOtherSolution);
+      console.log(`Total Other Solution: ${fluidOrderOutputOtherSolution}`);
+
+      // Regular IV: ? ml/hr
+      let fluidOrderOutputRegularIV = fluidRegularIVRate === 0 ? "" : `${fluidRegularIVType} run ${fluidRegularIVRate} ml/hr`;
+      fluidOrderArray.push(fluidOrderOutputRegularIV);
+      console.log(`Regular IV: ${fluidRegularIVRate} ml/hr`);
+
+      console.log("***************結束文字輸出***************")
+      console.log(fluidOrderArray.join("\n"));
+
+      // *****************************************
+      //           計算營養成分
+      // *****************************************
+
+      //計算GIR
+      //let fluidGIR = 0;
+
+      //已計算other in I/O離子
+      //已計算other solution離子
+
+      //計算TPN離子, GIR
+      fluidTotalGIR+= fluidTPNRate*fluidTPNDex;
+      fluidTotalNa += fluidTPNTotalVolume/1000*fluidTPNNa;
+      fluidTotalK  += fluidTPNTotalVolume/1000*fluidTPNK;
+      fluidTotalCa += fluidTPNTotalVolume/1000*fluidTPNCa;
+      fluidTotalP  += fluidTPNTotalVolume/1000*fluidTPNP;
+      fluidTotalMg += fluidTPNTotalVolume/1000*fluidTPNMg;
+
+      //計算regular IV離子, GIR
+      switch (fluidRegularIVType) {
+        case 'D0.225S(500)'           : {
+          fluidTotalNa += fluidRegularIVTotalVolume/1000*38.5; // D0.225S(500) 1000ml = 38.5mEq Na
+          fluidTotalGIR += fluidRegularIVRate*5;
+          break;
+        } 
+        case 'D0.225S(500) + 2PC D50W': {
+          fluidTotalNa += fluidRegularIVTotalVolume/1000*38.5; // D0.225S(500) 1000ml = 38.5mEq Na
+          fluidTotalGIR += fluidRegularIVRate*8.33;
+          break;
+        } 
+        case 'Dex 2.5% in 0.45 Saline': {
+          fluidTotalNa += fluidRegularIVTotalVolume/1000*77; // H/S 1000ml = 77 mEq Na
+          fluidTotalGIR += fluidRegularIVRate*2.5;
+          break;
+        } 
+        case 'D5W' : {fluidTotalGIR += fluidRegularIVRate*5; break;}
+        case 'D10W': {fluidTotalGIR += fluidRegularIVRate*10; break;}
+        case 'H/S' : {fluidTotalNa  += fluidRegularIVTotalVolume/1000*77;   break;} // H/S 1000ml = 77 mEq Na
+        case 'N/S' : {fluidTotalNa  += fluidRegularIVTotalVolume/1000*154;  break;} // N/S 1000ml = 154 mEq Na; 
       }
       
-      //計算時間單位轉換
-      const timeTarget = targetRateUnit.split("/")[2];
-      let timeConversionRatio = 1;
-      if (timeTarget === 'min') timeConversionRatio = 60;
+
+      let fluidTotalNaPerKg = fluidBW > 0 ? (fluidTotalNa/(fluidBW/1000)).toFixed(1) : "___";
+      let fluidTotalKPerKg  = fluidBW > 0 ? (fluidTotalK /(fluidBW/1000)).toFixed(1) : "___";
+      let fluidTotalCaPerKg = fluidBW > 0 ? (fluidTotalCa/(fluidBW/1000)).toFixed(1) : "___";
+      let fluidTotalPPerKg  = fluidBW > 0 ? (fluidTotalP /(fluidBW/1000)).toFixed(1) : "___";
+      let fluidTotalMgPerKg = fluidBW > 0 ? (fluidTotalMg/(fluidBW/1000)).toFixed(1) : "___";
       
-      //若沒有指定drugExtractAmount, 用targetConcentrationRate回推
-      const extractAmount = drugExtractAmount
-        ? drugExtractAmount
-        : ( targetConcentrationRate * timeConversionRatio * bwDrug * unitConversionRatio / flowRate * totalVolume).toFixed(decimal);  //計算提取量    
 
-      //若指定drugExtractAmount, 用則算出targetConcentrationRate
-      const concentrationRate = drugExtractAmount
-        ? ((drugExtractAmount/totalVolume)*flowRate/unitConversionRatio/bwDrug/timeConversionRatio).toFixed(2)
-        : targetConcentrationRate;
+      //計算GIR
+      fluidTotalGIR = fluidBW > 0 ? (fluidTotalGIR/(6*fluidBW/1000)).toFixed(2) : "___";
 
-      const extractedVolume = ( totalVolume - extractAmount / originalConcentration).toFixed(1); //計算溶劑體積
-      const pureLineConcentration = ( 1 * originalConcentration / unitConversionRatio / bwDrug / timeConversionRatio).toFixed(1);
+      // *****************************************
+      //           將計算結果輸出到網頁
+      // *****************************************
+      
+      //在fluid_order_output下面新增一個節點，顯示計算結果
+      // let fluidOrderOutputDiv = document.getElementById('fluid_order_output');
+      // fluidOrderArray.forEach(order => {
+      //   if (order) {
+      //     fluidOrderOutputDiv.insertAdjacentHTML('afterend', `<li class="list-group-item copy-item" name="fluid_order_outputs">${order}</li>`);
+      //     fluidOrderOutputDiv=fluidOrderOutputDiv.nextSibling; //移動到下一個節點
+      //   }
+      // });
 
-      orderText = `${drug} ${extractAmount+unitOringinal} in ${diluter} ${extractedVolume}ml (total ${totalVolume}ml), run ${flowRate}ml/hr = ${concentrationRate + targetRateUnit} `;
-      medText = `${drug} ${extractAmount+unitOringinal} in ${diluter} ${extractedVolume}ml (total ${totalVolume}ml), run as order`;
-      purelineOrderText =  `${drug} 1 ml/hr = ${pureLineConcentration + " " + targetRateUnit}`;     
+      //在fluid_order_output下append一個節點，顯示計算結果
+      let fluidOrderOutputDiv = document.getElementById('fluid_order_output');
+      fluidOrderArray.forEach(order => {
+        if (order) {
+          // 創建新的 li 元素
+          const listItem = document.createElement('li');
+          listItem.className = 'list-group-item copy-item';
+          listItem.setAttribute('name', 'fluid_order_outputs');
+          listItem.textContent = order; // 設定 li 的內容
+
+          // 將 li 元素附加到指定的 div 底下
+          fluidOrderOutputDiv.appendChild(listItem);
+        }
+      });
+
+
+
+      //將GIR ?, Na ? mEq, K ? mmol, Ca ? mEq, P ? mmol, Mg mEq 輸出到網頁
+      document.getElementById('fluid_nutrition_GIR').textContent = `GIR ${fluidTotalGIR}`;
+      document.getElementById('fluid_nutrition_Na').textContent = `Na ${fluidTotalNaPerKg}`;
+      document.getElementById('fluid_nutrition_K').textContent = `K ${fluidTotalKPerKg}`;
+      document.getElementById('fluid_nutrition_Ca').textContent = `Ca ${fluidTotalCaPerKg}`;
+      document.getElementById('fluid_nutrition_P').textContent = `P ${fluidTotalPPerKg}`;
+      document.getElementById('fluid_nutrition_Mg').textContent = `Mg ${fluidTotalMgPerKg}`;
+
+
+      //把新增的結果加上複製功能
+      addCopyEventListener();
     }
 
-    document.getElementById("orderText").textContent = orderText;
-    document.getElementById("medText").textContent = medText;
-    document.getElementById("purelineOrderText").textContent = purelineOrderText;
 
-  }
+    // *****************************************
+    // 計算GIR
+    // *****************************************
+    function calculateGIR(){
+      //讀取輸入值
+      const girBW = parseFloat(document.getElementById('GIR_BW').value) || 0;
+      let girDex = document.querySelectorAll('[name="GIR_dex"]');
+      let girRate = document.querySelectorAll('[name="GIR_rate"]');
+      let girTotal = 0;
+      for (let i = 0; i < girDex.length; i++) {
+        let dex = parseFloat(girDex[i].value) || 0;
+        let rate = parseFloat(girRate[i].value) || 0;
+        girTotal += dex*rate;
+      }
 
+      girTotal = girTotal/(6*girBW/1000);
 
-  // 設定藥物資料
-  const commonNBDrugs = {
-    'Ampicillin'    : { 
-      'non-meningitis': [ 
-        {GA_min: 0, GA_max: 34, PNA_min: 0, PNA_max: 7, BW_min: 0, BW_max: Infinity        , frequency: "Q12H", dose: 50, unit: "mg/kg/dose", description: "50 mg/kg/dose, Q12H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
-        {GA_min: 0, GA_max: 34, PNA_min: 8, PNA_max: 28, BW_min: 0, BW_max: Infinity       , frequency: "Q12H", dose: 75, unit: "mg/kg/dose", description: "75 mg/kg/dose, Q12H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
-        {GA_min: 35, GA_max: Infinity, PNA_min: 0, PNA_max: 28, BW_min: 0, BW_max: Infinity, frequency: "Q8H", dose: 50, unit: "mg/kg/dose", description: "50 mg/kg/dose, Q8H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"}
-      ],
-      'meningitis': [ 
-        {GA_min: 0, GA_max: 34, PNA_min: 0, PNA_max: 7, BW_min: 0, BW_max: Infinity        , frequency: "Q8H", dose: 100, unit: "mg/kg/dose", description: "100 mg/kg/dose, Q8H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
-        {GA_min: 0, GA_max: 34, PNA_min: 8, PNA_max:60, BW_min: 0, BW_max: Infinity        , frequency: "Q6H", dose: 75, unit: "mg/kg/dose", description: "75 mg/kg/dose, Q6H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
-        {GA_min: 35, GA_max: Infinity, PNA_min: 0, PNA_max: 7, BW_min: 0, BW_max: Infinity , frequency: "Q8H", dose: 100, unit: "mg/kg/dose", description: "100 mg/kg/dose, Q8H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
-        {GA_min: 35, GA_max: Infinity, PNA_min: 8, PNA_max: 60, BW_min: 0, BW_max: Infinity, frequency: "Q6H", dose: 75, unit: "mg/kg/dose", description: "75 mg/kg/dose, Q6H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"}
-      ]      
-    },
-    'Gentamicin'    : {},
-    'Cefotaxime'    : {},
-    'Ceftazidime'   : {},
-    'Vancomycin'    : {},
-    'Meropenem'     : {},
-    'Metronidazole' : {}
-  };
-
-  // 查找NB常用藥物的劑量
-  function findDose (drugName, condition, GA, PNA, BW){
-    const drugData = commonNBDrugs[drugName];
-    if (!drugData || !drugData[condition]) return null;
-
-    return drugData[condition].find(r => GA >= r.GA_min && GA <= r.GA_max && PNA >= r.PNA_min && PNA <= r.PNA_max && BW >= r.BW_min && BW <= r.BW_max) || null;
-  }
-
-  // 設定常用NB藥物資料
-  function commonNBDrugCalc(){
-    const drugChoice = document.getElementById('commonNBDrugChoice').value;
-    const birthdayForCommonNBDrug = document.getElementById('birthdayForCommonNBDrug').value;
-    const bwForCommonNBDrug = document.getElementById('bwForCommonNBDrug').value;
-    const weeksOfGAForCommonNBDrug = document.getElementById('weeksOfGAForCommonNBDrug').value;
-    const daysOfGAForCommonNBDrug = document.getElementById('daysOfGAForCommonNBDrug').value;
-    let nonMeningitisNBDoseDiv = document.getElementById('nonMeningitisNBDose');
-    let nonMeningitisNBDoseDescriptionDiv = document.getElementById('nonMeningitisNBDoseDescription');
-    let meningitisNBDoseDiv = document.getElementById('meningitisNBDose');
-    let meningitisNBDoseDescriptionDiv = document.getElementById('meningitisNBDoseDescription');
-    let textbookDoseDescriptionDiv = document.getElementById('textbookDoseDescription');
-
-    nonMeningitisNBDoseDiv.innerHTML="";
-    nonMeningitisNBDoseDescriptionDiv.innerHTML="";
-    meningitisNBDoseDiv.innerHTML="";
-    meningitisNBDoseDescriptionDiv.innerHTML="";
-    
-    const today = new Date();
-    const birthday = new Date(birthdayForCommonNBDrug);
-    //計算PNA in ms (以毫秒為單位)
-    const diffInMs = today-birthday;
-    const postnatalAge = Math.floor(diffInMs / (1000*60*60*24));
-
-
-
-    let nonMeningitisDose = findDose(drugChoice, 'non-meningitis', weeksOfGAForCommonNBDrug, postnatalAge, bwForCommonNBDrug);
-    let nonMeningitisDoseGiven = (nonMeningitisDose.dose*(bwForCommonNBDrug/1000)/3).toFixed(1);
-    if (nonMeningitisDose.description) {
-      nonMeningitisNBDoseDiv.innerHTML = `${nonMeningitisDoseGiven} mg ${nonMeningitisDose.frequency}`;
-      nonMeningitisNBDoseDescriptionDiv.innerHTML = nonMeningitisDose.description;
+      //將GIR輸出到網頁
+      document.getElementById('GIR_result').textContent = girTotal? `GIR ${girTotal.toFixed(2)}`:"GIR 0.0";
     }
 
-    let meningitisDose = findDose(drugChoice, 'meningitis', weeksOfGAForCommonNBDrug, postnatalAge, bwForCommonNBDrug);
-    let meningitisDoseGiven = (meningitisDose.dose*(bwForCommonNBDrug/1000)/3).toFixed(1);
-    if (meningitisDose.description) {
-      meningitisNBDoseDiv.innerHTML = `${meningitisDoseGiven} mg ${meningitisDose.frequency}`;
-      meningitisNBDoseDescriptionDiv.innerHTML = meningitisDose.description;
+
+    // *****************************************
+    // 計算Dextrose濃度
+    // *****************************************
+    function calculateDex(){
+      //讀取輸入值
+      const dextroseOriginalConcentration = parseFloat(document.getElementById('dextrose_original_concentration').value) || 0;
+      const dextroseOriginalAmount = parseFloat(document.getElementById('dextrose_original_amount').value) || 0;
+      const dextroseAddConcentration = parseFloat(document.getElementById('dextrose_add_concentration').value) || 0;
+      const dextroseAddAmount = parseFloat(document.getElementById('dextrose_add_amount').value) || 0;
+
+      let dextroseConcentrationFinal = (dextroseOriginalConcentration/100*dextroseOriginalAmount + dextroseAddConcentration/100*dextroseAddAmount)/(dextroseOriginalAmount+dextroseAddAmount)*100;
+      dextroseConcentrationFinal = dextroseConcentrationFinal > 0 ? dextroseConcentrationFinal.toFixed(2) : 0.00;
+
+      
+      //將Dextrose濃度輸出到網頁
+      document.getElementById('dextrose_concentration_final').textContent = `Dextrose = ${dextroseConcentrationFinal} %`;
     }
 
-  }
 
-  // 複製按鈕
-  function copyToClipboard(id, button) {
-    const textToCopy = document.getElementById(id).textContent;
-    const originalText = button.textContent;
-
-    navigator.clipboard.writeText(textToCopy);
-    button.textContent = "Copied";
-    setTimeout(() => {
-      button.textContent = originalText;
-    }, 500);
-    button.blur();
-  }
-
-  // 加減乘除
-  function calculateExpression(expression) {
-    // 移除掉多餘的空格
-    expression = expression.replace(/\s+/g, "");
-
-    // 移除結尾的 +, -, *, / 符號
-    expression = expression.replace(/[+\-*\/]$/, "");
-
-    try {
-        // 使用 math.js 的 evaluate 方法計算表達式
-        let result = math.evaluate(expression); // 評估數學表達式
-        return result;
-    } catch (error) {
-        console.error("表達式錯誤:", error);
-        return 0; // 若計算過程中有錯誤，返回 null
-    }
-  }
-
-  // 解析PO
-  function parsePO(expression, HM, formula) {
-    const regex = /^(\d+\s*\*\s*\d+)(\s*\+\s*\d+\s*\*\s*\d+)*$/;
-    const matchPattern = /(\d+)\s*\*\s*(\d+)/g;
-    const poOutputDiv = document.getElementById("poOutput");
-    
-    let poOutput = [];
-    let poResult = "";
-    let totalIntake = calculateExpression(expression);
-    
-    //若為空值，回傳0
-    if (expression==="") {
-      return ["", 0];
-    }
-    //若為0，回傳NPO
-    if (expression==0) {
-      return ["Diet: NPO with OG decompression", 0];
+    // *****************************************
+    // 計算UA、UV深度
+    // *****************************************
+    function calculateUmbilicalCathLen(){
+      //讀取輸入值
+      const umbilicalCathLenBW = parseFloat(document.getElementById('umbilical_cath_len_BW').value) || 0;
+      const umbilicalCathLenUAHigh = umbilicalCathLenBW > 0 ? (umbilicalCathLenBW/1000*3+9).toFixed(1) : "";
+      const umbilicalCathLenUALow = umbilicalCathLenBW > 0 ? (umbilicalCathLenBW/1000+7).toFixed(1) : "";
+      const umbilicalCathLenUV = umbilicalCathLenUAHigh > 0 ? (umbilicalCathLenUAHigh/2+1).toFixed(1) : "";
+   
+      //將UA、UV深度輸出到網頁
+      document.getElementById('umbilical_cath_len_UA').textContent = umbilicalCathLenUAHigh? `高位 ${umbilicalCathLenUAHigh} cm, 低位 ${umbilicalCathLenUALow} cm`:"";
+      document.getElementById('umbilical_cath_len_UV').textContent = umbilicalCathLenUV? `${umbilicalCathLenUV} cm`:"";
     }
 
-    // 先檢查是否符合 A*B (+ C*D + E*F ...) 格式
-    if (!regex.test(expression)) {
-        poResult = `Diet: ${totalIntake} ml/day`;
-        return [poResult, totalIntake]; // 若格式不正確，提前返回
-    }
 
-    // 使用正則表達式解析 "數字 * 數字" 格式
-    let match;
-    while ((match = matchPattern.exec(expression)) !== null) {
-        const [_, base, multiplier] = match;
-        poOutput.push({ base: parseInt(base), multiplier: parseInt(multiplier) });
-    }
+    // *****************************************
+    // 設定藥物資料
+    // *****************************************
+    const drugSpecs = {
+      'Dopamine'      : { concentration: 40     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Dobutamine'    : { concentration: 12.5   , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Milrinone'     : { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Epinephrine'   : { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},
+      'Midazolam'     : { concentration: 5      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Fentanyl'      : { concentration: 0.05   , unit: 'mg/ml' , rateUnit: 'mcg/kg/hr'  , decimalPlace: 3},
+      'Bumetanide'    : { concentration: 0.25   , unit: 'mg/ml' , rateUnit: 'mcg/kg/hr'  , decimalPlace: 1},
+      'Norepinephrine': { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},
+      'Nicardipine'   : { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Nitroglycerin' : { concentration: 0.5    , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}, //小數點待確定
+      'Labetalol'     : { concentration: 5      , unit: 'mg/ml' , rateUnit: 'mg/kg/hr'   , decimalPlace: 2}, //小數點待確定
+      'PGE1'          : { concentration: 0.5    , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},
+      'Vasopressin'   : { concentration: 20     , unit: 'U/ml'  , rateUnit: 'mU/kg/min'  , decimalPlace: 1},
+      'Isoproterenol' : { concentration: 0.2    , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Rocuronium'    : { concentration: 10     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Cisatracurium' : { concentration: 2      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Morphine'      : { concentration: 10     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}, //小數點待確定
+      'Lorazepam'     : { concentration: 2      , unit: 'mg/ml' , rateUnit: 'mg/kg/hr'   , decimalPlace: 2}, //小數點待確定
+      'Ketamine'      : { concentration: 50     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Propofol'      : { concentration: 10     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}, //小數點待確定
+      'MgSO4'         : { concentration: 100    , unit: 'mg/ml' , rateUnit: 'mg/kg/hr'   , decimalPlace: 1},
+      'Lidocaine'     : { concentration: 50     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}  //小數點待確定
+    };
 
-    // 計算 multiplier 的總和
-    const multiplierSum = poOutput.reduce((sum, item) => sum + item.multiplier, 0);
-    // 檢查 multiplierSum 是否能被 24 整除
-    if (24 % multiplierSum !== 0) {
-      poResult = `Diet: ${totalIntake} ml/day`;
-      return [poResult, totalIntake];
-    }
+    // *****************************************
+    // 計算藥物配製
+    // *****************************************
+    function calculateDrugPreperation() {
+      //讀取輸入值
+      const drugBW = parseFloat(document.getElementById('drug_BW').value) || 0;
+      const drugName = document.getElementById('drug_name').value;
+      let drugExtractAmount = parseFloat(document.getElementById('drug_extract_amount').value) || 0;
+      const drugDiluterName = document.getElementById('drug_diluter_name').value;
+      const drugTotalFinalVolume = parseFloat(document.getElementById('drug_total_final_volume').value) || 0;
+      const drugInfusionRate = parseFloat(document.getElementById('drug_infusion_rate').value) || 0;
+      let drugInfusionFinalRate = parseFloat(document.getElementById('drug_infusion_final_rate').value) || 0;
 
-    // 生成結果描述
-    poResult = poOutput.map((result) => `${result.base} ml * ${result.multiplier} meals`).join(" then ");
-    // 移除最後一個元素 (最後一個*幾餐)
-    let poResultArray = poResult.split(" * ");
-    poResultArray.pop(); 
-    poResult = poResultArray.join(" * ");
- 
-    // 加上餵食頻率
-    poResult += ` / Q${24/multiplierSum}H`;
+      //取得藥物資料
+      const drugSpec = drugSpecs[drugName];
 
-    // 加上奶品
-    let diet = HM && formula ? `${HM}/${formula}` : HM || formula || '';
-    poResult =  diet ? `${diet}  ${poResult}` : poResult;
+      //更新網頁上顯示的藥物濃度單位
+      document.getElementById('drug_name').title= `${drugName} ${drugSpec.concentration} ${drugSpec.unit}`;
+      document.getElementById('drug_extract_amount_unit').textContent = (drugSpec.unit).replace("/ml","");
+      document.getElementById('drug_infusion_final_rate_unit').textContent = drugSpec.rateUnit;
 
-    // 加上總量 = total ml/day
-    poResult = `Diet: ${poResult} (= total ${totalIntake} ml/day)`;
-    
+      //限制網頁上的輸入框，若drugExtractAmount>0則drugInfusionFinalRate不能輸入，反之亦然，若都沒有值則都可以輸入
+      document.getElementById('drug_infusion_final_rate').disabled = drugExtractAmount > 0;
+      document.getElementById('drug_extract_amount').disabled = drugInfusionFinalRate > 0;
 
-    return [poResult, totalIntake];
-  }
+      //重量單位換算
+      let drugUnitConversionRatio = 1;
+      const drugExtractAmountUnits = (drugSpec.unit).split("/"); // e.g. [0] = mg, [1] = ml
+      const drugInfusionFinalRateUnits = (drugSpec.rateUnit).split("/"); // e.g. [0] = mcg, [1] = kg, [2] = min
+      const drugUnitComb = `${drugExtractAmountUnits[0]}-${drugInfusionFinalRateUnits[0]}`;
+      switch (drugUnitComb) {
+        case 'mg-mcg': drugUnitConversionRatio = 1/1000; break;
+        case 'U-mU'  : drugUnitConversionRatio = 1/1000; break;
+        case 'mg-mg' : drugUnitConversionRatio = 1; break;
+        default: drugUnitConversionRatio = 1; break;
+      }
 
-  // validate input
-  function validateInput(input, min, max) {
-    return input >= min && input <= max;
-  }
-
-  // 顯示選擇的表格並隱藏其他表格
-  function showTable(tableId) {
-    // 取得所有的表格容器
-    const tables = document.querySelectorAll('.table-container');
-    tables.forEach((table) => {
-      table.classList.remove('active'); // 隱藏所有表格
-    });
-    // 顯示選擇的表格
-    document.getElementById(tableId).classList.add('active');
-  }
-
-  // Function to update text content and hide the element if it's empty
-  function updateOutput(id, value) {
-    const element = document.getElementById(id);
-    const cellOfElement = document.getElementById(id+"Cell");
-    if (value === "" ) {
-      cellOfElement.style.display = "none"; // Hide the element if value is an empty string
-    } else {
-      cellOfElement.style.display = "block"; // Show the element if value is not empty
-      element.textContent = value; // Update the text content
-    }
-  }
-
-  // lmsData
-  // const lmsData = {
-  //   //因資料保密僅開放內網存取
-  // };
-
-  // // 使用 async/await 來載入外部 JSON 檔案並返回資料
-  // async function loadJSON(filename) {
-  //     try {
-  //         const response = await fetch(filename);
-  //         const data = await response.json();
-  //         return data;  // 返回 JSON 資料
-  //     } catch (error) {
-  //         console.error('Error loading lms JSON:', error);
-  //         return null;  // 如果發生錯誤，返回 null
-  //     }
-  // }
-
-
-  // 獲取 LMS 參數並計算 Z-Score
-  function getZScore(parameter, sex, daysSinceGA22w0d, value) {
-    // console.log(lmsData);
-    const lms = lmsData[parameter][sex][daysSinceGA22w0d];
-    if (lms) {
-      const {L, M, S, percentile_3, percentile_10, percentile_50, percentile_90, percentile_97} = lms;
-      if (L === 0) {
-        return Math.log(value / M) / S;  //L趨近於0時使用極限公式
+      //時間單位換算
+      let drugTimeConversionRatio = 1;
+      if (drugInfusionFinalRateUnits[2] === 'min') drugTimeConversionRatio = 60; // e.g. [0] = mcg, [1] = kg, [2] = min
+      
+      //若無drugExtractAmount, 用drugInfusionFinalRate回推; 反之亦然
+      if (drugExtractAmount === 0) {
+        drugExtractAmount = drugInfusionFinalRate * drugBW * drugUnitConversionRatio * drugTimeConversionRatio / drugInfusionRate * drugTotalFinalVolume.toFixed(drugSpec.decimalPlace);
+        // drugInfusionFinalRate = drugInfusionFinalRate.toFixed(2);
       } else {
-        return ((Math.pow(value / M, L) - 1) / (S * L));  //常規公式
+        drugInfusionFinalRate = (drugExtractAmount / drugTotalFinalVolume / drugBW / drugUnitConversionRatio / drugTimeConversionRatio * drugInfusionRate).toFixed(2);
+        drugExtractAmount = drugExtractAmount.toFixed(drugSpec.decimalPlace);
       }
-    } else {
-      return null;  // 沒有對應的數據
+      
+      //計算需要多少dilutor
+      let drugDiluterAmount = ( drugTotalFinalVolume - drugExtractAmount / drugSpec.concentration ).toFixed(1);
+
+      //計算pure line
+      let drugPureLineFinalRate = ( 1 * drugSpec.concentration / drugUnitConversionRatio / drugBW / drugTimeConversionRatio).toFixed(1);
+
+      //輸出成文字
+      let drugTextForOrder = `${drugName} ${drugExtractAmount}${drugExtractAmountUnits[0]} in ${drugDiluterName} ${drugDiluterAmount}ml (total ${drugTotalFinalVolume}ml), run ${drugInfusionRate}ml/hr = ${drugInfusionFinalRate} ${drugSpec.rateUnit}`;
+      let drugTextForMed = `${drugName} ${drugExtractAmount}${drugExtractAmountUnits[0]} in ${drugDiluterName} ${drugDiluterAmount}ml (total ${drugTotalFinalVolume}ml), run as order`;
+      let drugTextForPureLine = `${drugName} pure line 1 ml/hr = ${drugPureLineFinalRate} ${drugSpec.rateUnit}`;
+
+      //輸出到網頁
+      if (drugBW && drugName && drugDiluterName && drugTotalFinalVolume && drugInfusionRate && (drugExtractAmount||drugInfusionFinalRate)) {
+        document.getElementById('drug_text_for_order').textContent = drugTextForOrder;
+        document.getElementById('drug_text_for_med').textContent = drugTextForMed;
+        document.getElementById('drug_text_for_pure_line').textContent = drugTextForPureLine;
+      } else {
+        document.getElementById('drug_text_for_order').textContent = "醫囑";
+        document.getElementById('drug_text_for_med').textContent = "藥囑";
+        document.getElementById('drug_text_for_pure_line').textContent = "Pure Line";
+      }
+    }    
+
+    // *****************************************
+    // 設定antibiotics資料
+    // *****************************************
+    const antiNBDrugSpecs = {
+      'Ampicillin'    : { 
+        'standard': [ 
+          {GA_min: 0, GA_max: 34, PNA_min: 0, PNA_max: 7, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity        , frequency: "Q12H", dose: 50, unit: "mg/kg/dose", description: "50 mg/kg/dose, Q12H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
+          {GA_min: 0, GA_max: 34, PNA_min: 8, PNA_max: 28, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity       , frequency: "Q12H", dose: 75, unit: "mg/kg/dose", description: "75 mg/kg/dose, Q12H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
+          {GA_min: 35, GA_max: Infinity, PNA_min: 0, PNA_max: 28, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity, frequency: "Q8H", dose: 50, unit: "mg/kg/dose", description: "50 mg/kg/dose, Q8H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"}
+        ],
+        'meningitis': [ 
+          {GA_min: 0, GA_max: 34, PNA_min: 0, PNA_max: 7, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity        , frequency: "Q8H", dose: 100, unit: "mg/kg/dose", description: "100 mg/kg/dose, Q8H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
+          {GA_min: 0, GA_max: 34, PNA_min: 8, PNA_max:60, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity        , frequency: "Q6H", dose: 75, unit: "mg/kg/dose", description: "75 mg/kg/dose, Q6H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
+          {GA_min: 35, GA_max: Infinity, PNA_min: 0, PNA_max: 7, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity , frequency: "Q8H", dose: 100, unit: "mg/kg/dose", description: "100 mg/kg/dose, Q8H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"},
+          {GA_min: 35, GA_max: Infinity, PNA_min: 8, PNA_max: 60, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity, frequency: "Q6H", dose: 75, unit: "mg/kg/dose", description: "75 mg/kg/dose, Q6H, dilute with diswater to 最終濃度100mg/ml, 所需量以IVF run 30 mins"}
+        ]      
+      },
+      'Gentamicin'    : {
+        'standard': [ 
+          {GA_min: 0, GA_max: 29, PNA_min: 0, PNA_max: 7, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity        , frequency: "Q48H", dose: 5, unit: "mg/kg/dose", description: "5 mg/kg/dose, Q48H, DILUTE WITH N/S TO 2ML RUN 30 MINS"},
+          {GA_min: 0, GA_max: 29, PNA_min: 8, PNA_max: 28, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity       , frequency: "Q36H", dose: 4, unit: "mg/kg/dose", description: "4 mg/kg/dose, Q36H, DILUTE WITH N/S TO 2ML RUN 30 MINS"},
+          {GA_min: 0, GA_max: 29, PNA_min: 29, PNA_max: Infinity, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity, frequency: "Q24H", dose: 4, unit: "mg/kg/dose", description: "4 mg/kg/dose, Q24H, DILUTE WITH N/S TO 2ML RUN 30 MINS"},
+          {GA_min: 30, GA_max: 34, PNA_min: 0, PNA_max: 7, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity       , frequency: "Q36H", dose: 4.5, unit: "mg/kg/dose", description: "4.5 mg/kg/dose, Q36H, DILUTE WITH N/S TO 2ML RUN 30 MINS"},
+          {GA_min: 30, GA_max: 34, PNA_min: 8, PNA_max: Infinity, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity, frequency: "Q24H", dose: 4, unit: "mg/kg/dose", description: "4 mg/kg/dose, Q24H, DILUTE WITH N/S TO 2ML RUN 30 MINS"},
+          {GA_min: 35, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity , frequency: "Q24H", dose: 4, unit: "mg/kg/dose", description: "4 mg/kg/dose, Q24H, DILUTE WITH N/S TO 2ML RUN 30 MINS"}
+        ]
+      },
+      'Cefotaxime'    : {
+        'standard': [ 
+          {GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 7, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 50, unit: "mg/kg/dose", description: "50MG/KG/DOSE, Q12H, 用D/W泡成250MG/ML, DILUTED WITH N/S TO 2ML RUN 30 MINS"},
+          {GA_min: 0, GA_max: 31, PNA_min: 8, PNA_max: Infinity, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity , frequency: "Q8H", dose: 50, unit: "mg/kg/dose", description: "50MG/KG/DOSE, Q8H, 用D/W泡成250MG/ML, DILUTED WITH N/S TO 2ML RUN 30 MINS"},
+          {GA_min: 32, GA_max: Infinity, PNA_min: 8, PNA_max: Infinity, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity , frequency: "Q6H", dose: 50, unit: "mg/kg/dose", description: "50MG/KG/DOSE, Q6H, 用D/W泡成250MG/ML, DILUTED WITH N/S TO 2ML RUN 30 MINS"}
+        ],
+        'meningitis':[
+          {GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 7, PMA_min: 0, PMA_max: Infinity, BW_min: 2000, BW_max: Infinity  , frequency: "Q8H", dose: 50, unit: "mg/kg/dose", description: "50MG/KG/DOSE, Q8H, 用D/W泡成250MG/ML, DILUTED WITH N/S TO 2ML RUN 30 MINS"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 8, PNA_max: Infinity, PMA_min: 0, PMA_max: Infinity, BW_min: 2000, BW_max: Infinity  , frequency: "Q6H", dose: 50, unit: "mg/kg/dose", description: "50MG/KG/DOSE, Q6H, 用D/W泡成250MG/ML, DILUTED WITH N/S TO 2ML RUN 30 MINS"}
+        ]
+      },
+      'Ceftazidime'   : {
+        'standard': [ 
+          {GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 28, PMA_min: 0, PMA_max: 29, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 30, unit: "mg/kg/dose", description: "30MG/KG/DOSE, Q12H, 加5ML DISTILLED WATER, 泡成90MG/ML, DILUTE至最終濃度45mg/ml, RUN 30 MINS"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 29, PNA_max: Infinity, PMA_min: 0, PMA_max: 29, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 30, unit: "mg/kg/dose", description: "30MG/KG/DOSE, Q8H, 加5ML DISTILLED WATER, 泡成90MG/ML, DILUTE至最終濃度45mg/ml, RUN 30 MINS"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 14, PMA_min: 30, PMA_max: 36, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 30, unit: "mg/kg/dose", description: "30MG/KG/DOSE, Q12H, 加5ML DISTILLED WATER, 泡成90MG/ML, DILUTE至最終濃度45mg/ml, RUN 30 MINS"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 15, PNA_max: Infinity, PMA_min: 30, PMA_max: 36, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 30, unit: "mg/kg/dose", description: "30MG/KG/DOSE, Q8H, 加5ML DISTILLED WATER, 泡成90MG/ML, DILUTE至最終濃度45mg/ml, RUN 30 MINS"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 7, PMA_min: 37, PMA_max: 44, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 30, unit: "mg/kg/dose", description: "30MG/KG/DOSE, Q12H, 加5ML DISTILLED WATER, 泡成90MG/ML, DILUTE至最終濃度45mg/ml, RUN 30 MINS"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 8, PNA_max: Infinity, PMA_min: 37, PMA_max: 44, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 30, unit: "mg/kg/dose", description: "30MG/KG/DOSE, Q8H, 加5ML DISTILLED WATER, 泡成90MG/ML, DILUTE至最終濃度45mg/ml, RUN 30 MINS"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, PMA_min: 45, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 30, unit: "mg/kg/dose", description: "30MG/KG/DOSE, Q8H, 加5ML DISTILLED WATER, 泡成90MG/ML, DILUTE至最終濃度45mg/ml, RUN 30 MINS"}
+        ],
+        'meningitis': [ 
+          {GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 7, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: 1999  , frequency: "Q12H", dose: 50, unit: "mg/kg/dose", description: "50MG/KG/DOSE, Q12H, 加5ML DISTILLED WATER, 泡成90MG/ML, DILUTE至最終濃度45mg/ml, RUN 30 MINS"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 7, PMA_min: 0, PMA_max: Infinity, BW_min: 2000, BW_max: Infinity  , frequency: "Q8H", dose: 50, unit: "mg/kg/dose", description: "50MG/KG/DOSE, Q8H, 加5ML DISTILLED WATER, 泡成90MG/ML, DILUTE至最終濃度45mg/ml, RUN 30 MINS"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 8, PNA_max: Infinity, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 50, unit: "mg/kg/dose", description: "50MG/KG/DOSE, Q8H, 加5ML DISTILLED WATER, 泡成90MG/ML, DILUTE至最終濃度45mg/ml, RUN 30 MINS"}
+        ]
+      },
+      'Vancomycin'    : {
+        'standard': [ 
+          {GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 21, PMA_min: 0, PMA_max: 29, BW_min: 0, BW_max: Infinity  , frequency: "Q18H", dose: 15, unit: "mg/kg/dose", description: "15MG/KG/DOSE, Q18H, DILUTE WITH D/W TO 50MG/ML THEN DILUTE 10倍, RUN 1 HR"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 22, PNA_max: Infinity, PMA_min: 0, PMA_max: 29, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 15, unit: "mg/kg/dose", description: "15MG/KG/DOSE, Q12H, DILUTE WITH D/W TO 50MG/ML THEN DILUTE 10倍, RUN 1 HR"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 14, PMA_min: 30, PMA_max: 36, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 15, unit: "mg/kg/dose", description: "15MG/KG/DOSE, Q12H, DILUTE WITH D/W TO 50MG/ML THEN DILUTE 10倍, RUN 1 HR"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 15, PNA_max: Infinity, PMA_min: 30, PMA_max: 36, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 15, unit: "mg/kg/dose", description: "15MG/KG/DOSE, Q8H, DILUTE WITH D/W TO 50MG/ML THEN DILUTE 10倍, RUN 1 HR"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 7, PMA_min: 37, PMA_max: 44, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 15, unit: "mg/kg/dose", description: "15MG/KG/DOSE, Q12H, DILUTE WITH D/W TO 50MG/ML THEN DILUTE 10倍, RUN 1 HR"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 8, PNA_max: Infinity, PMA_min: 37, PMA_max: 44, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 15, unit: "mg/kg/dose", description: "15MG/KG/DOSE, Q8H, DILUTE WITH D/W TO 50MG/ML THEN DILUTE 10倍, RUN 1 HR"},
+          {GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, PMA_min: 45, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q6H", dose: 15, unit: "mg/kg/dose", description: "15MG/KG/DOSE, Q6H, DILUTE WITH D/W TO 50MG/ML THEN DILUTE 10倍, RUN 1 HR"}
+        ]
+      },
+      'Meropenem'     : {
+        'standard': [ 
+          {GA_min:  0, GA_max: 31, PNA_min: 0, PNA_max: 13, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 20, unit: "mg/kg/dose", description: "20mg/kg/dose, Q12H, 稀釋至50mg/ml, Dilute with N/S to 10倍, run 1 hr", remark: "嚴格限水時: Dilute with N/S to 2.5倍"},
+          {GA_min:  0, GA_max: 31, PNA_min: 14, PNA_max: Infinity, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 20, unit: "mg/kg/dose", description: "20mg/kg/dose, Q8H, 稀釋至50mg/ml, Dilute with N/S to 10倍, run 1 hr", remark: "嚴格限水時: Dilute with N/S to 2.5倍"},
+          {GA_min: 32, GA_max: Infinity, PNA_min: 0, PNA_max: 13, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 20, unit: "mg/kg/dose", description: "20mg/kg/dose, Q8H, 稀釋至50mg/ml, Dilute with N/S to 10倍, run 1 hr", remark: "嚴格限水時: Dilute with N/S to 2.5倍"},
+          {GA_min: 32, GA_max: Infinity, PNA_min: 14, PNA_max: Infinity, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 30, unit: "mg/kg/dose", description: "30mg/kg/dose, Q8H, 稀釋至50mg/ml, Dilute with N/S to 10倍, run 1 hr", remark: "嚴格限水時: Dilute with N/S to 2.5倍"}
+        ],
+        'meningitis': [ 
+          {GA_min:  0, GA_max: 31, PNA_min: 0, PNA_max: 13, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 40, unit: "mg/kg/dose", description: "40mg/kg/dose, Q12H, 稀釋至50mg/ml, Dilute with N/S to 10倍, run 1 hr", remark: "嚴格限水時: Dilute with N/S to 2.5倍"},
+          {GA_min:  0, GA_max: 31, PNA_min: 14, PNA_max: Infinity, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 40, unit: "mg/kg/dose", description: "40mg/kg/dose, Q8H, 稀釋至50mg/ml, Dilute with N/S to 10倍, run 1 hr", remark: "嚴格限水時: Dilute with N/S to 2.5倍"},
+          {GA_min:  32, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 40, unit: "mg/kg/dose", description: "40mg/kg/dose, Q8H, 稀釋至50mg/ml, Dilute with N/S to 10倍, run 1 hr", remark: "嚴格限水時: Dilute with N/S to 2.5倍"}
+        ]
+      },
+      'Metronidazole' : {
+        'standard': [ 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, PMA_min: 0, PMA_max: 33, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 7.5, unit: "mg/kg/dose", description: "maintenance 7.5 mg/kg/dose, Q12H, run 30 min", remark: "原液5mg/ml, 不須稀釋, 但需loading 15mg/kg"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, PMA_min: 34, PMA_max: 40, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 7.5, unit: "mg/kg/dose", description: "maintenance 7.5 mg/kg/dose, Q8H, run 30 min", remark: "原液5mg/ml, 不須稀釋, 但需loading 15mg/kg"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, PMA_min: 41, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q6H", dose: 7.5, unit: "mg/kg/dose", description: "maintenance 7.5 mg/kg/dose, Q6H, run 30 min", remark: "原液5mg/ml, 不須稀釋, 但需loading 15mg/kg. Maintain也可10mg/kg/dose Q8H."}, 
+        ]
+      },
+      'Amikacin' :{
+        'standard': [ 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 7, PMA_min: 0, PMA_max: 28, BW_min: 0, BW_max: Infinity  , frequency: "Q48H", dose: 14, unit: "mg/kg/dose", description: "14mg/kg/dose, Q48H, dilute 50倍 run 1hr", remark: "可以D5W or N/S稀釋25~100倍至2.5~10mg/ml"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 8, PNA_max:28, PMA_min: 0, PMA_max: 28, BW_min: 0, BW_max: Infinity  , frequency: "Q36H", dose: 12, unit: "mg/kg/dose", description: "12mg/kg/dose, Q36H, dilute 50倍 run 1hr", remark: "可以D5W or N/S稀釋25~100倍至2.5~10mg/ml"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min:29, PNA_max:Infinity, PMA_min: 0, PMA_max: 28, BW_min: 0, BW_max: Infinity  , frequency: "Q24H", dose: 12, unit: "mg/kg/dose", description: "12mg/kg/dose, Q24H, dilute 50倍 run 1hr", remark: "可以D5W or N/S稀釋25~100倍至2.5~10mg/ml"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 7, PMA_min: 30, PMA_max: 34, BW_min: 0, BW_max: Infinity  , frequency: "Q36H", dose: 12, unit: "mg/kg/dose", description: "12mg/kg/dose, Q36H, dilute 50倍 run 1hr", remark: "可以D5W or N/S稀釋25~100倍至2.5~10mg/ml"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 8, PNA_max:Infinity, PMA_min: 30, PMA_max: 34, BW_min: 0, BW_max: Infinity  , frequency: "Q24H", dose: 12, unit: "mg/kg/dose", description: "12mg/kg/dose, Q24H, dilute 50倍 run 1hr", remark: "可以D5W or N/S稀釋25~100倍至2.5~10mg/ml"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 7, PMA_min: 35, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q24H", dose: 12, unit: "mg/kg/dose", description: "12mg/kg/dose, Q24H, dilute 50倍 run 1hr", remark: "可以D5W or N/S稀釋25~100倍至2.5~10mg/ml"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 8, PNA_max:Infinity, PMA_min: 35, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q18H", dose: 12, unit: "mg/kg/dose", description: "12mg/kg/dose, Q18H, dilute 50倍 run 1hr", remark: "可以D5W or N/S稀釋25~100倍至2.5~10mg/ml"}, 
+        ]
+      },
+      'Cefazolin' :{
+        'standard': [ 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 28, PMA_min: 0, PMA_max: 29, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q12H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min:29, PNA_max: Infinity, PMA_min: 0, PMA_max: 29, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q8H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 14, PMA_min: 30, PMA_max: 36, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q12H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min:15, PNA_max: Infinity, PMA_min: 30, PMA_max: 36, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q8H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 7, PMA_min: 37, PMA_max: 44, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q12H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 8, PNA_max: Infinity, PMA_min: 37, PMA_max: 44, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q8H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, PMA_min: 45, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q6H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q6H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins"} 
+        ]
+      },
+      'Oxacillin' :{
+        'standard': [ 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 28, PMA_min: 0, PMA_max: 29, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q12H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min:29, PNA_max: Infinity, PMA_min: 0, PMA_max: 29, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q8H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 14, PMA_min: 30, PMA_max: 36, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q12H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min:15, PNA_max: Infinity, PMA_min: 30, PMA_max: 36, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q8H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 7, PMA_min: 37, PMA_max: 44, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q12H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 8, PNA_max: Infinity, PMA_min: 37, PMA_max: 44, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q8H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, PMA_min: 45, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q6H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q6H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}
+        ],
+        'meningitis': [ 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 28, PMA_min: 0, PMA_max: 29, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 50, unit: "mg/kg/dose", description: "50mg/kg/dose, Q12H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min:29, PNA_max: Infinity, PMA_min: 0, PMA_max: 29, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 50, unit: "mg/kg/dose", description: "50mg/kg/dose, Q8H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 14, PMA_min: 30, PMA_max: 36, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 50, unit: "mg/kg/dose", description: "50mg/kg/dose, Q12H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min:15, PNA_max: Infinity, PMA_min: 30, PMA_max: 36, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 50, unit: "mg/kg/dose", description: "50mg/kg/dose, Q8H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 7, PMA_min: 37, PMA_max: 44, BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 50, unit: "mg/kg/dose", description: "50mg/kg/dose, Q12H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 8, PNA_max: Infinity, PMA_min: 37, PMA_max: 44, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 50, unit: "mg/kg/dose", description: "50mg/kg/dose, Q8H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, PMA_min: 45, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q6H", dose: 50, unit: "mg/kg/dose", description: "50mg/kg/dose, Q6H, D/W 10ml dilute to 100mg/ml, then N/S dilute to 2ml run 30mins"}
+        ]
+      },
+      'Tazocin' :{
+        'standard': [ 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 28      , PMA_min:  0, PMA_max: 29      , BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 112.5, unit: "mg/kg/dose", description: "Piperacillin 100mg/kg/dose, Q12H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min:29, PNA_max: Infinity, PMA_min:  0, PMA_max: 29      , BW_min: 0, BW_max: Infinity  , frequency: "Q8H" , dose: 112.5, unit: "mg/kg/dose", description: "Piperacillin 100mg/kg/dose, Q8H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 14      , PMA_min: 30, PMA_max: 36      , BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 112.5, unit: "mg/kg/dose", description: "Piperacillin 100mg/kg/dose, Q12H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min:15, PNA_max: Infinity, PMA_min: 30, PMA_max: 36      , BW_min: 0, BW_max: Infinity  , frequency: "Q8H" , dose: 112.5, unit: "mg/kg/dose", description: "Piperacillin 100mg/kg/dose, Q8H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 7       , PMA_min: 37, PMA_max: 44      , BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 112.5, unit: "mg/kg/dose", description: "Piperacillin 100mg/kg/dose, Q12H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 8, PNA_max: Infinity, PMA_min: 37, PMA_max: 44      , BW_min: 0, BW_max: Infinity  , frequency: "Q8H" , dose: 112.5, unit: "mg/kg/dose", description: "Piperacillin 100mg/kg/dose, Q8H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, PMA_min: 45, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q8H" , dose: 112.5, unit: "mg/kg/dose", description: "Piperacillin 100mg/kg/dose, Q8H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}
+        ]
+      }
+    };
+
+    // *****************************************
+    // 計算常用antibiotics配置
+    // *****************************************
+    // 先找出該藥品根據體重GA年紀等條件的配方
+    function findAntiNBDrugSpec(drugName, condition, BW, GA, PNA, PMA) {
+      const antiDrugSpec = antiNBDrugSpecs[drugName];
+      if (!antiDrugSpec || !antiDrugSpec[condition]) return null;
+      return antiDrugSpec[condition].find(spec => spec.BW_min <= BW && BW <= spec.BW_max && spec.GA_min <= GA && GA <= spec.GA_max && spec.PNA_min <= PNA && PNA <= spec.PNA_max && spec.PMA_min <= PMA && PMA <= spec.PMA_max) || null;
     }
-  }
 
-  // 處理數字後綴
-  function getOrdinalSuffix(number) {
-    const suffixes = ["th", "st", "nd", "rd"];
-    const value = number % 100;
+    // 計算antibiotics配置
+    function calculateAntibioticsForNB() {
+      //歸零
+      document.getElementById('anti_NB_standard_dose_text').textContent = "";
+      document.getElementById('anti_NB_meningitis_dose_text').textContent = "";
+      document.getElementById('anti_NB_standard_dose_description_text').textContent = "";
+      document.getElementById('anti_NB_meningitis_dose_description_text').textContent = "";
+      document.getElementById('anti_NB_dose_remark').textContent = "";
 
-    // 選擇後綴，特別處理 11, 12, 13 這些例外數字
-    return number + (suffixes[(value - 20) % 10] || suffixes[value] || suffixes[0]);
-  }
+      //讀取輸入值
+      const antiNBDrugName = document.getElementById('anti_NB_drug_name').value;
+      const antiNBBW = parseFloat(document.getElementById('anti_NB_BW').value) || 0;
+      const antiNBGAWeek = parseFloat(document.getElementById('anti_NB_gestational_age_week').value) || 0;
+      const antiNBGADay = parseFloat(document.getElementById('anti_NB_gestational_age_day').value);
+      const antiNBBirthday = new Date(document.getElementById('anti_NB_birthday').value);
+      console.log(!0);
 
-  function measurementsOfPreterms() {
-    const gestationalAgebyWeek = parseInt(document.getElementById("gestationalAgebyWeek").value);
-    const gestationalAgePlusDay = parseInt(document.getElementById("gestationalAgePlusDay").value);
-    const sex = document.getElementById("sex").value;
-    const birthWeight = parseFloat(document.getElementById("birthWeight").value);
-    const birthHeight = parseFloat(document.getElementById("birthHeight").value);
-    const birthHeadCircumference = parseFloat(document.getElementById("birthHeadCircumference").value);
-
-    // 換算成距離GA 22w0d 差幾天
-    let daysSinceGA22w0d = (gestationalAgebyWeek-22)*7+gestationalAgePlusDay;
-    // console.log(`距離22w0d差${daysSinceGA22w0d}天`);
-
-    // 計算 Z-score
-    const weightZScore = getZScore('weight', sex, daysSinceGA22w0d, birthWeight);
-    const heightZScore = getZScore('height', sex, daysSinceGA22w0d, birthHeight);
-    const headCircumferenceZScore = getZScore('hc', sex, daysSinceGA22w0d, birthHeadCircumference);
-
-    // 計算百分位 (若 Z-score 為 null 則設定百分位為 null)
-    const weightPercentile = weightZScore !== null ? (jStat.normal.cdf(weightZScore, 0, 1) * 100) : null;
-    const heightPercentile = heightZScore !== null ? (jStat.normal.cdf(heightZScore, 0, 1) * 100) : null;
-    const headCircumferencePercentile = headCircumferenceZScore !== null ? (jStat.normal.cdf(headCircumferenceZScore, 0, 1) * 100) : null;
-
-    const resultText = `
-      GA: ${gestationalAgebyWeek} weeks + ${gestationalAgePlusDay} day${gestationalAgePlusDay > 1 ? "s" : ""} <br>
-      Gender: ${sex} <br> 
-      BBW: ${birthWeight}g (= ${weightPercentile !== null ? getOrdinalSuffix(Math.trunc(weightPercentile)) : "N/A"} percentile, Z-score ${weightZScore !== null ? weightZScore.toFixed(2) : "N/A"})<br>
-      BBL: ${birthHeight}cm (= ${heightPercentile !== null ? getOrdinalSuffix(Math.trunc(heightPercentile)) : "N/A"} percentile, Z-score ${heightZScore !== null ? heightZScore.toFixed(2) : "N/A"})<br>
-      BHC: ${birthHeadCircumference}cm (= ${headCircumferencePercentile !== null ? getOrdinalSuffix(Math.trunc(headCircumferencePercentile)) : "N/A"} percentile, Z-score ${headCircumferenceZScore !== null ? headCircumferenceZScore.toFixed(2) : "N/A"})
-    `;
-
-    // Display
-    document.getElementById("measurementsOfPretermsOutput").innerHTML = resultText;
-  } 
-
-  // 在 DOM 加載完成後調用函數
-  document.addEventListener("DOMContentLoaded", function() {
-    updateDrugOrder(); // 初始化選擇的藥物濃度
-    updateFluid(); // 初始化fluid
-    calculateGIR(); // 初始化GIR
-    customizedDex();
-    depthOfLine();
-  });
+      //檢查輸入值
+      if (!antiNBDrugName || !antiNBBW || !antiNBGAWeek || (antiNBGADay>=7) || !antiNBBirthday) {
+        console.error("Missing or incorrect inputs!");
+        console.log(`antiNBDrugName: ${antiNBDrugName}, antiNBBW: ${antiNBBW}, antiNBGAWeek: ${antiNBGAWeek}, antiNBGADay: ${antiNBGADay}, antiNBBirthday: ${antiNBBirthday}`);
+        document.getElementById('anti_NB_standard_dose_description_text').textContent = "Missing or incorrect input values";
+        document.getElementById('anti_NB_meningitis_dose_description_text').textContent = "Missing or incorrect input values";
+        return;
+      }
 
 
-</script>
+      //計算PNA
+      const antiNBPNA = Math.floor((new Date() - antiNBBirthday) / (1000 * 60 * 60 * 24));
+      console.log(`PNA: ${antiNBPNA}`);
+
+      //計算PMA
+      const antiNBPMAWeek = antiNBGAWeek + Math.floor( (antiNBPNA+antiNBGADay) / 7);
+      console.log(`PMA complete weeks: ${antiNBPMAWeek}`);
+
+      
+      //取得藥物資料
+      const antiNBDrugSpecStandardDose = findAntiNBDrugSpec(antiNBDrugName, 'standard', antiNBBW, antiNBGAWeek, antiNBPNA, antiNBPMAWeek);
+      const antiNBDrugSpecMeningitisDose = findAntiNBDrugSpec(antiNBDrugName, 'meningitis', antiNBBW, antiNBGAWeek, antiNBPNA, antiNBPMAWeek);
+
+      // 若antiNBDrugSpecStandardDose有值，則計算；若無則顯示錯誤訊息
+      if (antiNBDrugSpecStandardDose) {
+        //計算amount/kg/dose
+        let antiNBDrugSpecStandardDoseAmount = (antiNBDrugSpecStandardDose.dose*(antiNBBW/1000)).toFixed(2);
+        console.log(`Standard Dose: ${antiNBDrugSpecStandardDoseAmount} = ${antiNBDrugSpecStandardDose.dose} * (${antiNBBW}/1000)`); 
+        //輸出成文字
+        let antiNBDrugStandardDoseText   = `${antiNBDrugSpecStandardDoseAmount} ${(antiNBDrugSpecStandardDose.unit).split("/")[0]} ${antiNBDrugSpecStandardDose.frequency}`;
+        let antiNBDrugStandardDoseDescriptionText   = `${antiNBDrugSpecStandardDose.description}`;
+        //輸出到網頁
+        document.getElementById('anti_NB_standard_dose_text').textContent = antiNBDrugStandardDoseText;
+        document.getElementById('anti_NB_standard_dose_description_text').textContent = antiNBDrugStandardDoseDescriptionText;
+        document.getElementById('anti_NB_dose_remark').textContent += antiNBDrugSpecStandardDose.remark;
+      } else {
+        //沒有standard dose, 顯示錯誤訊息
+        console.error(`No standard dose suggestion found for ${antiNBDrugName} with BW=${antiNBBW}, GA=${antiNBGAWeek}w, PNA=${antiNBPNA}d.`);
+        document.getElementById('anti_NB_standard_dose_text').textContent = "-";
+        document.getElementById('anti_NB_standard_dose_description_text').textContent = "No standard dose suggestion found.";
+      }
+      
+      // 若antiNBDrugSpecStandardDose有值，則計算；若無則顯示錯誤訊息
+      if (antiNBDrugSpecMeningitisDose) {
+        //計算amount/kg/dose
+        let antiNBDrugSpecMeningitisDoseAmount = antiNBDrugSpecMeningitisDose? (antiNBDrugSpecMeningitisDose.dose*(antiNBBW/1000)).toFixed(2):"No meningitis dose suggestion found";
+        console.log(`Meningitis Dose: ${antiNBDrugSpecMeningitisDoseAmount} = ${antiNBDrugSpecMeningitisDose.dose} * (${antiNBBW}/1000)`);
+        //輸出成文字
+        let antiNBDrugMeningitisDoseText = `${antiNBDrugSpecMeningitisDoseAmount} ${(antiNBDrugSpecMeningitisDose.unit).split("/")[0]} ${antiNBDrugSpecMeningitisDose.frequency}`;
+        let antiNBDrugMeningitisDoseDescriptionText = `${antiNBDrugSpecMeningitisDose.description}`;
+        //輸出到網頁
+        document.getElementById('anti_NB_meningitis_dose_text').textContent = antiNBDrugMeningitisDoseText;
+        document.getElementById('anti_NB_meningitis_dose_description_text').textContent = antiNBDrugMeningitisDoseDescriptionText;
+      } else {
+        //沒有Meningitis dose, 顯示錯誤訊息
+        console.error(`No meningitis dose suggestion found for ${antiNBDrugName} with BW=${antiNBBW}, GA=${antiNBGAWeek}w, PNA=${antiNBPNA}d.`);
+        document.getElementById('anti_NB_meningitis_dose_text').textContent = "-";
+        document.getElementById('anti_NB_meningitis_dose_description_text').textContent = "No meningitis dose suggestion found.";
+      }
+    }
+
+    // *****************************************
+    // 對傳入的文字進行解析並加減乘除
+    // *****************************************
+    function parseExpression(expression) {
+      expression = expression.replace(/\s+/g, ""); // 移除掉多餘的空格
+      expression = expression.replace(/[+\-*\/]$/, ""); // 移除結尾的 +, -, *, / 符號
+      try {
+        return math.evaluate(expression); // 使用 math.js 的 evaluate 方法計算表達式
+      } catch (error) {
+          console.error("Expression Error:", error);
+          return 0; // 若計算過程中有錯誤，返回 0
+      }
+    }
+
+
+    // *****************************************
+    // 新增新的輸入行
+    // *****************************************
+    function addNewElement( referenceNode, typeOfElement) {
+      // Get the parent of the reference node
+      let parent = referenceNode.parentNode;     
+      let grandParent = parent.parentNode;
+
+      // Create a new row for the inputs
+      let newDiv = document.createElement('div');
+      newDiv.classList.add('input-group'); //加入屬性class
+      switch(typeOfElement){
+        case('fluid_other_solution'):
+          newDiv.innerHTML = `
+            <span class="input-group-text justify-content-center" style="width: 15%;">Other</span>
+            <select name="fluid_other_solution_base" class="form-select text-center" onchange="calculateFluid()">
+              <option value=""></option>
+              <option value="D/W">D/W base</option>
+              <option value="D5W">D5W base</option>
+              <option value="D10W">D10W base</option>
+              <option value="H/S">H/S base</option>
+              <option value="N/S">N/S base</option>
+              <option value="L/R">L/R base</option>
+            </select>
+            <input type="text" name="fluid_other_solution_rate" class="form-control text-center" oninput="calculateFluid()" />
+            <span class="input-group-text justify-content-center" style="width:10%;">ml/hr</span>
+            <button class="btn btn-light" style="border-color: #e0e3e7; width: 5%;" onclick="addNewElement(this, 'fluid_other_solution')">+</button>
+          `;
+          break;
+        case('fluid_other_in_IO'):
+          newDiv.innerHTML = `
+            <span class="input-group-text justify-content-center" style="width: 15%;">Other</span>
+            <select name="fluid_other_in_IO_base" class="form-select text-center" onchange="calculateFluid()">
+              <option value=""></option>
+              <option value="3% NaCl">3% NaCl</option>
+            </select>
+            <input type="text" name="fluid_other_in_IO" class="form-control text-center" oninput="calculateFluid()" />
+            <span class="input-group-text justify-content-center" style="width:10%;">ml/day</span>
+            <button class="btn btn-light" style="border-color: #e0e3e7; width: 5%;" onclick="addNewElement(this, 'fluid_other_in_IO')">+</button>
+          `;
+          break;
+        case('GIR_dex'):
+          newDiv.innerHTML = `
+            <span class="input-group-text justify-content-center" style="width: 15%;">Dex</span>
+            <input name="GIR_dex" type="number" class="form-control text-center" oninput="calculateGIR()">
+            <span class="input-group-text">%</span>
+            <input name="GIR_rate" type="text" class="form-control text-center" oninput="calculateGIR()">
+            <span class="input-group-text" style="width: 10%;">ml/hr</span>
+            <button class="btn btn-light" style="border-color: #e0e3e7; width: 5%;" onclick="addNewElement(this, 'GIR_dex')">+</button>
+          `;
+          break;
+      }
+      grandParent.insertBefore(newDiv, parent);
+    }    
+
+
+    // *****************************************
+    // 自動載入今天日期
+    // *****************************************
+    function loadTodayDate(elementID) {
+      let today = new Date().toISOString().split('T')[0];
+      console.log(`Today: ${today}`);
+
+      document.getElementById(elementID).value = today;
+      console.log(`Today: ${today}`);
+    }
+
+    // *****************************************
+    //對每個.copy-item新增onclick事件，讓點擊後複製其data-content的內容，若沒有data-content，則複製其textContent
+    // *****************************************
+    function addCopyEventListener() {
+      document.querySelectorAll('.copy-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const content = item.dataset.content || item.textContent.trim();  // 獲取data-content的內容，若沒有則獲取textContent
+          navigator.clipboard.writeText(content).then(() => {
+          console.log(`已複製: ${content}`);
+          }).catch(err => {
+          console.error('複製失敗:', err);
+          });
+        });
+      });
+    }
+
+
+    // *****************************************    
+    // reset input
+    // *****************************************
+    function resetForm(elementID){
+      let targetDiv = document.getElementById(elementID); // 獲取指定的 div
+      if (!targetDiv) return;
+
+      let inputs = targetDiv.querySelectorAll("input, select");
+      inputs.forEach(input => {
+          if (input.type === "number" || input.type === "text") {
+              input.value = "";
+          } else if (input.tagName === "SELECT") {
+              input.selectedIndex = 0;
+          }
+      });
+
+      // 清除該區域內的計算結果
+      targetDiv.querySelectorAll(".copy-item").forEach(el => el.textContent = "");
+
+      // 重新載入預設值
+      switch(elementID){
+        case 'fluid_content':
+          document.getElementById('fluid_TPN_dex').selectedIndex = 3; //index 3 = 10%
+          document.getElementById('fluid_TPN_Na').selectedIndex = 4;  //index 4 = 40;
+          document.getElementById('fluid_TPN_K').selectedIndex = 2;   //index 2 = 20;
+          document.getElementById('fluid_TPN_Ca').selectedIndex = 0;  //index 0 = 20;
+          document.getElementById('fluid_TPN_P').selectedIndex = 2;   //index 2 =  9;
+          document.getElementById('fluid_TPN_Mg').selectedIndex = 2;  //index 2 =  4;
+          calculateFluid();
+          break;
+        case 'GIR_content':
+          document.getElementById('GIR_dex_default_10_percent').value = 10;
+          document.getElementById('GIR_dex_default_5_percent').value = 5;
+          calculateGIR();
+          break;
+        case 'dex_content':
+          document.getElementById('dextrose_original_concentration').value = 5;
+          document.getElementById('dextrose_original_amount').value = 500;
+          document.getElementById('dextrose_add_concentration').value = 50;
+          calculateDex();
+          break;
+        case 'umbilical_cath_len_content':
+          calculateUmbilicalCathLen();
+          break;
+        case 'drug_content':
+          calculateDrugPreperation();
+          break;
+        case 'anti_NB_content':
+          loadTodayDate('anti_NB_birthday');
+          calculateAntibioticsForNB();
+          break
+      }
+      addCopyEventListener();
+    }
+
+    // 載入今天日期
+    loadTodayDate('anti_NB_birthday');
+
+    // 頁面載入時先執行一次計算
+    calculateFluid();
+    calculateGIR();
+    calculateDex();
+    calculateUmbilicalCathLen();
+    calculateDrugPreperation();
+    calculateAntibioticsForNB();
+    addCopyEventListener();
+
+  </script>
 </body>
+
 </html>
