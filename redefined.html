@@ -805,7 +805,7 @@
         fluidRegularIVTotalVolume = (fluidRegularIVRate*24).toFixed(1);
         fluidTPNTotalVolume = fluidTotalTDF-fluidTotalPO-fluidLipidTotalVolume-fluidOtherInIOTotalVolume-fluidOtherSolutionTotalVolume-fluidRegularIVTotalVolume;
         fluidTPNRate = (fluidTPNTotalVolume/fluidTPNHours).toFixed(1);
-        fluidTPNGrams = (fluidTPNRate*24*fluidTPNAA/(fluidBW/1000)).toFixed(2);
+        fluidTPNGrams = (fluidTPNRate*fluidTPNHours*fluidTPNAA/(fluidBW/1000)).toFixed(2);
         fluidTPNMakeUp = " (補)";
       }
       console.log(`Regular IV: ${fluidRegularIVRate} ml/hr`);
