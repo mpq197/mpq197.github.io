@@ -8,7 +8,7 @@
     2. 新增問診重點等文件下載
     3. 自動轉換成體重
     4. local storage
-    5. insulin?
+    5. 計算PMA, CA
   -->
 
   <meta charset="UTF-8" />
@@ -301,15 +301,22 @@
                   <input type="number" id="fluid_regular_IV_rate" class="form-control text-center" oninput="calculateFluid()" />
                   <span class="input-group-text  justify-content-center" style="width: 15%;">ml/hr</span>
                 </div>
+                <!-- 加入小計算機 -->
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">計算機</span>
+                  <input type="text" id="fluid_calc" class="form-control text-center" oninput="fluidCalclator()" />
+                  <span class="input-group-text justify-content-center">=</span>
+                  <span class="input-group-text justify-content-center" id="fluid_calc_result" style="width: 15%;"></span>
+                </div>
               </div>
               <div class="card-footer">
                 <div class="input-group d-flex mt-2 mb-2">
                   <span class="input-group-text flex-fill justify-content-center" id="fluid_nutrition_GIR">GIR ___</span>
-                  <span class="input-group-text flex-fill justify-content-center" id="fluid_nutrition_Na">Na ___</span>
-                  <span class="input-group-text flex-fill justify-content-center" id="fluid_nutrition_K">K ___</span>
-                  <span class="input-group-text flex-fill justify-content-center" id="fluid_nutrition_Ca">Ca ___</span>
-                  <span class="input-group-text flex-fill justify-content-center" id="fluid_nutrition_P">P ___</span>
-                  <span class="input-group-text flex-fill justify-content-center" id="fluid_nutrition_Mg">Mg ___</span>
+                  <span class="input-group-text flex-fill justify-content-center" title="mEq/kg/day" id="fluid_nutrition_Na">Na ___</span>
+                  <span class="input-group-text flex-fill justify-content-center" title="mEq/kg/day" id="fluid_nutrition_K">K ___</span>
+                  <span class="input-group-text flex-fill justify-content-center" title="mEq/kg/day" id="fluid_nutrition_Ca">Ca ___</span>
+                  <span class="input-group-text flex-fill justify-content-center" title="mEq/kg/day" id="fluid_nutrition_P">P ___</span>
+                  <span class="input-group-text flex-fill justify-content-center" title="mEq/kg/day" id="fluid_nutrition_Mg">Mg ___</span>
                   <span class="input-group-text justify-content-center text-truncate" style="width: 15%;">mEq/kg/day</span>
                 </div>
                 <div class="row">
@@ -507,6 +514,7 @@
                     <option value="Propofol"      >Propofol       </option>
                     <option value="MgSO4"         >MgSO4          </option>
                     <option value="Lidocaine"     >Lidocaine      </option>
+                    <option value="Insulin"       >Insulin</option>
                     <!-- More options -->
                   </select>
                   <input type="text" id="drug_extract_amount" class="form-control text-center" oninput="calculateDrugPreperation()" />
@@ -599,12 +607,12 @@
                     <div class="input-group flex-nowrap">
                       <span class="input-group-text justify-content-center" style="min-width: 15%;">Standard</span>
                       <span class="input-group-text justify-content-center text-truncate" style="width: 20%;" id="anti_NB_standard_dose_text"></span>
-                      <span class="input-group-text flex-fill text-truncate copy-item" id="anti_NB_standard_dose_description_text"></span>
+                      <span class="input-group-text text-truncate copy-item" style="width: 65%;" id="anti_NB_standard_dose_description_text"></span>
                     </div>
                     <div class="input-group flex-nowrap">
                       <span class="input-group-text justify-content-center" style="min-width: 15%;">Meningitis</span>
                       <span class="input-group-text justify-content-center text-truncate" style="width: 20%;" id="anti_NB_meningitis_dose_text"></span>
-                      <span class="input-group-text flex-fill text-truncate copy-item" id="anti_NB_meningitis_dose_description_text"></span>
+                      <span class="input-group-text text-truncate copy-item" style="width: 65%;" id="anti_NB_meningitis_dose_description_text"></span>
                     </div>
                     <div class="input-group">
                       <span class="input-group-text justify-content-center" style="width: 15%;">Description</span>
@@ -640,6 +648,70 @@
       </div>
     </div>
 
+    <!-- 分頁 3: 生長測量 -->
+    <div class="tab-pane" id="growthContent" role="tabpanel" aria-labelledby="medicationTab">
+      <div class="container mt-4">
+        <div class="row mb-3">
+          <div class="col">
+            <div class="card h-100" id="growth_content">
+              <div class="card-header text-center">生長測量 (開發中)</div>
+              <div class="card-body pb-0">
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">GA</span>
+                  <input type="number" id="growth_GA_week" class="form-control text-center" oninput="calculateGrowthIndex()" />
+                  <span class="input-group-text justify-content-center">weeks</span>
+                  <input type="number" id="growth_GA_day" class="form-control text-center" oninput="calculateGrowthIndex()" />
+                  <span class="input-group-text justify-content-center" style="width: 15%;">days</span>
+                </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">Sex</span>
+                  <select id="growth_gender" class="form-select text-center" title="" onchange="calculateGrowthIndex()">
+                    <option value=""></option>
+                    <option value="Boy">Boy</option>
+                    <option value="Girl">Girl</option>
+                  </select>
+                  <span class="input-group-text justify-content-center" style="width: 15%;"></span>
+                </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">體重</span>
+                  <input type="number" id="growth_BBW" class="form-control text-center" oninput="calculateGrowthIndex()" />
+                  <span class="input-group-text justify-content-center" style="width: 15%;">g</span>
+                </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">身長</span>
+                  <input type="number" id="growth_BBL" class="form-control text-center" oninput="calculateGrowthIndex()" />
+                  <span class="input-group-text justify-content-center" style="width: 15%;">cm</span>
+                </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">頭圍</span>
+                  <input type="number" id="growth_BHC" class="form-control text-center" oninput="calculateGrowthIndex()" />
+                  <span class="input-group-text justify-content-center" style="width: 15%;">cm</span>
+                </div>
+              </div>
+              <div class="card-footer">
+                <div class="row">
+                  <div class="col-10">
+                    <ul class="list-group mt-2 mb-2">
+                      <li class="list-group-item copy-item" id="growth_output">
+                        GA:<br>Gender:<br>BBW:<br>BBL:<br>BHC:<br>Ponderal index:
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="col-2" style="padding-left: 0%;">
+                    <div class="d-flex justify-content-center align-items-center h-100">
+                      <button class="btn btn-secondary" onclick="resetForm('growth_content')">Reset</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="row">
+                  <p> 本網站使用的生長曲線數據參數由 Dr.Fenton 提供，特此感謝。 (Creative Commons license) <br> Fenton TR, Kim JH. A systematic review and meta-analysis to revise the Fenton growth chart for preterm infants. BMC Pediatr. 2013;13:59. </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
     <!-- 其他分頁內容保持不變 -->
     <!-- ... -->
   </div>
@@ -994,6 +1066,17 @@
       addCopyEventListener();
     }
 
+    
+    // *****************************************
+    // 計算GIR
+    // *****************************************
+    function fluidCalclator(){
+      const calc = document.getElementById('fluid_calc').value;
+      document.getElementById('fluid_calc_result').textContent = parseExpression(calc) || "";
+      return;
+    }
+
+
 
     // *****************************************
     // 計算GIR
@@ -1077,7 +1160,8 @@
       'Ketamine'      : { concentration: 50     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
       'Propofol'      : { concentration: 10     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}, //小數點待確定
       'MgSO4'         : { concentration: 100    , unit: 'mg/ml' , rateUnit: 'mg/kg/hr'   , decimalPlace: 1},
-      'Lidocaine'     : { concentration: 50     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}  //小數點待確定
+      'Lidocaine'     : { concentration: 50     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},  //小數點待確定
+      'Insulin'       : { concentration: 100    , unit: 'U/ml'  , rateUnit: 'U/kg/hr'    , decimalPlace: 0}
     };
 
     // *****************************************
@@ -1382,6 +1466,38 @@
     }
 
     // *****************************************
+    // 計算早產兒生長指標
+    // *****************************************    
+    function calculateGrowthIndex() {
+      //歸零
+      document.getElementById('growth_output').innerHTML = "GA:<br>Gender:<br>BBW:<br>BBL:<br>BHC:<br>Ponderal index:";
+
+      //讀取輸入值
+      const growthGAWeek = parseFloat(document.getElementById('growth_GA_week').value) || 0;
+      const growthGADay = parseFloat(document.getElementById('growth_GA_day').value) || 0;
+      const growthGender = document.getElementById('growth_gender').value;
+      const growthBBW = parseFloat(document.getElementById('growth_BBW').value) || 0;
+      const growthBBL = parseFloat(document.getElementById('growth_BBL').value) || 0;
+      const growthBHC = parseFloat(document.getElementById('growth_BHC').value) || 0;
+      
+      //檢查輸入值
+      if (!growthGAWeek || (growthGADay>=7) || !growthGender || !growthBBW || !growthBBL || !growthBHC) {
+        console.error("Missing or incorrect inputs!");
+        console.log(`growthGAWeek: ${growthGAWeek}, growthGADay: ${growthGADay}, growthGender: ${growthGender}, growthBBW: ${growthBBW}, growthBBL: ${growthBBL}, growthBHC: ${growthBHC}`);
+        return;
+      }
+
+      //計算指標
+
+      //輸出成文字
+
+
+      //輸出到網頁
+      document.getElementById('growth_index_text').textContent = growthIndexText;
+
+    }
+    
+    // *****************************************
     // 對傳入的文字進行解析並加減乘除
     // *****************************************
     function parseExpression(expression) {
@@ -1509,6 +1625,7 @@
           document.getElementById('fluid_TPN_P').selectedIndex = 2;   //index 2 =  9;
           document.getElementById('fluid_TPN_Mg').selectedIndex = 2;  //index 2 =  4;
           calculateFluid();
+          fluidCalclator();
           break;
         case 'GIR_content':
           document.getElementById('GIR_dex_default_10_percent').value = 10;
