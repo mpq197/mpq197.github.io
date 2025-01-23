@@ -583,6 +583,7 @@
                     <option value="Cefazolin"     >Cefazolin</option>
                     <option value="Oxacillin"     >Oxacillin</option>
                     <option value="Tazocin"       >Tazocin</option>
+                    <option value="Augmentin"     >Augmentin</option>
                     <!-- <option value="Teicoplanin"   >Teicoplanin</option> -->
                     <!-- More options -->
                   </select>
@@ -1365,13 +1366,18 @@
       },
       'Tazocin' :{
         'standard': [ 
-          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 28      , PMA_min:  0, PMA_max: 29      , BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 112.5, unit: "mg/kg/dose", description: "Piperacillin 100mg/kg/dose, Q12H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}, 
-          {GA_min:  0, GA_max: Infinity, PNA_min:29, PNA_max: Infinity, PMA_min:  0, PMA_max: 29      , BW_min: 0, BW_max: Infinity  , frequency: "Q8H" , dose: 112.5, unit: "mg/kg/dose", description: "Piperacillin 100mg/kg/dose, Q8H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}, 
-          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 14      , PMA_min: 30, PMA_max: 36      , BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 112.5, unit: "mg/kg/dose", description: "Piperacillin 100mg/kg/dose, Q12H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}, 
-          {GA_min:  0, GA_max: Infinity, PNA_min:15, PNA_max: Infinity, PMA_min: 30, PMA_max: 36      , BW_min: 0, BW_max: Infinity  , frequency: "Q8H" , dose: 112.5, unit: "mg/kg/dose", description: "Piperacillin 100mg/kg/dose, Q8H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}, 
-          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 7       , PMA_min: 37, PMA_max: 44      , BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 112.5, unit: "mg/kg/dose", description: "Piperacillin 100mg/kg/dose, Q12H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}, 
-          {GA_min:  0, GA_max: Infinity, PNA_min: 8, PNA_max: Infinity, PMA_min: 37, PMA_max: 44      , BW_min: 0, BW_max: Infinity  , frequency: "Q8H" , dose: 112.5, unit: "mg/kg/dose", description: "Piperacillin 100mg/kg/dose, Q8H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}, 
-          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, PMA_min: 45, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q8H" , dose: 112.5, unit: "mg/kg/dose", description: "Piperacillin 100mg/kg/dose, Q8H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 28      , PMA_min:  0, PMA_max: 29      , BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 112.5, unit: "mg/kg/dose", description: "以Piperacillin計 100mg/kg/dose, Q12H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min:29, PNA_max: Infinity, PMA_min:  0, PMA_max: 29      , BW_min: 0, BW_max: Infinity  , frequency: "Q8H" , dose: 112.5, unit: "mg/kg/dose", description: "以Piperacillin計 100mg/kg/dose, Q8H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 14      , PMA_min: 30, PMA_max: 36      , BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 112.5, unit: "mg/kg/dose", description: "以Piperacillin計 100mg/kg/dose, Q12H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min:15, PNA_max: Infinity, PMA_min: 30, PMA_max: 36      , BW_min: 0, BW_max: Infinity  , frequency: "Q8H" , dose: 112.5, unit: "mg/kg/dose", description: "以Piperacillin計 100mg/kg/dose, Q8H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 7       , PMA_min: 37, PMA_max: 44      , BW_min: 0, BW_max: Infinity  , frequency: "Q12H", dose: 112.5, unit: "mg/kg/dose", description: "以Piperacillin計 100mg/kg/dose, Q12H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 8, PNA_max: Infinity, PMA_min: 37, PMA_max: 44      , BW_min: 0, BW_max: Infinity  , frequency: "Q8H" , dose: 112.5, unit: "mg/kg/dose", description: "以Piperacillin計 100mg/kg/dose, Q8H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}, 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, PMA_min: 45, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q8H" , dose: 112.5, unit: "mg/kg/dose", description: "以Piperacillin計 100mg/kg/dose, Q8H, DILUTE IN D/W 8.5 ML to 10ml, 所需量再以N/S dilute to 5倍, RUN 30MINS"}
+        ]
+      },
+      'Augmentin' :{
+        'standard': [ 
+          {GA_min:  0, GA_max: Infinity, PNA_min: 0, PNA_max: 84      , PMA_min:  0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity  , frequency: "Q8H", dose: 30, unit: "mg/kg/dose", description: "以Amoxicillin計25mg/kg/dose, Q8H, 使用19.1 ml D/W 泡成60mg/ml複方濃度, 所需量dilute with D/W to 2ml run 30m min", remark: "(1)此為1000mg Amoxicillin + 200mg Clavulanic acid，不同比例的劑量可能不同，請再次確認(2)口服水劑以Amoxicillin計15mg/kg/dose Q12H"} 
         ]
       }
     };
