@@ -616,7 +616,7 @@
                       <span class="input-group-text text-truncate copy-item" style="width: 65%;" id="anti_NB_meningitis_dose_description_text"></span>
                     </div>
                     <div class="input-group">
-                      <span class="input-group-text justify-content-center" style="width: 15%;">Description</span>
+                      <span class="input-group-text justify-content-center" style="width: 15%;">Remark</span>
                       <span class="input-group-text flex-fill text-truncate" id="anti_NB_dose_remark"></span>
                     </div>
                   </div>
@@ -1593,15 +1593,18 @@
     function addCopyEventListener() {
       document.querySelectorAll('.copy-item').forEach(item => {
         item.addEventListener('click', () => {
-          const content = item.dataset.content || item.textContent.trim();  // 獲取data-content的內容，若沒有則獲取textContent
+          let content = item.dataset.content || item.innerHTML; // 取得 HTML
+          content = content.replace(/<br\s*\/?>/g, "\n"); // 替換 <br> 為 \n
+
           navigator.clipboard.writeText(content).then(() => {
-          console.log(`已複製: ${content}`);
+            console.log(`已複製: ${content}`);
           }).catch(err => {
-          console.error('複製失敗:', err);
+            console.error('複製失敗:', err);
           });
         });
       });
     }
+
 
 
     // *****************************************    
