@@ -16,6 +16,9 @@
   <title>NeoAssist</title>
   <!-- 引入 Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Intro.js CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intro.js/minified/introjs.min.css" />
+
   <style>
     body {
       background-color: #f1e6d8;
@@ -152,17 +155,17 @@
             <div class="card h-100" id="fluid_content">
               <div class="card-header text-center">水分計算</div>
               <div class="card-body pb-0">
-                <div class="input-group">
+                <div class="input-group" id="fluid_BW_area">
                   <span class="input-group-text justify-content-center" style="width: 15%;">BW</span>
                   <input type="number" id="fluid_BW" class="form-control text-center" oninput="calculateFluid()" />
                   <span class="input-group-text  justify-content-center" style="width: 15%;">g</span>
                 </div>
-                <div class="input-group">
+                <div class="input-group" id="fluid_TDF_area">
                   <span class="input-group-text justify-content-center" style="width: 15%;">TDF</span>
                   <input type="number" id="fluid_TDF" class="form-control text-center" oninput="calculateFluid()" />
                   <span class="input-group-text  justify-content-center" style="width: 15%;">ml/kg/day</span>
                 </div>
-                <div class="input-group">
+                <div class="input-group" id="fluid_PO_area">
                   <span class="input-group-text justify-content-center" style="width: 15%;">PO</span>
                   <select id="fluid_PO_HM" class="form-select text-center" onchange="calculateFluid()">
                     <option value="HM">HM</option>
@@ -178,7 +181,7 @@
                   <input type="text" id="fluid_PO" class="form-control text-center" oninput="calculateFluid()" />
                   <span class="input-group-text  justify-content-center" style="width: 15%;">ml/day</span>
                 </div>
-                <div class="input-group">
+                <div class="input-group" id="fluid_TPN_area">
                   <span class="input-group-text justify-content-center" style="width: 15%;">TPN</span>
                   <select id="fluid_TPN_AA" class="form-select text-center" onchange="calculateFluid()">
                     <option value="0.025">AA 2.5</option>
@@ -193,7 +196,7 @@
                   <input type="number" id="fluid_TPN_hours" min="0" max="24" class="form-control text-center" placeholder="-" oninput="calculateFluid()" />
                   <span class="input-group-text  justify-content-center" style="width: 15%;">hrs</span>
                 </div>
-                <div class="input-group">
+                <div class="input-group" id="fluid_TPN_content_area">
                   <span class="input-group-text justify-content-center" style="width: 15%;"></span>
                   <select id="fluid_TPN_dex" class="form-select text-center" onchange="calculateFluid()">
                     <option value="2.5">Dex 2.5</option>
@@ -250,7 +253,7 @@
                   </select>
                   <span class="input-group-text  justify-content-center" style="width: 15%;"></span>
                 </div>
-                <div class="input-group">
+                <div class="input-group" id="fluid_lipid_area">
                   <span class="input-group-text justify-content-center" style="width: 15%;">Lipid</span>
                   <select id="fluid_lipid_type" class="form-select text-center" onchange="calculateFluid()">
                     <option value="SMOF">SMOF</option>
@@ -261,17 +264,17 @@
                   <input type="number" id="fluid_lipid_hours" min="16" max="24" class="form-control text-center" placeholder="-" oninput="calculateFluid()" />
                   <span class="input-group-text  justify-content-center" style="width: 15%;">hrs</span>
                 </div>
-                <div class="input-group">
+                <div class="input-group" id="fluid_other_in_IO_area">
                   <span class="input-group-text justify-content-center" style="width: 15%;">Other</span>
                   <select name="fluid_other_in_IO_base" class="form-select text-center" onchange="calculateFluid()">
                     <option value=""></option>
                     <option value="3% NaCl">3% NaCl</option>
                   </select>
-                  <input type="text" name="fluid_other_in_IO" class="form-control text-center" oninput="calculateFluid()" />
+                  <input type="text" name="fluid_other_in_IO" id="fluid_other_in_IO_default" class="form-control text-center" oninput="calculateFluid()" />
                   <span class="input-group-text  justify-content-center" style="width: 10%;">ml/day</span>
                   <button class="btn btn-light" style="border-color: #e0e3e7; width: 5%;" onclick="addNewElement(this, 'fluid_other_in_IO')">+</button>
                 </div>
-                <div class="input-group">
+                <div class="input-group" id="fluid_other_solution_area">
                   <span class="input-group-text justify-content-center" style="width: 15%;">Other</span>
                   <select name="fluid_other_solution_base" class="form-select text-center" onchange="calculateFluid()">
                     <option value=""></option>
@@ -282,7 +285,7 @@
                     <option value="N/S">N/S base</option>
                     <option value="L/R">L/R base</option>
                   </select>
-                  <input type="text" name="fluid_other_solution_rate" class="form-control text-center" oninput="calculateFluid()" />
+                  <input type="text" name="fluid_other_solution_rate" id="fluid_other_solution_rate_default" class="form-control text-center" oninput="calculateFluid()" />
                   <span class="input-group-text justify-content-center" style="width:10%">ml/hr</span>
                   <button class="btn btn-light" style="border-color: #e0e3e7; width: 5%;" onclick="addNewElement(this, 'fluid_other_solution')">+</button>
                 </div>
@@ -310,7 +313,7 @@
                 </div>
               </div>
               <div class="card-footer">
-                <div class="input-group d-flex mt-2 mb-2">
+                <div class="input-group d-flex mt-2 mb-2" id="fluid_nutrition_area">
                   <span class="input-group-text flex-fill justify-content-center" id="fluid_nutrition_GIR">GIR ___</span>
                   <span class="input-group-text flex-fill justify-content-center" title="mEq/kg/day" id="fluid_nutrition_Na">Na ___</span>
                   <span class="input-group-text flex-fill justify-content-center" title="mEq/kg/day" id="fluid_nutrition_K">K ___</span>
@@ -329,7 +332,8 @@
                   <div class="col-2" style="padding-left: 0%;">
                     <div class="d-flex flex-column justify-content-center align-items-center h-100">
                       <!-- 原本的 Reset 按鈕 -->
-                      <button class="btn btn-secondary w-75 h-50" onclick="resetForm('fluid_content')">Reset</button>
+                      <button class="btn btn-secondary w-75 mb-2" id="fluid_intro" onclick="fluidIntro()">使用教學</button>
+                      <button class="btn btn-secondary w-75" onclick="resetForm('fluid_content')">Reset</button>
                     </div>
                   </div>
                 </div> 
@@ -719,6 +723,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.0.0/math.min.js"></script>
+  <!-- Intro.js JS -->
+  <script src="https://cdn.jsdelivr.net/npm/intro.js/minified/intro.min.js"></script>
+
   <script>
     //*****************************************
     //水分 水分計算 = 計算水分
@@ -1069,12 +1076,56 @@
 
     
     // *****************************************
-    // 計算GIR
+    // 計算機
     // *****************************************
     function fluidCalclator(){
       const calc = document.getElementById('fluid_calc').value;
       document.getElementById('fluid_calc_result').textContent = parseExpression(calc) || "";
       return;
+    }
+
+    
+    // ***************************************
+    // Intro 導入教學
+    // ***************************************
+    function fluidIntro(){
+      //輸入範例
+      document.getElementById('fluid_BW').value=1500;
+      document.getElementById('fluid_TDF').value=150;
+      document.getElementById('fluid_PO').value='5*2+10*4';
+      document.getElementById('fluid_TPN_hours').value=22.5;
+      document.getElementById('fluid_lipid_grams').value=2;
+      document.getElementById('fluid_other_in_IO_default').value='2*3+5';
+      document.getElementById('fluid_other_solution_rate_default').value='0.2+0.5';
+      
+      //範例結果
+      calculateFluid();
+
+      //設定intro
+      const intro = introJs();
+      intro.setOptions({
+        steps: [
+          { element: "#fluid_BW_area", intro: "輸入體重" },
+          { element: "#fluid_TDF_area", intro: "輸入所需總水分" },
+          { element: "#fluid_PO_area", intro: "輸入奶量時可直接輸入總量或算式" },
+          { element: "#fluid_TPN_area", intro: "1)若TPN補不足，則留空<br>2)輸入小時可限制輸注時間" },
+          { element: "#fluid_TPN_content_area", intro: "可調整TPN成分<br>以計算各成分每日攝取量" },
+          { element: "#fluid_lipid_area", intro: "Lipid 輸注時間需 >= 16 hours" },
+          { element: "#fluid_other_in_IO_area", intro: "1)這裡是其他要計入水分的量<br>(可輸入總量或算式)<br>2)最尾端的+號按鈕可新增一欄" },
+          { element: "#fluid_other_solution_area", intro: "這裡是其他要計入的藥物流速<br>(可輸入總量或算式)<br>2)最尾端的+號按鈕可新增一欄" },
+          { element: "#fluid_nutrition_area", intro: "這裡會顯示GIR及各成分每日每公斤攝取量的計算結果<br>(包括TPN+other+普通IV)"},
+          { element: "#fluid_order_output", intro: "最後，這裡會顯示結果<br>按一下即可複製！" }
+        ],
+        showProgress: true,  // 顯示進度條
+        showBullets: false,  // 移除底部圓點
+        disableInteraction: false,  // 可以點擊其他區塊
+        exitOnOverlayClick: false,  // 點擊外部不會結束教學
+        scrollToElement: true,  // 自動滾動到教學元素
+      })
+      
+      intro.oncomplete( function() {resetForm('fluid_content');} );
+      intro.onexit( function() {resetForm('fluid_content');} );     
+      intro.start(); 
     }
 
 
@@ -1665,6 +1716,7 @@
 
     // 載入今天日期
     loadTodayDate('anti_NB_birthday');
+
 
     // 頁面載入時先執行一次計算
     calculateFluid();
