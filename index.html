@@ -153,7 +153,21 @@
         <div class="row mb-3">
           <div class="col">
             <div class="card h-100" id="fluid_content">
-              <div class="card-header text-center">水分計算</div>
+              <!-- 水分計算 header -->
+              <div class="card-header text-center">
+                <ul class="nav nav-tabs" id="fluidContentTabs" role="tablist">
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link active" style="font-size: large;" id="fluid_basic_tab" data-bs-toggle="tab" type="button" role="tab" aria-controls="basic" aria-selected="true" onclick="fluidVersionToggle('basic')">
+                      水分計算簡易版
+                    </button>
+                  </li>
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link" style="font-size: large;" id="fluid_advanced_tab" data-bs-toggle="tab" type="button" role="tab" aria-controls="advanced" aria-selected="false" onclick="fluidVersionToggle('advanced')">
+                      水分計算進階版
+                    </button>
+                  </li>
+                </ul>
+              </div>
               <div class="card-body pb-0">
                 <div class="input-group" id="fluid_BW_area">
                   <span class="input-group-text justify-content-center" style="width: 15%;">BW</span>
@@ -196,7 +210,7 @@
                   <input type="number" id="fluid_TPN_hours" min="0" max="24" class="form-control text-center" placeholder="-" oninput="calculateFluid()" />
                   <span class="input-group-text  justify-content-center" style="width: 15%;">hrs</span>
                 </div>
-                <div class="input-group" id="fluid_TPN_content_area">
+                <div class="input-group advanced-version-only" id="fluid_TPN_content_area">
                   <span class="input-group-text justify-content-center" style="width: 15%;"></span>
                   <select id="fluid_TPN_dex" class="form-select text-center" onchange="calculateFluid()">
                     <option value="2.5">Dex 2.5</option>
@@ -266,7 +280,7 @@
                 </div>
                 <div class="input-group" id="fluid_other_in_IO_area">
                   <span class="input-group-text justify-content-center" style="width: 15%;">Other</span>
-                  <select name="fluid_other_in_IO_base" class="form-select text-center" onchange="calculateFluid()">
+                  <select name="fluid_other_in_IO_base" class="form-select text-center advanced-version-only" onchange="calculateFluid()">
                     <option value=""></option>
                     <option value="3% NaCl">3% NaCl</option>
                   </select>
@@ -276,7 +290,7 @@
                 </div>
                 <div class="input-group" id="fluid_other_solution_area">
                   <span class="input-group-text justify-content-center" style="width: 15%;">Other</span>
-                  <select name="fluid_other_solution_base" class="form-select text-center" onchange="calculateFluid()">
+                  <select name="fluid_other_solution_base" class="form-select text-center advanced-version-only" onchange="calculateFluid()">
                     <option value=""></option>
                     <option value="D/W">D/W base</option>
                     <option value="D5W">D5W base</option>
@@ -313,7 +327,7 @@
                 </div>
               </div>
               <div class="card-footer">
-                <div class="input-group d-flex mt-2 mb-2" id="fluid_nutrition_area">
+                <div class="input-group d-flex mt-2 mb-2 advanced-version-only" id="fluid_nutrition_area">
                   <span class="input-group-text flex-fill justify-content-center" id="fluid_nutrition_GIR">GIR ___</span>
                   <span class="input-group-text flex-fill justify-content-center" title="mEq/kg/day" id="fluid_nutrition_Na">Na ___</span>
                   <span class="input-group-text flex-fill justify-content-center" title="mEq/kg/day" id="fluid_nutrition_K">K ___</span>
@@ -728,45 +742,9 @@
 
   <script>
     //*****************************************
-    //水分 水分計算 = 計算水分
+    // 計算水分
     //*****************************************
     function calculateFluid() {
-
-      //讀取輸入值
-      const fluidBW = parseFloat(document.getElementById('fluid_BW').value) || 0;
-      const fluidTDF = parseFloat(document.getElementById('fluid_TDF').value) || 0;
-      const fluidPO = document.getElementById('fluid_PO').value;
-      const fluidPOHM = document.getElementById('fluid_PO_HM').value;
-      const fluidPOFormula = document.getElementById('fluid_PO_formula').value;
-      const fluidTPNAA = document.getElementById('fluid_TPN_AA').value;
-      let fluidTPNGrams = document.getElementById('fluid_TPN_grams').value;
-      const fluidTPNHours = parseFloat(document.getElementById('fluid_TPN_hours').value) || 24;
-      const fluidTPNDex = parseFloat(document.getElementById('fluid_TPN_dex').value) || 10;
-      const fluidTPNNa = parseFloat(document.getElementById('fluid_TPN_Na').value) || 40;
-      const fluidTPNK = parseFloat(document.getElementById('fluid_TPN_K').value) || 20;
-      const fluidTPNCa = parseFloat(document.getElementById('fluid_TPN_Ca').value) || 20;
-      const fluidTPNP = parseFloat(document.getElementById('fluid_TPN_P').value) || 9;
-      const fluidTPNMg = parseFloat(document.getElementById('fluid_TPN_Mg').value) || 2;
-      const fluidLipidType = document.getElementById('fluid_lipid_type').value;
-      const fluidLipidGrams = parseFloat(document.getElementById('fluid_lipid_grams').value) || 0;
-      const fluidLipidHours = parseFloat(document.getElementById('fluid_lipid_hours').value) || 20;
-      let fluidOtherInIO = document.querySelectorAll('[name="fluid_other_in_IO"]');
-      let fluidOtherInIOBase = document.querySelectorAll('[name="fluid_other_in_IO_base"]');
-      // const fluidOtherInIO = document.getElementById('fluid_other_in_IO').value;
-      let fluidOtherSolutionBase = document.querySelectorAll('[name="fluid_other_solution_base"]');
-      let fluidOtherSolutionRate = document.querySelectorAll('[name="fluid_other_solution_rate"]');
-      // const fluidOtherSolutionBase = document.getElementById('fluid_other_solution_base').value;
-      // const fluidOtherSolutionRate = parseFloat(document.getElementById('fluid_other_solution_rate').value) || 0;
-      const fluidRegularIVType = document.getElementById('fluid_regular_IV_type').value || "普通IV";
-      let fluidRegularIVRate = parseFloat(document.getElementById('fluid_regular_IV_rate').value) || 0;
-      
-      let fluidTotalGIR = 0;
-      let fluidTotalNa = 0;
-      let fluidTotalK  = 0;
-      let fluidTotalCa = 0;
-      let fluidTotalP  = 0;
-      let fluidTotalMg = 0;
-      
 
       //設定SMOF密度
       const fluidLipidSpec = {
@@ -784,6 +762,49 @@
         "0.050": "TPN [N0]"
       };
 
+      //讀取輸入值
+      const fluidBW = parseFloat(document.getElementById('fluid_BW').value) || 0;
+      const fluidTDF = parseFloat(document.getElementById('fluid_TDF').value) || 0;
+      const fluidPO = document.getElementById('fluid_PO').value;
+      const fluidPOHM = document.getElementById('fluid_PO_HM').value;
+      const fluidPOFormula = document.getElementById('fluid_PO_formula').value;
+      const fluidTPNAA = document.getElementById('fluid_TPN_AA').value;
+      let fluidTPNGrams = document.getElementById('fluid_TPN_grams').value;
+      const fluidTPNHours = parseFloat(document.getElementById('fluid_TPN_hours').value) || 24;
+      const fluidLipidType = document.getElementById('fluid_lipid_type').value;
+      const fluidLipidGrams = parseFloat(document.getElementById('fluid_lipid_grams').value) || 0;
+      const fluidLipidHours = parseFloat(document.getElementById('fluid_lipid_hours').value) || 20;
+      let fluidOtherInIO = document.querySelectorAll('[name="fluid_other_in_IO"]');
+      let fluidOtherSolutionRate = document.querySelectorAll('[name="fluid_other_solution_rate"]');
+      const fluidRegularIVType = document.getElementById('fluid_regular_IV_type').value || "普通IV";
+      let fluidRegularIVRate = parseFloat(document.getElementById('fluid_regular_IV_rate').value) || 0;
+      
+      //讀取進階版的元素的值
+      let fluidTPNDex;
+      let fluidTPNNa;
+      let fluidTPNK;
+      let fluidTPNCa;
+      let fluidTPNP;
+      let fluidTPNMg;
+      let fluidOtherInIOBase=[""];
+      let fluidOtherSolutionBase=[""];
+      let fluidTotalGIR = 0;
+      let fluidTotalNa = 0;
+      let fluidTotalK  = 0;
+      let fluidTotalCa = 0;
+      let fluidTotalP  = 0;
+      let fluidTotalMg = 0;
+      if(fluidVersion === 'advanced'){
+        fluidTPNDex = parseFloat(document.getElementById('fluid_TPN_dex').value) || 10;
+        fluidTPNNa = parseFloat(document.getElementById('fluid_TPN_Na').value) || 40;
+        fluidTPNK = parseFloat(document.getElementById('fluid_TPN_K').value) || 20;
+        fluidTPNCa = parseFloat(document.getElementById('fluid_TPN_Ca').value) || 20;
+        fluidTPNP = parseFloat(document.getElementById('fluid_TPN_P').value) || 9;
+        fluidTPNMg = parseFloat(document.getElementById('fluid_TPN_Mg').value) || 2;
+        fluidOtherInIOBase = document.querySelectorAll('[name="fluid_other_in_IO_base"]');
+        fluidOtherSolutionBase = document.querySelectorAll('[name="fluid_other_solution_base"]');
+      }
+
       // Only one of fluidTPNGrams and fluidRegularIVRate can be entered
       const fluidRegularIVRateDIV = document.getElementById('fluid_regular_IV_rate');
       const fluidTPNGramsDIV = document.getElementById('fluid_TPN_grams');
@@ -793,19 +814,20 @@
       // *****************************************
       // 歸零GIR, 離子統計
       // *****************************************
-
-        //先將name=fluid_order_outputs都移除
-        let fluidOrderOutputs = document.querySelectorAll('[name="fluid_order_outputs"]');
-        fluidOrderOutputs.forEach(output => {
-          output.remove();
-        });      
-        
+      //先將name=fluid_order_outputs都移除
+      let fluidOrderOutputs = document.querySelectorAll('[name="fluid_order_outputs"]');
+      fluidOrderOutputs.forEach(output => {
+        output.remove();
+      });      
+      
+      if (fluidVersion === 'advanced'){
         document.getElementById('fluid_nutrition_GIR').textContent = `GIR ___`;
         document.getElementById('fluid_nutrition_Na').textContent = `Na ___`;
         document.getElementById('fluid_nutrition_K').textContent = `K ___`;
         document.getElementById('fluid_nutrition_Ca').textContent = `Ca ___`;
         document.getElementById('fluid_nutrition_P').textContent = `P ___`;
         document.getElementById('fluid_nutrition_Mg').textContent = `Mg ___`;
+      }
 
       // *****************************************
       //               計算fluid過程
@@ -849,25 +871,29 @@
         //算總量
         fluidOtherInIOTotalVolume += eachVolume;
         // base value 用於計算Na intake
-        let baseValue = fluidOtherInIOBase[i].value;
-        if (baseValue === "3% NaCl") { fluidTotalNa += eachVolume*77/1000;} // 3% NaCl 1000ml = 77mEq Na
+        if (fluidVersion === 'advanced') {
+          let baseValue = fluidOtherInIOBase[i].value;
+          if (baseValue === "3% NaCl") { fluidTotalNa += eachVolume*77/1000;} // 3% NaCl 1000ml = 77mEq Na
+        }
       }
       console.log(`Other in I/O: ${fluidOtherInIOTotalVolume} ml/day`);
 
       //計算fluid Other Solution總量
       let fluidOtherSolutionTotalVolume = 0;
-      for (let i = 0; i < fluidOtherSolutionBase.length; i++) {
+      for (let i = 0; i < fluidOtherSolutionRate.length; i++) {
         //先算總量
         let rateValue = parseExpression(fluidOtherSolutionRate[i].value) || 0;
         fluidOtherSolutionTotalVolume += rateValue*24;
         //再算成分
-        let baseValue = fluidOtherSolutionBase[i].value;
-        if      (baseValue === "L/R" ) { fluidTotalNa += rateValue*24/1000*130; } // L/R 1000ml = 130mEq Na
-        else if (baseValue === "H/S" ) { fluidTotalNa += rateValue*24/1000*77 ; } // H/S 1000ml = 77mEq Na
-        else if (baseValue === "N/S" ) { fluidTotalNa += rateValue*24/1000*154; } // N/S 1000ml = 154mEq Na
-        else if (baseValue === "D/W" ) { }
-        else if (baseValue === "D5W" ) { fluidTotalGIR += rateValue*5;}
-        else if (baseValue === "D10W") { fluidTotalGIR += rateValue*10;}
+        if (fluidVersion === 'advanced') {
+          let baseValue = fluidOtherSolutionBase[i].value;
+          if      (baseValue === "L/R" ) { fluidTotalNa += rateValue*24/1000*130; } // L/R 1000ml = 130mEq Na
+          else if (baseValue === "H/S" ) { fluidTotalNa += rateValue*24/1000*77 ; } // H/S 1000ml = 77mEq Na
+          else if (baseValue === "N/S" ) { fluidTotalNa += rateValue*24/1000*154; } // N/S 1000ml = 154mEq Na
+          else if (baseValue === "D/W" ) { }
+          else if (baseValue === "D5W" ) { fluidTotalGIR += rateValue*5;}
+          else if (baseValue === "D10W") { fluidTotalGIR += rateValue*10;}
+        }
       }
       console.log(`Total Other Solution: ${fluidOtherSolutionTotalVolume} ml/day`);
       
@@ -1060,21 +1086,63 @@
       });
 
 
-
-      //將GIR ?, Na ? mEq, K ? mmol, Ca ? mEq, P ? mmol, Mg mEq 輸出到網頁
-      document.getElementById('fluid_nutrition_GIR').textContent = `GIR ${fluidTotalGIR}`;
-      document.getElementById('fluid_nutrition_Na').textContent = `Na ${fluidTotalNaPerKg}`;
-      document.getElementById('fluid_nutrition_K').textContent = `K ${fluidTotalKPerKg}`;
-      document.getElementById('fluid_nutrition_Ca').textContent = `Ca ${fluidTotalCaPerKg}`;
-      document.getElementById('fluid_nutrition_P').textContent = `P ${fluidTotalPPerKg}`;
-      document.getElementById('fluid_nutrition_Mg').textContent = `Mg ${fluidTotalMgPerKg}`;
-
+      if (fluidVersion === 'advanced'){
+        //將GIR ?, Na ? mEq, K ? mmol, Ca ? mEq, P ? mmol, Mg mEq 輸出到網頁
+        document.getElementById('fluid_nutrition_GIR').textContent = `GIR ${fluidTotalGIR}`;
+        document.getElementById('fluid_nutrition_Na').textContent = `Na ${fluidTotalNaPerKg}`;
+        document.getElementById('fluid_nutrition_K').textContent = `K ${fluidTotalKPerKg}`;
+        document.getElementById('fluid_nutrition_Ca').textContent = `Ca ${fluidTotalCaPerKg}`;
+        document.getElementById('fluid_nutrition_P').textContent = `P ${fluidTotalPPerKg}`;
+        document.getElementById('fluid_nutrition_Mg').textContent = `Mg ${fluidTotalMgPerKg}`;
+      }
 
       //把新增的結果加上複製功能
       addCopyEventListener();
     }
 
     
+    // *****************************************
+    // 切換基礎進階版
+    // *****************************************
+
+    let removedElements = []; // 用於存儲被刪除的元素及其位置
+    let fluidVersion = 'basic'; // 預設為基礎版
+    function fluidVersionToggle(version) {
+      switch (version) {
+        case 'basic':
+          fluidVersion = version; // 更新 fluidVersion
+          // 找到所有帶有 class="advanced-version-only" 的元素
+          const advancedVersionOnly = document.querySelectorAll('.advanced-version-only');
+
+          // 記錄元素的父節點和索引，然後刪除
+          advancedVersionOnly.forEach(element => {
+            const parent = element.parentNode; // 父節點
+            const index = Array.from(parent.children).indexOf(element); // 索引位置
+            removedElements.push({ element, parent, index }); // 保存資訊
+            element.remove(); // 刪除元素
+          });
+          break;
+
+        case 'advanced':
+          fluidVersion = version; // 更新 fluidVersion
+          // 將儲存的元素加回到原本的位置
+          removedElements.forEach(item => {
+            const { element, parent, index } = item;
+            if (parent.children[index]) {
+              parent.insertBefore(element, parent.children[index]); // 插回指定索引位置
+            } else {
+              parent.appendChild(element); // 如果是最後一個，直接追加到父節點
+            }
+          });
+          removedElements = []; // 清空記錄
+          break;
+      }
+
+      calculateFluid(); // 重新計算
+
+    }
+
+
     // *****************************************
     // 計算機
     // *****************************************
@@ -1090,32 +1158,44 @@
     // ***************************************
     function fluidIntro(){
       //輸入範例
-      document.getElementById('fluid_BW').value=1500;
-      document.getElementById('fluid_TDF').value=150;
-      document.getElementById('fluid_PO').value='5*2+10*4';
-      document.getElementById('fluid_TPN_hours').value=22.5;
-      document.getElementById('fluid_lipid_grams').value=2;
-      document.getElementById('fluid_other_in_IO_default').value='2*3+5';
-      document.getElementById('fluid_other_solution_rate_default').value='0.2+0.5';
+      const exampleInputs = {
+        fluid_BW: 1500,
+        fluid_TDF: 150,
+        fluid_PO: '5*2+10*4',
+        fluid_TPN_hours: 22.5,
+        fluid_lipid_grams: 2,
+        fluid_other_in_IO_default: '2*3+5',
+        fluid_other_solution_rate_default: '0.2+0.5',
+      };
+      Object.keys(exampleInputs).forEach(key => {
+        document.getElementById(key).value = exampleInputs[key];
+      });
       
       //範例結果
       calculateFluid();
+      
+      let steps = [
+        { element: "#fluid_BW_area", intro: "輸入體重" },
+        { element: "#fluid_TDF_area", intro: "輸入所需總水分" },
+        { element: "#fluid_PO_area", intro: "輸入奶量時可直接輸入總量或算式" },
+        { element: "#fluid_TPN_area", intro: "<1>若TPN補不足，則留空<br><2>輸入小時可限制輸注時間" },
+        { element: "#fluid_TPN_content_area", intro: "可調整TPN成分<br>以計算各成分每日攝取量" },
+        { element: "#fluid_lipid_area", intro: "輸注時間留空會自動計算最佳時間<br>(Lipid 需 >= 16 hours)" },
+        { element: "#fluid_other_in_IO_area", intro: "<1>這裡是其他要計入水分的量<br>(可輸入總量或算式)<br><2>最尾端的+號按鈕可新增一欄" },
+        { element: "#fluid_other_solution_area", intro: "<1>這裡是其他要計入的藥物流速<br>(可輸入總量或算式)<br><2>最尾端的+號按鈕可新增一欄" },
+        { element: "#fluid_nutrition_area", intro: "這裡會顯示GIR及各成分每日每公斤攝取量的計算結果<br>(包括TPN+other+普通IV)"},
+        { element: "#fluid_order_output", intro: "最後，這裡會顯示結果<br>按一下即可複製！" }
+      ];
+
+      // 如果是基礎版，刪除進階版(#fluid_TPN_content_area", "#fluid_nutrition_area)相關的步驟
+      if (fluidVersion === 'basic') {
+        steps = steps.filter(step => !["#fluid_TPN_content_area", "#fluid_nutrition_area"].includes(step.element));
+      }
 
       //設定intro
       const intro = introJs();
       intro.setOptions({
-        steps: [
-          { element: "#fluid_BW_area", intro: "輸入體重" },
-          { element: "#fluid_TDF_area", intro: "輸入所需總水分" },
-          { element: "#fluid_PO_area", intro: "輸入奶量時可直接輸入總量或算式" },
-          { element: "#fluid_TPN_area", intro: "<1>若TPN補不足，則留空<br><2>輸入小時可限制輸注時間" },
-          { element: "#fluid_TPN_content_area", intro: "可調整TPN成分<br>以計算各成分每日攝取量" },
-          { element: "#fluid_lipid_area", intro: "輸注時間留空會自動計算最佳時間<br>(Lipid 需 >= 16 hours)" },
-          { element: "#fluid_other_in_IO_area", intro: "<1>這裡是其他要計入水分的量<br>(可輸入總量或算式)<br><2>最尾端的+號按鈕可新增一欄" },
-          { element: "#fluid_other_solution_area", intro: "<1>這裡是其他要計入的藥物流速<br>(可輸入總量或算式)<br><2>最尾端的+號按鈕可新增一欄" },
-          { element: "#fluid_nutrition_area", intro: "這裡會顯示GIR及各成分每日每公斤攝取量的計算結果<br>(包括TPN+other+普通IV)"},
-          { element: "#fluid_order_output", intro: "最後，這裡會顯示結果<br>按一下即可複製！" }
-        ],
+        steps: steps,
         showProgress: true,  // 顯示進度條
         showBullets: false,  // 移除底部圓點
         disableInteraction: false,  // 可以點擊其他區塊
@@ -1582,11 +1662,12 @@
       // Create a new row for the inputs
       let newDiv = document.createElement('div');
       newDiv.classList.add('input-group'); //加入屬性class
+      newDiv.classList.add('added-element'); // 新增class用來辨識是否為新增的元素
       switch(typeOfElement){
         case('fluid_other_solution'):
           newDiv.innerHTML = `
             <span class="input-group-text justify-content-center" style="width: 15%;">Other</span>
-            <select name="fluid_other_solution_base" class="form-select text-center" onchange="calculateFluid()">
+            <select name="fluid_other_solution_base" class="form-select text-center advanced-version-only" onchange="calculateFluid()">
               <option value=""></option>
               <option value="D/W">D/W base</option>
               <option value="D5W">D5W base</option>
@@ -1603,7 +1684,7 @@
         case('fluid_other_in_IO'):
           newDiv.innerHTML = `
             <span class="input-group-text justify-content-center" style="width: 15%;">Other</span>
-            <select name="fluid_other_in_IO_base" class="form-select text-center" onchange="calculateFluid()">
+            <select name="fluid_other_in_IO_base" class="form-select text-center advanced-version-only" onchange="calculateFluid()">
               <option value=""></option>
               <option value="3% NaCl">3% NaCl</option>
             </select>
@@ -1624,6 +1705,9 @@
           break;
       }
       grandParent.insertBefore(newDiv, parent);
+
+      // 重新載入，將新元素根據進階版與否處理
+      fluidVersionToggle(fluidVersion);
     }    
 
 
@@ -1677,15 +1761,20 @@
       // 清除該區域內的計算結果
       targetDiv.querySelectorAll(".copy-item").forEach(el => el.textContent = "");
 
+      // 清除新增的元素
+      targetDiv.querySelectorAll('.added-element').forEach(el => el.remove());
+
       // 重新載入預設值
       switch(elementID){
         case 'fluid_content':
-          document.getElementById('fluid_TPN_dex').selectedIndex = 3; //index 3 = 10%
-          document.getElementById('fluid_TPN_Na').selectedIndex = 4;  //index 4 = 40;
-          document.getElementById('fluid_TPN_K').selectedIndex = 2;   //index 2 = 20;
-          document.getElementById('fluid_TPN_Ca').selectedIndex = 0;  //index 0 = 20;
-          document.getElementById('fluid_TPN_P').selectedIndex = 2;   //index 2 =  9;
-          document.getElementById('fluid_TPN_Mg').selectedIndex = 2;  //index 2 =  4;
+          if (fluidVersion==="advanced"){
+            document.getElementById('fluid_TPN_dex').selectedIndex = 3; //index 3 = 10%
+            document.getElementById('fluid_TPN_Na').selectedIndex = 4;  //index 4 = 40;
+            document.getElementById('fluid_TPN_K').selectedIndex = 2;   //index 2 = 20;
+            document.getElementById('fluid_TPN_Ca').selectedIndex = 0;  //index 0 = 20;
+            document.getElementById('fluid_TPN_P').selectedIndex = 2;   //index 2 =  9;
+            document.getElementById('fluid_TPN_Mg').selectedIndex = 2;  //index 2 =  4;
+          }
           calculateFluid();
           fluidCalclator();
           break;
@@ -1727,7 +1816,7 @@
     calculateAntibioticsForNB();
     addCopyEventListener();
     calculateGrowthIndex();
-
+    fluidVersionToggle('basic');
   </script>
 </body>
 
