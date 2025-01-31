@@ -847,7 +847,7 @@
       let fluidLipidTotalVolume = fluidLipidRate*fluidLipidValidHours;
       let fluidLipidMinDiff = Math.abs(fluidLipidTotalVolume-fluidLipidTotalVolumeGoal);
       let fluidLipidBestHour = fluidLipidValidHours;
-      const fluidLipidAcceptedError = 0.5;
+      const fluidLipidAcceptedError = fluidLipidTotalVolumeGoal*0.1; //誤差設為總量的10％
       const fluidLipidMaxHour = 23;
       for (let i=16; i<=fluidLipidValidHours && i<=fluidLipidMaxHour; i++){
         fluidLipidRate = (fluidLipidTotalVolumeGoal/i).toFixed(1);
@@ -1148,7 +1148,7 @@
     // *****************************************
     function fluidCalclator(){
       const calc = document.getElementById('fluid_calc').value;
-      document.getElementById('fluid_calc_result').textContent = parseExpression(calc) || "";
+      document.getElementById('fluid_calc_result').textContent = (parseExpression(calc)).toFixed(3) || "";
       return;
     }
 
