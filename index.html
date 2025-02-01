@@ -122,7 +122,7 @@
   </style>
 </head>
 
-<body>
+<body class="d-flex flex-column min-vh-100">
   <!-- 分頁導航欄 -->
   <ul class="nav nav-tabs" id="mainTabs" role="tablist">
     <li class="nav-item" role="presentation">
@@ -143,10 +143,17 @@
         生長測量
       </button>
     </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="Tab" data-bs-toggle="tab" data-bs-target="#labContent" type="button"
+        role="tab" aria-controls="labContent" aria-selected="false">
+        Lab整理
+      </button>
+    </li>
   </ul>
 
   <!-- 分頁內容區域 -->
   <div class="tab-content" id="mainTabContent">
+
     <!-- 分頁 1: 水分計算 -->
     <div class="tab-pane show active" id="fluidContent" role="tabpanel" aria-labelledby="fluidTab">
       <div class="container mt-4">
@@ -686,8 +693,8 @@
                   <span class="input-group-text justify-content-center" style="width: 15%;">Sex</span>
                   <select id="growth_gender" class="form-select text-center" title="" onchange="calculateGrowthIndex()">
                     <option value=""></option>
-                    <option value="Boy">Boy</option>
-                    <option value="Girl">Girl</option>
+                    <option value="boy">Boy</option>
+                    <option value="girl">Girl</option>
                   </select>
                   <span class="input-group-text justify-content-center" style="width: 15%;"></span>
                 </div>
@@ -731,13 +738,64 @@
         </div>
       </div>
     </div>
-    <!-- 其他分頁內容保持不變 -->
-    <!-- ... -->
+
+    <!-- 分頁 4: lab整理 -->
+    <div class="tab-pane" id="labContent" role="tabpanel" aria-labelledby="labTab">
+      <div class="container mt-4">
+        <div class="row mb-3">
+          <div class="col">
+            <div class="card h-100" id="lab_content">
+              <div class="card-header text-center">lab整理 (開發中)</div>
+              <div class="card-body pb-0">
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">Raw Lab</span>
+                  <textarea id="lab_raw_text" class="form-control" oninput="labProcessor()"></textarea>
+                </div>
+              </div>
+              <div class="card-footer">
+                <div class="row mt-2">
+                  <div class="col">
+                    <span>✔ 選取日期 (預設為最近五次)</span>
+                    <div class="mt-1">
+                      <div id="lab_date_selection" class="mb-3"><br></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="row mt-2">
+                  <div class="col">
+                    <span>✔ 選取檢驗項目 (預設為TPN 大抽不含blood gas)</span>
+                    <div class="mt-1">
+                      <div id="lab_item_selection" class="mb-3"><br></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="row mt-3 pt-2 border-top">
+                  <div class="col-10">
+                    <ul class="list-group mt-2 mb-2">
+                      <li class="list-group-item">
+                        <pre id="lab_outputs" class=" copy-item">
+                        </pre>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="col-2" style="padding-left: 0%;">
+                    <div class="d-flex justify-content-center align-items-center h-100">
+                      <button class="btn btn-secondary" onclick="resetForm('lab_content')">Reset</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 結束 -->
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.0.0/math.min.js"></script>
-  <!-- Intro.js JS -->
   <script src="https://cdn.jsdelivr.net/npm/intro.js/minified/intro.min.js"></script>
 
   <script>
@@ -1104,7 +1162,6 @@
     // *****************************************
     // 切換基礎進階版
     // *****************************************
-
     let removedElements = []; // 用於存儲被刪除的元素及其位置
     let fluidVersion = 'basic'; // 預設為基礎版
     function fluidVersionToggle(version) {
@@ -1148,7 +1205,7 @@
     // *****************************************
     function fluidCalclator(){
       const calc = document.getElementById('fluid_calc').value;
-      document.getElementById('fluid_calc_result').textContent = (parseExpression(calc)).toFixed(3) || "";
+      document.getElementById('fluid_calc_result').textContent = (parseExpression(calc)).tofixed(3) || "";
       return;
     }
 
@@ -1295,6 +1352,7 @@
       'Insulin'       : { concentration: 100    , unit: 'U/ml'  , rateUnit: 'U/kg/hr'    , decimalPlace: 0}
     };
 
+
     // *****************************************
     // 計算藥物配製
     // *****************************************
@@ -1338,7 +1396,7 @@
       
       //若無drugExtractAmount, 用drugInfusionFinalRate回推; 反之亦然
       if (drugExtractAmount === 0) {
-        drugExtractAmount = drugInfusionFinalRate * drugBW * drugUnitConversionRatio * drugTimeConversionRatio / drugInfusionRate * drugTotalFinalVolume.toFixed(drugSpec.decimalPlace);
+        drugExtractAmount = (drugInfusionFinalRate * drugBW * drugUnitConversionRatio * drugTimeConversionRatio / drugInfusionRate * drugTotalFinalVolume).toFixed(drugSpec.decimalPlace);
         // drugInfusionFinalRate = drugInfusionFinalRate.toFixed(2);
       } else {
         drugInfusionFinalRate = (drugExtractAmount / drugTotalFinalVolume / drugBW / drugUnitConversionRatio / drugTimeConversionRatio * drugInfusionRate).toFixed(2);
@@ -1367,6 +1425,7 @@
         document.getElementById('drug_text_for_pure_line').textContent = "Pure Line";
       }
     }    
+
 
     // *****************************************
     // 設定antibiotics資料
@@ -1524,6 +1583,7 @@
       return antiDrugSpec[condition].find(spec => spec.BW_min <= BW && BW <= spec.BW_max && spec.GA_min <= GA && GA <= spec.GA_max && spec.PNA_min <= PNA && PNA <= spec.PNA_max && spec.PMA_min <= PMA && PMA <= spec.PMA_max) || null;
     }
 
+
     // 計算antibiotics配置
     function calculateAntibioticsForNB() {
       //歸零
@@ -1543,7 +1603,7 @@
 
       //檢查輸入值
       if (!antiNBDrugName || !antiNBBW || !antiNBGAWeek || (antiNBGADay>=7) || !antiNBBirthday) {
-        console.error("Missing or incorrect inputs!");
+        console.log("ABx: Missing or incorrect inputs!");
         console.log(`antiNBDrugName: ${antiNBDrugName}, antiNBBW: ${antiNBBW}, antiNBGAWeek: ${antiNBGAWeek}, antiNBGADay: ${antiNBGADay}, antiNBBirthday: ${antiNBBirthday}`);
         document.getElementById('anti_NB_standard_dose_description_text').textContent = "Missing or incorrect input values";
         document.getElementById('anti_NB_meningitis_dose_description_text').textContent = "Missing or incorrect input values";
@@ -1604,7 +1664,13 @@
 
 
     // *****************************************
+    // lmsData 
+    // *****************************************
+    const lmsData = {}; //資料不公開
+
+    // *****************************************
     // 計算早產兒生長指標
+    //  [ ] 缺ponderal index z score
     // *****************************************    
     function calculateGrowthIndex() {
       //歸零
@@ -1617,24 +1683,219 @@
       const growthBBW = parseFloat(document.getElementById('growth_BBW').value) || 0;
       const growthBBL = parseFloat(document.getElementById('growth_BBL').value) || 0;
       const growthBHC = parseFloat(document.getElementById('growth_BHC').value) || 0;
-      
+      let growthMeasurements = {
+        "weight": growthBBW,
+        "height": growthBBL,
+        "hc": growthBHC
+      }
+
       //檢查輸入值
       if (!growthGAWeek || (growthGADay>=7) || !growthGender || !growthBBW || !growthBBL || !growthBHC) {
-        console.error("Missing or incorrect inputs!");
+        console.log("Growth Content: Missing or incorrect inputs!");
         console.log(`growthGAWeek: ${growthGAWeek}, growthGADay: ${growthGADay}, growthGender: ${growthGender}, growthBBW: ${growthBBW}, growthBBL: ${growthBBL}, growthBHC: ${growthBHC}`);
         return;
       }
 
       //計算指標
+      let growthDaysSinceGA22w0d = (growthGAWeek-22)*7+growthGADay; //計算自22w0d以來的天數
+      console.log(`Days since 22w0d: ${growthDaysSinceGA22w0d} days`);
+
+      const growthResults = Object.fromEntries(
+        //對每個參數進行計算(BW, BL, HC)
+        Object.entries(growthMeasurements).map(([parameter, measurement]) => {
+          //檢查是否有該參數的LMS資料
+          const lms = lmsData[parameter][growthGender][growthDaysSinceGA22w0d];
+          const {L, M, S, "3%":percentile_3, "10%":percentile_10, "50%":percentile_50, "90%":percentile_90, "97%":percentile_97} = lms;
+          //若無資料則輸出錯誤訊息
+          if (!lms) {
+            console.error(`No LMS data found for ${parameter} at ${growthGender}`);
+            return [parameter, { zScore: null, percentileRange: null }];
+          }
+          //計算Z-Score, 若趨近0則使用極限公式, 否則用常規公式 
+          const zScore = L === 0 ? Math.log(measurement / M) / S : ((Math.pow(measurement / M, L) - 1) / (S * L));
+          //用Z-score反推估計之百分位
+          const estimatedPercentile = zScoreToPercentile(zScore);
+          //計算落在哪個百分位
+          const percentileRange = measurement < percentile_3  ? "<3%"    :
+                                  measurement < percentile_10 ? "3-10%"  :
+                                  measurement < percentile_50 ? "10-50%" :
+                                  measurement < percentile_90 ? "50-90%" :
+                                  measurement < percentile_97 ? "90-97%" : ">97%";
+          console.log(`Parameter: ${parameter}, Measurement: ${measurement}, Z-Score: ${zScore}, Percentile Range: ${percentileRange}`);
+          return [parameter, { zScore, estimatedPercentile, percentileRange }];
+        })
+      );
+      console.log(growthResults);
+
+      //計算Ponderal index
+      const growthPonderalIndex = (growthBBW / Math.pow(growthBBL, 3) * 100);
+      console.log(`Ponderal index: ${growthPonderalIndex}`);
+
+      //計算SGA, AGA, LGA
+      let growthCategory = "";
+      if (growthResults.weight.percentileRange === "<3%" || growthResults.weight.percentileRange === "3-10%") {
+          growthCategory = "Small for gestational age (SGA)";
+      } else if (growthResults.weight.percentileRange === "90-97%" || growthResults.weight.percentileRange === ">97%") {
+          growthCategory = "Large for gestational age (LGA)";
+      } else {
+          growthCategory = "Appropriate for gestational age (AGA)";
+      }
 
       //輸出成文字
-
+      let growthIndexTextsList = [];
+      growthIndexTextsList.push(`GA: ${growthGAWeek} ${growthGADay}/7 weeks`);
+      growthIndexTextsList.push(`Gender: ${growthGender==='boy'? "Male":"Female"}`);
+      growthIndexTextsList.push(`BBW: ${growthBBW} g (Z score = ${growthResults.weight.zScore.toFixed(2)}, ~ ${growthResults.weight.estimatedPercentile} percentile, ${growthResults.weight.percentileRange} percentile)`); 
+      growthIndexTextsList.push(`BBL: ${growthBBL} cm (Z score = ${growthResults.height.zScore.toFixed(2)}, ~ ${growthResults.height.estimatedPercentile} percentile, ${growthResults.height.percentileRange} percentile)`);
+      growthIndexTextsList.push(`BHC: ${growthBHC} cm (Z score = ${growthResults.hc.zScore.toFixed(2)}, ~ ${growthResults.hc.estimatedPercentile} percentile, ${growthResults.hc.percentileRange} percentile)`);
+      growthIndexTextsList.push(`Ponderal index: ${growthPonderalIndex.toFixed(2)} (100g/cm3)`);
+      growthIndexTextsList.push(`${growthCategory}`);
+      console.log(growthIndexTextsList);
 
       //輸出到網頁
-      document.getElementById('growth_index_text').textContent = growthIndexText;
+      document.getElementById('growth_output').innerHTML = growthIndexTextsList.join('<br>');
 
     }
+
+
+    // *****************************************
+    // 從Z score 反推 Percentile
+    // *****************************************
+    // 計算標準常態分布 CDF（近似公式）
+    function normalCDF(z) {
+      return (1 + erf(z / Math.SQRT2)) / 2;
+    }
+    // JavaScript 近似實現誤差函數 erf
+    function erf(x) {
+        // Abramowitz & Stegun 公式 (7.1.26)
+        const a1 =  0.254829592, a2 = -0.284496736, a3 = 1.421413741;
+        const a4 = -1.453152027, a5 =  1.061405429, p = 0.3275911;
+        
+        const sign = x < 0 ? -1 : 1;
+        x = Math.abs(x);
+
+        const t = 1 / (1 + p * x);
+        const y = 1 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+        
+        return sign * y;
+    }
+    // 使用 Z-score 反推百分位
+    function zScoreToPercentile(z) {
+        return (normalCDF(z) * 100).toFixed(2) + "%";
+    }
     
+
+    // *****************************************
+    // lab processore 整理raw lab data
+    // *****************************************   
+    function labProcessor () {
+      console.log("*******start lab processing*******");
+      /*
+      raw text 格式
+      選取	項目代號	項目	檢體別	20250131
+      0848	20250130
+      0636	20250128
+      2219	20250128
+      0132	20250128
+      0023	20250127
+      2327	單位	參考值
+      True	72A001	WBC	B	5.5	5.4	5.3	5.1	5.0	5.3	1000/uL	5.2~13.4(>1d-8d)
+      True	72B001	RBC	B		5.19	5.18	5.15	5.2	5.1	million/uL	3.99~4.98(>1d-8d)
+      */
+      const rawText = document.getElementById('lab_raw_text').value;
+
+      // 1. 分割每一行並清理空白
+      let lines = rawText.trim().split('\n').map(line => line.trim());
+
+      // 2. 初始化變數來儲存標題和資料
+      let headerParts = [];
+      let dataRows = [];
+
+      // 3. 處理標題：找到包含 "參考值" 的行，表示標題結束
+      for (let i = 0; i < lines.length; i++) {
+        let line = lines[i];
+        if (line.includes('參考值')) {
+          headerParts.push(line); // 加入最後的標題部分
+          dataRows = lines.slice(i + 1); // 剩餘的是資料行
+          break;
+        } else {
+          headerParts.push(line); // 持續加入標題部分
+        }
+      }
+
+      // 4. 合併標題行
+      let rawHeaders = headerParts.join(' ');
+      //標題行前處理，把符合8個數字+1個空格+4個數字的，只留下8個數字裡面的後面四個數字
+      rawHeaders = rawHeaders.replace(/\d{8}\s\d{4}/g, (match) => match.slice(4, 9));
+
+      // 5. 合併標題和資料
+      let labTextPreProcessed = [rawHeaders, ...dataRows].join('\n');
+      console.log(labTextPreProcessed);
+
+      // 6. 以\t作為分隔並讀取到陣列
+      let labArray = labTextPreProcessed.split('\n').map(row => row.split('\t'));
+      console.log(labArray);
+
+      // 6.1 重新分成headers and data
+      const labHeaders = labArray[0];
+      const labData = labArray.slice(1);
+
+
+      // 7. 生成欄位選擇
+      const columnSelection = document.getElementById("lab_date_selection");
+      columnSelection.innerHTML = "";
+      labHeaders.forEach((header, index) => {
+        const btnCheck = `
+          <input type="checkbox" class="btn-check column-checkbox" id="col${index}" data-index="${index}" checked>
+          <label class="btn btn-outline-secondary btn-check-label mt-1 ml-1" for="col${index}">${header}</label>
+        `;
+        columnSelection.innerHTML += btnCheck;
+      });
+      
+      // 8. 生成列選擇
+      const rowSelection = document.getElementById("lab_item_selection");
+      rowSelection.innerHTML = "";
+      const itemIndex = labHeaders.indexOf("項目"); // 找到 "項目" 欄位索引
+      if (itemIndex !== -1) {
+        labData.forEach((row, index) => {
+          const itemName = row[itemIndex] || `Row ${index + 1}`;
+          const btnCheck = `
+            <input type="checkbox" class="btn-check row-checkbox" id="row${index}" data-index="${index}" checked>
+            <label class="btn btn-outline-secondary btn-check-label mt-1 ml-1" for="row${index}">${itemName}</label>
+          `;
+          rowSelection.innerHTML += btnCheck;
+        });
+      }
+
+      // 更新文字顯示
+
+      // monitor checkbox change
+      document.querySelectorAll(".column-checkbox, .row-checkbox").forEach(checkbox => {
+          checkbox.addEventListener("change", () => updateText(labHeaders, labData));
+      });
+
+      console.log("*******end lab processing*******");
+
+    }
+
+    function updateText(headers, data) {
+      const selectedColumns = Array.from(document.querySelectorAll(".column-checkbox:checked")).map(checkbox => parseInt(checkbox.dataset.index));
+      const selectedRows = Array.from(document.querySelectorAll(".row-checkbox:checked")).map(checkbox => parseInt(checkbox.dataset.index));
+      
+      let filteredData = selectedRows.map(i => data[i]);      
+      let formattedData = [headers.filter((_, i) => selectedColumns.includes(i))].concat(filteredData.map(row => selectedColumns.map(i => row[i] || '')));
+      
+      let colWidths = formattedData[0].map((_, i) => 
+          Math.max(...formattedData.map(row => (row[i] || '').length))
+      );
+      
+      let result = formattedData.map(row => 
+          row.map((cell, i) => (cell || '').padEnd(colWidths[i])).join('  ')
+      ).join('\n');
+      
+      document.getElementById("lab_outputs").innerHTML = result;
+    }
+
 
     // *****************************************
     // 對傳入的文字進行解析並加減乘除
@@ -1722,6 +1983,7 @@
       console.log(`Today: ${today}`);
     }
 
+
     // *****************************************
     //對每個.copy-item新增onclick事件，讓點擊後複製其data-content的內容，若沒有data-content，則複製其textContent
     // *****************************************
@@ -1741,7 +2003,6 @@
     }
 
 
-
     // *****************************************    
     // reset input
     // *****************************************
@@ -1749,12 +2010,12 @@
       let targetDiv = document.getElementById(elementID); // 獲取指定的 div
       if (!targetDiv) return;
 
-      let inputs = targetDiv.querySelectorAll("input, select");
+      let inputs = targetDiv.querySelectorAll("input, select, textarea");
       inputs.forEach(input => {
-          if (input.type === "number" || input.type === "text") {
-              input.value = "";
-          } else if (input.tagName === "SELECT") {
+          if (input.tagName === "SELECT") {
               input.selectedIndex = 0;
+          } else {
+            input.value = "";
           }
       });
 
@@ -1798,10 +2059,17 @@
         case 'anti_NB_content':
           loadTodayDate('anti_NB_birthday');
           calculateAntibioticsForNB();
-          break
+          break;
+        case 'growth_content':
+          document.getElementById('growth_output').innerHTML = "GA:<br>Gender:<br>BBW:<br>BBL:<br>BHC:<br>Ponderal index:";
+          break;
+        case 'lab_content':
+          break;
+
       }
       addCopyEventListener();
     }
+
 
     // 載入今天日期
     loadTodayDate('anti_NB_birthday');
@@ -1817,7 +2085,16 @@
     addCopyEventListener();
     calculateGrowthIndex();
     fluidVersionToggle('basic');
+    labProcessor();
   </script>
 </body>
+
+<footer class="bg-dark text-white text-center py-3 mt-auto">
+  <div class="container">
+    <p>© 2025 NeoAssist | All Rights Reserved</p>
+    <p>聯絡我們：<a href="mailto:mpq197@google.com" class="text-white">mpq197@google.com</a></p>
+  </div>
+</footer>
+
 
 </html>
