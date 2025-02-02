@@ -1787,7 +1787,9 @@
 
     // *****************************************
     // lab processore 整理raw lab data
+    // [ ] data process not done (過濾全形中文、縮寫、過濾不需要的item)
     // *****************************************   
+
     function labProcessor () {
       console.log("*******start lab processing*******");
       /*
@@ -1825,8 +1827,10 @@
 
       // 4. 合併標題行
       let rawHeaders = headerParts.join(' ');
-      //標題行前處理，把符合8個數字+1個空格+4個數字的，只留下8個數字裡面的後面四個數字
-      rawHeaders = rawHeaders.replace(/\d{8}\s\d{4}/g, (match) => match.slice(4, 8));
+      //標題行前處理
+      rawHeaders = rawHeaders.replace(/\d{8}\s\d{4}/g, (match) => `${match.slice(4, 6)}/${match.slice(6, 8)}`); //時間header只留下日期01/31
+      rawHeaders = rawHeaders.replace(/項目/g, "item");  // 將 rawHeaders 中的所有 "項目" 替換為 "item"
+      rawHeaders = rawHeaders.replace(/[^\x00-\xff]+/g, "."); //把剩餘的全形文字取代成空格
 
       // 5. 合併標題和資料
       let labTextPreProcessed = [rawHeaders, ...dataRows].join('\n');
@@ -1837,8 +1841,21 @@
       console.log(labArray);
 
       // 6.1 重新分成headers and data
-      const labHeaders = labArray[0];
-      const labData = labArray.slice(1);
+      let labHeaders = labArray[0];
+      let labData = labArray.slice(1);
+
+      // 6.2 過濾並縮寫 headers and data
+      
+      // labData的item欄位 過濾掉全形符號
+      // 先找出 "item" 欄位的索引
+      const itemIndex = labHeaders.indexOf("item");      
+      labData = labData.map(row => {
+        // . 檢查該欄位的值是否包含中文，若包含，則替換中文字符
+        if (itemIndex !== -1 && /[\u4e00-\u9fa5]/.test(row[itemIndex])) {
+          row[itemIndex] = row[itemIndex].replace(/[\u4e00-\u9fa5]/g, ""); // 移除所有中文字符
+        }
+        return row; // 返回處理過的行
+      });
 
 
       // 7. 生成欄位選擇
@@ -1855,7 +1872,6 @@
       // 8. 生成列選擇
       const rowSelection = document.getElementById("lab_item_selection");
       rowSelection.innerHTML = "";
-      const itemIndex = labHeaders.indexOf("項目"); // 找到 "項目" 欄位索引
       if (itemIndex !== -1) {
         labData.forEach((row, index) => {
           const itemName = row[itemIndex] || `Row ${index + 1}`;
