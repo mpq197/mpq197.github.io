@@ -675,7 +675,7 @@
     </div>
 
     <!-- 分頁 3: 生長測量 -->
-    <div class="tab-pane" id="growthContent" role="tabpanel" aria-labelledby="medicationTab">
+    <div class="tab-pane" id="growthContent" role="tabpanel" aria-labelledby="growthTab">
       <div class="container mt-4">
         <div class="row mb-3">
           <div class="col">
@@ -1826,7 +1826,7 @@
       // 4. 合併標題行
       let rawHeaders = headerParts.join(' ');
       //標題行前處理，把符合8個數字+1個空格+4個數字的，只留下8個數字裡面的後面四個數字
-      rawHeaders = rawHeaders.replace(/\d{8}\s\d{4}/g, (match) => match.slice(4, 9));
+      rawHeaders = rawHeaders.replace(/\d{8}\s\d{4}/g, (match) => match.slice(4, 8));
 
       // 5. 合併標題和資料
       let labTextPreProcessed = [rawHeaders, ...dataRows].join('\n');
@@ -1868,6 +1868,7 @@
       }
 
       // 更新文字顯示
+      updateText(labHeaders, labData);
 
       // monitor checkbox change
       document.querySelectorAll(".column-checkbox, .row-checkbox").forEach(checkbox => {
@@ -1884,7 +1885,8 @@
       
       let filteredData = selectedRows.map(i => data[i]);      
       let formattedData = [headers.filter((_, i) => selectedColumns.includes(i))].concat(filteredData.map(row => selectedColumns.map(i => row[i] || '')));
-      
+      console.log(`formattedData\n${formattedData}`);
+
       let colWidths = formattedData[0].map((_, i) => 
           Math.max(...formattedData.map(row => (row[i] || '').length))
       );
