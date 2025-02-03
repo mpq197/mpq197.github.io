@@ -755,7 +755,7 @@
               <div class="card-footer">
                 <div class="row mt-2">
                   <div class="col">
-                    <span>✔ 選取日期 (預設為最近五次)</span>
+                    <span>✔ 選取日期</span>
                     <div class="mt-1">
                       <div id="lab_date_selection" class="mb-3"><br></div>
                     </div>
@@ -763,7 +763,7 @@
                 </div>
                 <div class="row mt-2">
                   <div class="col">
-                    <span>✔ 選取檢驗項目 (預設為TPN 大抽不含blood gas)</span>
+                    <span>✔ 選取檢驗項目</span>
                     <div class="mt-1">
                       <div id="lab_item_selection" class="mb-3"><br></div>
                     </div>
@@ -1001,7 +1001,7 @@
       let fluidOrderOutputPO = "";
       const fluidPOPattern = /^(\d+\s*\*\s*\d+)(\s*\+\s*\d+\s*\*\s*\d+)*$/; // "A*B + C*D + E*F ...", where A B ... are numbers  
       if (fluidPO == "") { fluidOrderOutputPO = "";} 
-      else if (fluidPO === 0) { fluidOrderOutputPO = "Diet: NPO with OG decompression";} //若輸入為0則NPO
+      else if (fluidPO == 0) { fluidOrderOutputPO = "Diet: NPO with OG decompression";} //若輸入為0則NPO
       else if (!fluidPOPattern.test(fluidPO)) { console.log("Invalid PO format"); fluidOrderOutputPO = `Diet: ${fluidTotalPO} ml/day`;}
       else {
 
@@ -1895,24 +1895,33 @@
 
     }
 
-    function updateText(headers, data) {
-      const selectedColumns = Array.from(document.querySelectorAll(".column-checkbox:checked")).map(checkbox => parseInt(checkbox.dataset.index));
-      const selectedRows = Array.from(document.querySelectorAll(".row-checkbox:checked")).map(checkbox => parseInt(checkbox.dataset.index));
-      
-      let filteredData = selectedRows.map(i => data[i]);      
-      let formattedData = [headers.filter((_, i) => selectedColumns.includes(i))].concat(filteredData.map(row => selectedColumns.map(i => row[i] || '')));
-      console.log(`formattedData\n${formattedData}`);
+    function updateText(headers, data, transpose = true) {
+      const selectedColumns = Array.from(document.querySelectorAll(".column-checkbox:checked"))
+        .map(checkbox => parseInt(checkbox.dataset.index));
+      const selectedRows = Array.from(document.querySelectorAll(".row-checkbox:checked"))
+        .map(checkbox => parseInt(checkbox.dataset.index));
 
-      let colWidths = formattedData[0].map((_, i) => 
-          Math.max(...formattedData.map(row => (row[i] || '').length))
+      let filteredData = selectedRows.map(i => data[i]);
+      let formattedData = [headers.filter((_, i) => selectedColumns.includes(i))]
+        .concat(filteredData.map(row => selectedColumns.map(i => row[i] || '')));
+
+      if (transpose) {
+        formattedData = formattedData[0].map((_, colIndex) => 
+          formattedData.map(row => row[colIndex] || '')
+        );
+      }
+
+      let colWidths = formattedData[0].map((_, i) =>
+        Math.max(...formattedData.map(row => (row[i] || '').length))
       );
-      
-      let result = formattedData.map(row => 
-          row.map((cell, i) => (cell || '').padEnd(colWidths[i])).join('  ')
+
+      let result = formattedData.map(row =>
+        row.map((cell, i) => (cell || '').padEnd(colWidths[i])).join('  ')
       ).join('\n');
-      
+
       document.getElementById("lab_outputs").innerHTML = result;
     }
+
 
 
     // *****************************************
