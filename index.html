@@ -747,14 +747,14 @@
             <div class="card h-100" id="lab_content">
               <div class="card-header text-center">lab整理 (開發中)</div>
               <div class="card-body pb-0">
-                <div class="input-group">
+                <div class="input-group" id="lab_raw_area">
                   <span class="input-group-text justify-content-center" style="width: 15%;">Raw Lab</span>
                   <textarea id="lab_raw_text" class="form-control" oninput="labProcessor()"></textarea>
                 </div>
               </div>
               <div class="card-footer">
                 <div class="row mt-2">
-                  <div class="col">
+                  <div class="col" id="lab_preset_area">
                     <span>✔ 選取排列方式</span>
                     <div class="mt-1">
                       <div id="lab_preset_selection" class="mb-3">
@@ -770,14 +770,14 @@
                   </div>
                 </div>
                 <div class="row mt-2">
-                  <div class="col">
+                  <div class="col" id="lab_date_area">
                     <span>✔ 選取日期</span>
                     <div class="mt-1">
                       <div id="lab_date_selection" class="mb-3"><br></div>
                     </div>
                   </div>
                 </div>
-                <div class="row mt-2">
+                <div class="row mt-2" id="lab_item_area">
                   <div class="col">
                     <span>✔ 選取檢驗項目</span>
                     <div class="mt-1">
@@ -786,7 +786,7 @@
                   </div>
                 </div>
                 <div class="row mt-3 pt-2 border-top">
-                  <div class="col-10">
+                  <div class="col-10" id="lab_outputs_area">
                     <ul class="list-group mt-2 mb-2">
                       <li class="list-group-item">
                         <pre id="lab_outputs" class=" copy-item">
@@ -795,8 +795,10 @@
                     </ul>
                   </div>
                   <div class="col-2" style="padding-left: 0%;">
-                    <div class="d-flex justify-content-center align-items-center h-100">
-                      <button class="btn btn-secondary" onclick="resetForm('lab_content')">Reset</button>
+                    <div class="d-flex flex-column justify-content-center align-items-center h-100">
+                      <!-- 原本的 Reset 按鈕 -->
+                      <button class="btn btn-secondary w-75 mb-2" id="fluid_intro" onclick="labIntro()">教學</button>
+                      <button class="btn btn-secondary w-75" onclick="resetForm('lab_content')">Reset</button>
                     </div>
                   </div>
                 </div>
@@ -1227,7 +1229,7 @@
 
     
     // ***************************************
-    // Intro 導入教學
+    // fluidIntro 導入教學
     // ***************************************
     function fluidIntro(){
       //輸入範例
@@ -1811,14 +1813,11 @@
       /*
       raw text 格式
       選取	項目代號	項目	檢體別	20250131
-      0848	20250130
-      0636	20250128
-      2219	20250128
       0132	20250128
       0023	20250127
       2327	單位	參考值
-      True	72A001	WBC	B	5.5	5.4	5.3	5.1	5.0	5.3	1000/uL	5.2~13.4(>1d-8d)
-      True	72B001	RBC	B		5.19	5.18	5.15	5.2	5.1	million/uL	3.99~4.98(>1d-8d)
+      True	72A001	WBC	B	5.5	5.4	5.3	1000/uL	5.2~13.4(>1d-8d)
+      True	72B001	RBC	B		5.19	5.18	million/uL	3.99~4.98(>1d-8d)
       */
 
       // 0.  宣告變數
@@ -2009,6 +2008,75 @@
     }
 
 
+    // *****************************************
+    // Lab Intro
+    // *****************************************
+        // ***************************************
+    // Intro 導入教學
+    // ***************************************
+    function labIntro(){
+      //輸入範例
+      const exampleInputs = {
+        lab_raw_text: `
+          選取	項目代號	項目	檢體別	20250129
+          0125	20250126
+          0025	20250125
+          2328	單位	參考值
+          True	72A001	WBC	B	3.5	4.4	9.3	1000/uL	5.2~13.4(>1d-8d)
+          True	72B001	RBC	B		4.19	3.18	million/uL	3.99~4.98(>1d-8d)
+          True	72B001	Hb	B		10.2	10.3	million/uL	3.99~4.98(>1d-8d)
+          True	72B001	Hct	B		30.2	30.3	million/uL	3.99~4.98(>1d-8d)
+          True	72B001	Plt	B		325	80	million/uL	3.99~4.98(>1d-8d)
+        `,
+      };
+      Object.keys(exampleInputs).forEach(key => {
+        document.getElementById(key).value = exampleInputs[key];
+      });
+      
+      //範例結果
+      labProcessor();
+      
+      let steps = [
+        { element: "#lab_raw_area", intro: `\
+          <p>請開啟His 4.0 新版檢驗</p>
+        `},
+        { element: "#lab_raw_area", intro: `\
+          <p>點選 "全部彙總"</p>
+          <img src="img/intro_lab_step_0_全部彙總.png" alt="圖片" style="width:800px;">
+        `},
+        { element: "#lab_raw_area", intro: `\
+          <p>點選 "任一項檢驗項目"</p>
+          <img src="img/intro_lab_step_1_點選任一檢驗項目.png" alt="圖片" style="width:800px;">
+        `},
+        { element: "#lab_raw_area", intro: `\
+          <p>(1) 使用快速鍵 "Ctrl + A" 全選</p>
+          <p>(2) 完成後按 "Ctrl + C" 複製</p>
+          <img src="img/intro_lab_step_2_全選複製.png" alt="圖片" style="width:800px;">
+        `},
+        { element: "#lab_raw_area", intro: "貼上複製的資料" },
+        { element: "#lab_preset_area", intro: "點選顯示方式(直式/橫式)" },
+        { element: "#lab_date_area", intro: "點選想要的日期" },
+        { element: "#lab_item_area", intro: "點選想要的檢驗項目" },
+        { element: "#lab_outputs_area", intro: "點選內容即可複製!" },
+      ];
+
+      //設定intro
+      const intro = introJs();
+      intro.setOptions({
+        steps: steps,
+        showProgress: true,  // 顯示進度條
+        showBullets: false,  // 移除底部圓點
+        disableInteraction: false,  // 可以點擊其他區塊
+        exitOnOverlayClick: false,  // 點擊外部不會結束教學
+        scrollToElement: true,  // 自動滾動到教學元素
+      })
+      
+      intro.oncomplete( function() {resetForm('lab_content');} );
+      intro.onexit( function() {resetForm('lab_content');} );     
+      intro.start(); 
+    }
+
+
 
     // *****************************************
     // 對傳入的文字進行解析並加減乘除
@@ -2186,6 +2254,19 @@
 
     // 載入今天日期
     loadTodayDate('anti_NB_birthday');
+
+    // 載入預設值
+    document.getElementById('lab_raw_text').value = `
+      選取	項目代號	項目	檢體別	20250129
+      0125	20250126
+      0025	20250125
+      2328	單位	參考值
+      True	72A001	WBC	B	3.5	4.4	9.3	1000/uL	5.2~13.4(>1d-8d)
+      True	72B001	RBC	B		4.19	3.18	million/uL	3.99~4.98(>1d-8d)
+      True	72B001	Hb	B		10.2	10.3	million/uL	3.99~4.98(>1d-8d)
+      True	72B001	Hct	B		30.2	30.3	million/uL	3.99~4.98(>1d-8d)
+      True	72B001	Plt	B		325	80	million/uL	3.99~4.98(>1d-8d)
+    `;
 
 
     // 頁面載入時先執行一次計算
