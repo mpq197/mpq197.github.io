@@ -1868,8 +1868,11 @@
         "Triglyceride": "TG",
         "T-Cholesterol": "Chol",
         "Total Protein": "TP",
+        "ALK-P": "ALP",
         "γ-GT": "γGT",
-        "Procalcitonin": "Pct"
+        "Intact-PTH": "iPTH",
+        "Procalcitonin": "Pct",
+        "Free-T4": "fT4"
       }
       labHeaders = labHeaders.map(header => labHeaderAbbrDict[header] || header);
       labRows = labRows.map(row => row.map(cell => labHeaderAbbrDict[cell] || cell));
@@ -1881,7 +1884,7 @@
       if (formSelection === "formNI") {
         remainingRowKeywords = {
           "檢體別": ["B"], //其他檢體別都刪掉
-          "[Lab]": ["WBC", "Hb", "Hct", "Plt", "Na ", "K  ", "Cl ", "Ca ", "Mg ", "P  ", "BUN", "Cr", "AST", "ALT", "DB", "TB ", "CRP", "Pct", "TG", "Chol", "TP", "Alb", "ALP", "rGT", "iPTH"]
+          "[Lab]": ["WBC", "Hb", "Hct", "Plt", "Na ", "K  ", "Cl ", "Ca ", "Mg ", "P  ", "BUN", "Cr", "AST", "ALT", "DB", "TB ", "CRP", "Pct", "TG", "Chol", "TP", "Alb", "ALP", "rGT", "iPTH", "fT4", "TSH"]
         };
         excludingRowKeywords = {};
       } else {
@@ -1937,7 +1940,7 @@
 
       // 3.2 生成列選擇 (動態生成選擇框並預設選擇最後五個日期)
       const rowSelections = document.getElementById("lab_item_selection");
-      const defaultSelections = ["WBC", "Hb", "Hct", "Plt", "Na ", "K  ", "Cl ", "Ca ", "Mg ", "P  ", "BUN", "Cr", "AST", "ALT", "DB", "TB ", "CRP", "Pct", "TG", "Chol", "TP", "Alb", "ALP", "rGT", "iPTH"];
+      const defaultSelections = ["WBC", "Hb", "Hct", "Plt", "Na ", "K  ", "Cl ", "Ca ", "Mg ", "P  ", "BUN", "Cr", "AST", "ALT", "DB", "TB ", "CRP", "Pct", "Other"];
       let itemIndex = labHeaders.indexOf("[Lab]");
       if (itemIndex !== -1) {
         rowSelections.innerHTML = labRows.map((row, index) => `
@@ -1971,7 +1974,7 @@
       ];
 
       // 讓[Lab]按照預設的順序排列 
-      let labOrder = ["WBC", "Hb", "Hct", "Plt", "Na ", "K  ", "Cl ", "Ca ", "Mg ", "P  ", "BUN", "Cr", "AST", "ALT", "DB", "TB ", "CRP", "Pct", "TG", "Chol", "TP", "Alb", "ALP", "rGT", "iPTH"];
+      let labOrder = ["WBC", "Hb", "Hct", "Plt", "Na ", "K  ", "Cl ", "Ca ", "Mg ", "P  ", "BUN", "Cr", "AST", "ALT", "DB", "TB ", "CRP", "Pct", "TG", "Chol", "TP", "Alb", "ALP", "rGT", "iPTH", "fT4", "TSH"];
       let[labHeaders, ...labRows] = filteredLabArray;
       labRows.sort((a, b) => {
         const indexA = labOrder.indexOf(a[0]) === -1 ? Infinity : labOrder.indexOf(a[0]);
@@ -2011,9 +2014,6 @@
     // *****************************************
     // Lab Intro
     // *****************************************
-        // ***************************************
-    // Intro 導入教學
-    // ***************************************
     function labIntro(){
       //輸入範例
       const exampleInputs = {
