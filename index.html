@@ -1068,29 +1068,29 @@
         let fluidPOMultiplierSum = fluidPOComponentsPairs.reduce((sum, item) => sum + item.multiplier, 0);
         if (24 % fluidPOMultiplierSum !== 0) { fluidOrderOutputPO = `Diet: ${fluidTotalPO} ml/day`; } //若不能整除24則直接輸出總量
         else{
-          fluidOrderOutputPO = fluidPOComponentsPairs.map(({ base, multiplier }) => `${base}ml * ${multiplier} meals`).join(" then ");
+          fluidOrderOutputPO = fluidPOComponentsPairs.map(({ base, multiplier }) => `${base} ml * ${multiplier} meals`).join(" then ");
           fluidOrderOutputPO.split(" then ").slice(0, -1).join(" then "); //移除最後一個元素 (最後一個*幾餐)
           fluidOrderOutputPO += ` / Q${24/fluidPOMultiplierSum}H`;  //加上餵食頻率
           // 加上奶品
           let fluidPOMilkType = fluidPOHM && fluidPOFormula ?  `${fluidPOHM}/${fluidPOFormula}` : fluidPOHM || fluidPOFormula || '';
           fluidOrderOutputPO = fluidPOMilkType ? `${fluidPOMilkType} ${fluidOrderOutputPO}` : fluidOrderOutputPO;
           // 加上PO總量
-          fluidOrderOutputPO = `Diet: ${fluidOrderOutputPO} = (total ${fluidTotalPO}ml/day )`;
+          fluidOrderOutputPO = `Diet: ${fluidOrderOutputPO} = (total ${fluidTotalPO} ml/day)`;
         }
       }
       fluidOrderArray.push(fluidOrderOutputPO);
       console.log(`Diet: ${fluidOrderOutputPO}`);     
 
       // TPN: ? g/kg/day = ? ml/hr run ? hrs
-      let fluidOrderOutputTPNHours = fluidTPNHours ===24? "":`run ${fluidTPNHours}hrs`;
-      let fluidOrderOutputTPN = `${fluidTpnAAMap[fluidTPNAA]}${fluidTPNMakeUp} ${fluidTPNGrams}g/kg/day=${fluidTPNRate}ml/hr ${fluidOrderOutputTPNHours}`;
+      let fluidOrderOutputTPNHours = fluidTPNHours ===24? "":`run ${fluidTPNHours} hrs`;
+      let fluidOrderOutputTPN = `${fluidTpnAAMap[fluidTPNAA]}${fluidTPNMakeUp} ${fluidTPNGrams} g/kg/day = ${fluidTPNRate} ml/hr ${fluidOrderOutputTPNHours}`;
       fluidOrderOutputTPN = fluidTPNGrams==0 ? "":fluidOrderOutputTPN;
       fluidOrderOutputTPN = fluidBW > 0 ? fluidOrderOutputTPN : ""; //若BW=0則不顯示TPN，避免出現NaN
       fluidOrderArray.push(fluidOrderOutputTPN);
       console.log(`TPN: ${fluidOrderOutputTPN}`);      
 
       // Lipid: ? g/kg/day = total ? g/day
-      let fluidOrderOutputLipid = `${fluidLipidType} ${fluidLipidGrams}g/kg/day = ${fluidLipidRate} ml/hr run ${fluidLipidBestHour} hrs`;
+      let fluidOrderOutputLipid = `${fluidLipidType} ${fluidLipidGrams} g/kg/day = ${fluidLipidRate} ml/hr run ${fluidLipidBestHour} hrs`;
       fluidOrderOutputLipid = fluidLipidGrams==0 ? "":fluidOrderOutputLipid;
       fluidOrderArray.push(fluidOrderOutputLipid);
       console.log(`Lipid: ${fluidOrderOutputLipid}`); 
