@@ -4,11 +4,14 @@
 <head>
   <!-- 
     代辦事項
-    1. 新增ICD10搜尋功能
-    2. 新增問診重點等文件下載
-    3. 自動轉換成體重
-    4. local storage
-    5. 計算PMA, CA
+    [ ] 新增ICD10搜尋功能
+    [ ] 新增問診重點等文件下載
+    [ ] 自動轉換成體重
+    [ ] local storage
+    [ ] 計算
+    [ ] growth chart: 
+        - 比較 fenton, intergrowth-21
+        - 計算PMA, CA
   -->
 
   <meta charset="UTF-8" />
@@ -24,7 +27,7 @@
   <style>
     body {
       background-color: #f1e6d8;
-      font-family: 'Roboto', sans-serif;
+      font-family: 'Roboto', sans-serif; 
       color: #333333;
     }
 
@@ -751,7 +754,7 @@
               <div class="card-body pb-0">
                 <div class="input-group" id="lab_raw_area">
                   <span class="input-group-text justify-content-center" style="width: 15%;">Raw Lab</span>
-                  <textarea id="lab_raw_text" class="form-control" oninput="labSelectionsGenerator()"></textarea>
+                  <textarea id="lab_raw_text" class="form-control" oninput="labProcessor()"></textarea>
                 </div>
               </div>
               <div class="card-footer">
@@ -806,6 +809,9 @@
                           <!--選項8: 取消全選 -->
                           <input type="radio" class="btn-check" name="lab_presets_selection" id="lab_preset_none" autocomplete="off">
                           <label class="btn btn-outline-secondary" for="lab_preset_none">不選套組</label>
+                          <!--選項9: 全選 -->
+                          <input type="radio" class="btn-check" name="lab_presets_selection" id="lab_preset_all" autocomplete="off">
+                          <label class="btn btn-outline-secondary" for="lab_preset_all">全選</label>
                         </div>
                       </div>
                     </div>
@@ -1837,9 +1843,9 @@
 
     // *****************************************
     // 整理 raw lab data，並生選擇框
+    // [ ] gas 重複問題
     // *****************************************   
-    function labSelectionsGenerator (){
-      console.log("****** start lab selections generation ******");
+    function labProcessor () {
 
       // 0.  宣告變數
       const rawText = document.getElementById('lab_raw_text').value; //取得原始資料
@@ -1868,10 +1874,13 @@
         "Platelets": "Plt",
         "Segment": "Seg",
         "Lymphocyte": "Lym",
-        "Monocyte": "Mon",
+        "Monocyte": "Mono",
         "Eosinophil": "Eos",
         "Basophil": "Baso",
         "Abs Neutro. #": "ANC",
+        "Blast cell": "Blast",
+        "Nucleated RBC": "nRBC",
+        "Glucose(AC)": "Sugar",
         "Creatinine": "Cr",
         "AST/GOT": "AST",
         "ALT/GPT": "ALT",
@@ -1892,7 +1901,14 @@
         "γ-GT": "γGT",
         "Intact-PTH": "iPTH",
         "Procalcitonin": "Pct",
-        "Free-T4": "fT4"
+        "Free-T4": "fT4",
+        "APTT": "aPTT",
+        "APTT data/mean": "aPTT/m",
+        "PH": "pH",
+        "PCO2": "pCO2",
+        "PO2" : "pO2",
+        "cHCO3": "HCO3",
+        "BEecf": "SBE"
       }
       labHeaders = labHeaders.map(header => labHeaderAbbrDict[header] || header);
       labRows = labRows.map(row => row.map(cell => labHeaderAbbrDict[cell] || cell));
@@ -1902,9 +1918,22 @@
       let remainingRowKeywords = {};
       let excludingRowKeywords = {};
       remainingRowKeywords = {
-        "檢體別": ["B"] //其他檢體別都刪掉
+        "檢體別": ["B", "BV"] //其他檢體別都刪掉
       };
-      excludingRowKeywords = {}; //未來有需要刪除的再新增
+      excludingRowKeywords = {
+        "項目代號": [
+          //刪除 NBS  
+          "72R285", "72S285", "72T285", "72A285", "72B285", "72C285", "72D285", "72E285", "72F285", "72G285", "72H285", "72I285", "72J285", "72K285", "72L285", "72M285", "72N285", "72P285", "72Q285", "72U285", "72O285",
+          //刪除 INR/aPTT的MNPT
+          "72B037", "72B038",
+          //刪除 Dbil/Tbil ratio
+          "72A513",
+          //刪除 G6PD
+          "72-065",
+          //刪除 gas 多餘項目 72A530(Temperature) 72G530(ctCO2) 72L530(72L530) 72M530(AaDO2) 72A530(TEMP) 72K530(SAT) 72L530(Po2(A-a)) 72M530(FIO2)
+          "72A530", "72G530", "72L530", "72M530", "72A530", "72A530", "72K530", "72L530", "72M530"
+        ]
+      }; 
       remainingRowIndices = Object.keys(remainingRowKeywords).map(header => labHeaders.indexOf(header)).filter(index => index !== -1);
       excludingRowIndices = Object.keys(excludingRowKeywords).map(header => labHeaders.indexOf(header)).filter(index => index !== -1);
       // 保留該保留的row
@@ -1915,7 +1944,6 @@
       // 2.3 移除不需要的cols
       let excludeColKeywords = ["選取", "項目代號", "檢體別", "單位", "參考值"];
       let excludeColIndices = labHeaders.map((col, index) => excludeColKeywords.includes(col) ? index : -1).filter(index => index !== -1);
-
       labHeaders = labHeaders.filter((_, index) => !excludeColIndices.includes(index));
       labRows = labRows.map(row => row.filter((_, index) => !excludeColIndices.includes(index)));
 
@@ -1936,10 +1964,16 @@
       labHeaders = labHeaders.filter((_, i) => !emptyColumns[i]);
       labRows = labRows.map(row => row.filter((_, i) => !emptyColumns[i]));
 
+      // 2.8 處理gas重複問題
+      // 找到'[lab]'在headers的index
+      // 遍歷每個row，若發現該index的值重複出現，則讀取該row裡面每個cell，若有值再看上面重複的row是否沒有值，沒有值的話就用這個值填上去，若該row的每個數值都成功填上去則刪除該row
+
+
       // 3.  生成選擇
       // 3.1 生成欄位選擇 (生成選擇框)
       const dateSelections = document.getElementById("lab_date_selection");
       const defaultDates = [ labHeaders[0] , ...labHeaders.slice(-5)];
+      // const defaultDates = [ labHeaders[0] , ...labHeaders.slice(1)]; 
       dateSelections.innerHTML = labHeaders.map((header, index) => `
         <input type="checkbox" class="btn-check date-checkbox" id="date${index}" data-index="${index}" ${defaultDates.includes(header) ? 'checked' : ''}>
         <label class="btn btn-outline-secondary btn-check-label mt-1 ml-1" for="date${index}">${header}</label>
@@ -1955,16 +1989,15 @@
         `).join('');
       }
 
-      console.log("******* end lab selections generation *******");
 
       //update
       labSelectionsUpdate();
-      updateText(labHeaders, labRows, shouldTranspose);
+      labTextsUpdate(labHeaders, labRows, shouldTranspose);
 
       //add event listener
       document.querySelectorAll(".date-checkbox, .lab-item-checkbox").forEach(checkbox => {
         checkbox.addEventListener("change", () => {
-          updateText(labHeaders, labRows, shouldTranspose);
+          labTextsUpdate(labHeaders, labRows, shouldTranspose);
         });
       });
 
@@ -1972,7 +2005,7 @@
         checkbox.addEventListener("change", () => {
           console.log("presets selection changed");
           labSelectionsUpdate();
-          updateText(labHeaders, labRows, shouldTranspose);
+          labTextsUpdate(labHeaders, labRows, shouldTranspose);
         });
       });
       
@@ -1980,7 +2013,7 @@
         checkbox.addEventListener("change", () => {
           shouldTransposeToggle  = document.querySelector('input[name="lab_should_transpose"]:checked'); //確認顯示方式 (lab_should_transpose)
           shouldTranspose = shouldTransposeToggle.id === "need_transpose"? true:false ;
-          updateText(labHeaders, labRows, shouldTranspose);
+          labTextsUpdate(labHeaders, labRows, shouldTranspose);
         });    
       });
     }
@@ -2002,18 +2035,23 @@
       switch (preset) {
         case "lab_preset_TPN_minor": presetSelections = ["WBC", "Hb", "Hct", "Plt", "Na ", "K  ", "Cl ", "Ca ", "Mg ", "P  ", "BUN", "Cr", "AST", "ALT", "DB", "TB ", "CRP", "Pct"]; break;
         case "lab_preset_TPN_major": presetSelections = ["TG", "Chol", "TP", "Alb", "ALP", "rGT", "iPTH", "fT4", "TSH"]; break;
-        case "lab_preset_gas": presetSelections = ["PH", "PCO2", "PO2", "HCO3", "SBE"]; break;
+        case "lab_preset_gas": presetSelections = ["pH", "pCO2", "pO2", "HCO3", "SBE"]; break;
         case "lab_preset_cv": presetSelections = ["CK-MB", "Troponin-I", "Lactate", "BNP", "NT-ProBNP"]; break;
         case "lab_preset_gi": presetSelections = ["BUN", "Cr", "AST", "ALT", "DB", "TB", "Na ", "K  ", "Cl ", "iCa", "Ca", "Mg ", "P  "]; break;
         case "lab_preset_inf": presetSelections = ["WBC", "Seg", "Lym", "ANC", "CRP", "Pct"]; break;
         case "lab_preset_hema": presetSelections = ["Hb", "Hct", "Plt"]; break;
         case "lab_preset_none": presetSelections = []; break;
+        default: break;
       }
       
       if (preset === "lab_preset_none") {
         //deselect all
         document.querySelectorAll(".lab-item-checkbox:checked").forEach(checkbox => checkbox.checked = false);
         console.log("No preset selected");
+      } else if (preset === "lab_preset_all") {
+        //select all
+        document.querySelectorAll(".lab-item-checkbox").forEach(checkbox => checkbox.checked = true);
+        console.log("All selected");
       } else {
         //select preset
         document.querySelectorAll(".lab-item-checkbox").forEach(checkbox => {
@@ -2025,7 +2063,7 @@
       console.log("*******end lab selections update*******");
     }
 
-    function updateText(headers, data, shouldTranspose) {
+    function labTextsUpdate(headers, data, shouldTranspose) {
       console.log("*******start update text*******");
       // 取得選中的index
       const getSelectedIndices = selector => [...document.querySelectorAll(selector)].map(cb => +cb.dataset.index);
@@ -2045,6 +2083,9 @@
         const indexB = labOrder.indexOf(b[0]) === -1 ? Infinity : labOrder.indexOf(b[0]);
         return indexA - indexB;
       });
+
+      //把lab item的名稱限制在8個字元內
+      labRows = labRows.map(row => row.map(cell => cell.length > 8 ? cell.slice(0, 8) : cell));
 
       //若該column全為空(除第一格)，則刪除該column
       let emptyColumns = labHeaders.map((_, i) => labRows.every(row => row[i] === ''));
@@ -2103,7 +2144,7 @@
       });
       
       //範例結果
-      labSelectionsGenerator();
+      labProcessor();
       
       let steps = [
         { element: "#lab_raw_area", intro: `\
@@ -2349,7 +2390,7 @@
     addCopyEventListener();
     calculateGrowthIndex();
     fluidVersionToggle('basic');
-    labSelectionsGenerator();
+    labProcessor();
   </script>
 </body>
 
