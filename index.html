@@ -1892,6 +1892,7 @@
         "Ca(Calcium)": "Ca ",
         "Mg(Magnesium)": "Mg ",
         "Inorganic P": "P  ",
+        "Zn(Zinc)": "Zn",
         "Total Bilirubin": "TB ",
         "D.Bilirubin": "DB",
         "Amylase(B)": "Amylase",
@@ -1904,13 +1905,15 @@
         "Intact-PTH": "iPTH",
         "Procalcitonin": "Pct",
         "Free-T4": "fT4",
+        "P.T": "PT",
         "APTT": "aPTT",
         "APTT data/mean": "aPTT/m",
         "PH": "pH",
         "PCO2": "pCO2",
         "PO2" : "pO2",
         "cHCO3": "HCO3",
-        "BEecf": "SBE"
+        "BEecf": "SBE",
+        "Uric Acid (B)": "Uric acid"
       }
       labHeaders = labHeaders.map(header => labHeaderAbbrDict[header] || header);
       labRows = labRows.map(row => row.map(cell => labHeaderAbbrDict[cell] || cell));
@@ -2041,10 +2044,10 @@
         case "lab_preset_TPN_minor": presetSelections = ["WBC", "Hb", "Hct", "Plt", "Na ", "K  ", "Cl ", "Ca ", "Mg ", "P  ", "BUN", "Cr", "AST", "ALT", "DB", "TB ", "CRP", "Pct"]; break;
         case "lab_preset_TPN_major": presetSelections = ["TG", "Chol", "TP", "Alb", "ALP", "rGT", "iPTH", "fT4", "TSH"]; break;
         case "lab_preset_gas": presetSelections = ["pH", "pCO2", "pO2", "HCO3", "SBE"]; break;
-        case "lab_preset_cv": presetSelections = ["CK-MB", "Troponin-I", "Lactate", "BNP", "NT-ProBNP"]; break;
-        case "lab_preset_gi": presetSelections = ["BUN", "Cr", "AST", "ALT", "DB", "TB", "Na ", "K  ", "Cl ", "iCa", "Ca ", "Mg ", "P  "]; break;
+        case "lab_preset_cv": presetSelections = ["CK-MB", "hs-Troponin I", "Lactate", "BNP", "NT-ProBNP"]; break;
+        case "lab_preset_gi": presetSelections = ["BUN", "Cr", "AST", "ALT", "DB", "TB ", "Na ", "K  ", "Cl ", "iCa", "Ca ", "Mg ", "P  "]; break;
         case "lab_preset_inf": presetSelections = ["WBC", "Seg", "Lym", "ANC", "CRP", "Pct"]; break;
-        case "lab_preset_hema": presetSelections = ["Hb", "Hct", "Plt"]; break;
+        case "lab_preset_hema": presetSelections = ["Hb", "Hct", "Plt", "PT", "INR", "aPTT", "aPTT/m"]; break;
         case "lab_preset_none": presetSelections = []; break;
         default: break;
       }
@@ -2083,7 +2086,8 @@
       // 讓[Lab]按照預設的順序排列 
       let labOrder = [
         "WBC", "Hb", "Hct", "Plt", "Seg", "Band", "Lym", "Mono", "Eos", "Baso", "Atyp Lym", "Meta Mye", "Myelocyte", "Promyelocyte", "Blast", "Megakaryocyte", "ANC", "nRBC", 
-        "Na ", "K  ", "Cl ", "iCa", "Ca ", "Mg ", "P  ", 
+        "PT", "INR", "aPTT", "aPTT/m",
+        "Na ", "K  ", "Cl ", "iCa", "Ca ", "Mg ", "P  ", "Zn", 
         "BUN", "Cr", "AST", "ALT", "DB", "TB ", 
         "CRP", "Pct", 
         "TG", "Chol", "TP", "Alb", "ALP", "rGT", "iPTH", "fT4", "TSH"
