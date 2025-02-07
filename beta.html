@@ -763,7 +763,7 @@
                     <span>✔ 選取顯示方式</span>
                     <div class="mt-1 d-flex gap-1">
                       <!-- 讓使用者toggle transpose or not-->
-                      <div id="lab_should_transpose" class="btn-group mt-1 mb-2" role="group" aria-label="transpose toggle buttons">
+                      <div id="lab_should_transpose" class="btn-group mb-2" role="group" aria-label="transpose toggle buttons">
                         <input type="radio" class="btn-check" name="lab_should_transpose" id="need_transpose" autocomplete="off" checked>
                         <label class="btn btn-outline-secondary" for="need_transpose">橫式</label>
                         <input type="radio" class="btn-check" name="lab_should_transpose" id="no_need_transpose" autocomplete="off">
@@ -775,51 +775,70 @@
                 <div class="row mt-2">
                   <div class="col" id="lab_date_area">
                     <span>✔ 選取日期</span>
+                    <div class="row">
+                      <div>
+                        <!-- 讓使用者選擇dates -->
+                        <div id="lab_date_presets_selection" class="btn-group mt-1 mb-2" role="group" aria-label="preset toggle buttons">
+                          <!--選項: 全選 -->
+                          <input type="radio" class="btn-check" name="lab_date_presets_selection" id="lab_date_preset_all" autocomplete="off">
+                          <label class="btn btn-outline-secondary" for="lab_date_preset_all">全選</label>
+                          <!--選項: 近十次 -->
+                          <input type="radio" class="btn-check" name="lab_date_presets_selection" id="lab_date_preset_last_10" autocomplete="off" checked>
+                          <label class="btn btn-outline-secondary" for="lab_date_preset_last_10">近十次</label>
+                          <!--選項: 近五次 -->
+                          <input type="radio" class="btn-check" name="lab_date_presets_selection" id="lab_date_preset_last_5" autocomplete="off">
+                          <label class="btn btn-outline-secondary" for="lab_date_preset_last_5">近五次</label>
+                          <!--選項: 全不選 -->
+                          <input type="radio" class="btn-check" name="lab_date_presets_selection" id="lab_date_preset_none" autocomplete="off">
+                          <label class="btn btn-outline-secondary" for="lab_date_preset_none">全不選</label>
+                        </div>
+                      </div>
+                    </div>
                     <div id="lab_date_selection" class="mt-1 mb-2"><br></div>
                   </div>
                 </div>
                 <div class="row mt-2" id="lab_presets_area">
                   <div class="col">
-                    <span>✔ 選取套組</span>
+                    <span>✔ 選取檢驗項目</span>
                     <div class="row">
                       <div>
                         <!-- 讓使用者選擇presets -->
                         <div id="lab_presets_selection" class="btn-group mt-1 mb-2" role="group" aria-label="preset toggle buttons">
-                          <!--選項1: TPN小抽 -->
-                          <input type="radio" class="btn-check" name="lab_presets_selection" id="lab_preset_TPN_minor" autocomplete="off" checked>
-                          <label class="btn btn-outline-secondary" for="lab_preset_TPN_minor">TPN小抽</label>
-                          <!--選項2: TPN大抽 -->
-                          <input type="radio" class="btn-check" name="lab_presets_selection" id="lab_preset_TPN_major" autocomplete="off">
-                          <label class="btn btn-outline-secondary" for="lab_preset_TPN_major">TPN大抽</label>
-                          <!--選項3: Gas -->
-                          <input type="radio" class="btn-check" name="lab_presets_selection" id="lab_preset_gas" autocomplete="off">
-                          <label class="btn btn-outline-secondary" for="lab_preset_gas">Gas</label>
-                          <!--選項4: CV -->
-                          <input type="radio" class="btn-check" name="lab_presets_selection" id="lab_preset_cv" autocomplete="off">
-                          <label class="btn btn-outline-secondary" for="lab_preset_cv">CV</label>
-                          <!--選項5: GI -->
-                          <input type="radio" class="btn-check" name="lab_presets_selection" id="lab_preset_gi" autocomplete="off">
-                          <label class="btn btn-outline-secondary" for="lab_preset_gi">GI</label>
-                          <!--選項6: Inf -->
-                          <input type="radio" class="btn-check" name="lab_presets_selection" id="lab_preset_inf" autocomplete="off">
-                          <label class="btn btn-outline-secondary" for="lab_preset_inf">Inf</label>
-                          <!--選項7: Hema -->
-                          <input type="radio" class="btn-check" name="lab_presets_selection" id="lab_preset_hema" autocomplete="off">
-                          <label class="btn btn-outline-secondary" for="lab_preset_hema">Hema</label>
-                          <!--選項8: 取消全選 -->
-                          <input type="radio" class="btn-check" name="lab_presets_selection" id="lab_preset_none" autocomplete="off">
-                          <label class="btn btn-outline-secondary" for="lab_preset_none">不選套組</label>
-                          <!--選項9: 全選 -->
+                          <!--選項: 全選 -->
                           <input type="radio" class="btn-check" name="lab_presets_selection" id="lab_preset_all" autocomplete="off">
                           <label class="btn btn-outline-secondary" for="lab_preset_all">全選</label>
+                          <!--選項: TPN小抽 -->
+                          <input type="radio" class="btn-check" name="lab_presets_selection" id="lab_preset_TPN_minor" autocomplete="off" checked>
+                          <label class="btn btn-outline-secondary" for="lab_preset_TPN_minor">TPN小抽</label>
+                          <!--選項: TPN大抽 -->
+                          <input type="radio" class="btn-check" name="lab_presets_selection" id="lab_preset_TPN_major" autocomplete="off">
+                          <label class="btn btn-outline-secondary" for="lab_preset_TPN_major">TPN大抽</label>
+                          <!--選項: Gas -->
+                          <input type="radio" class="btn-check" name="lab_presets_selection" id="lab_preset_gas" autocomplete="off">
+                          <label class="btn btn-outline-secondary" for="lab_preset_gas">Gas</label>
+                          <!--選項: CV -->
+                          <input type="radio" class="btn-check" name="lab_presets_selection" id="lab_preset_cv" autocomplete="off">
+                          <label class="btn btn-outline-secondary" for="lab_preset_cv">CV</label>
+                          <!--選項: GI -->
+                          <input type="radio" class="btn-check" name="lab_presets_selection" id="lab_preset_gi" autocomplete="off">
+                          <label class="btn btn-outline-secondary" for="lab_preset_gi">GI</label>
+                          <!--選項: Inf -->
+                          <input type="radio" class="btn-check" name="lab_presets_selection" id="lab_preset_inf" autocomplete="off">
+                          <label class="btn btn-outline-secondary" for="lab_preset_inf">Inf</label>
+                          <!--選項: Hema -->
+                          <input type="radio" class="btn-check" name="lab_presets_selection" id="lab_preset_hema" autocomplete="off">
+                          <label class="btn btn-outline-secondary" for="lab_preset_hema">Hema</label>
+                          <!--選項: 取消全選 -->
+                          <input type="radio" class="btn-check" name="lab_presets_selection" id="lab_preset_none" autocomplete="off">
+                          <label class="btn btn-outline-secondary" for="lab_preset_none">全不選</label>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-                <div class="row mt-2" id="lab_item_area">
+                <div class="row" id="lab_item_area">
                   <div class="col">
-                    <span>✔ 選取檢驗項目</span>
+                    <!-- <span>✔ 選取檢驗項目</span> -->
                     <div class="row">
                       <div id="lab_item_selection" class="mt-1 mb-2"><br></div>
                     </div>
@@ -2000,6 +2019,7 @@
 
 
       //update
+      labDateSelectionsUpdate();
       labSelectionsUpdate();
       labTextsUpdate(labHeaders, labRows, shouldTranspose);
 
@@ -2010,9 +2030,10 @@
         });
       });
 
-      document.querySelectorAll('input[name="lab_presets_selection"]').forEach(checkbox => {
+      document.querySelectorAll('input[name="lab_presets_selection"], input[name="lab_date_presets_selection"]').forEach(checkbox => {
         checkbox.addEventListener("change", () => {
           console.log("presets selection changed");
+          labDateSelectionsUpdate();
           labSelectionsUpdate();
           labTextsUpdate(labHeaders, labRows, shouldTranspose);
         });
@@ -2026,6 +2047,30 @@
         });    
       });
     }
+
+    function labDateSelectionsUpdate () {
+      console.log("*******start date selections update*******");
+      const preset = document.querySelector('input[name="lab_date_presets_selection"]:checked').id; //確認預設選項
+      const checkboxes = document.querySelectorAll(".date-checkbox"); //取得所有checkboxes of dates
+      switch (preset) {
+        case "lab_date_preset_all": 
+          document.querySelectorAll(".date-checkbox").forEach(checkbox => checkbox.checked = true);
+          break;
+        case "lab_date_preset_last_10":
+          document.querySelectorAll(".date-checkbox").forEach((checkbox, index) => checkbox.checked = (index === 0 || index >= checkboxes.length - 10) );
+          break;
+        case "lab_date_preset_last_5":
+          document.querySelectorAll(".date-checkbox").forEach((checkbox, index) => checkbox.checked = (index === 0 || index >= checkboxes.length - 10) );
+          break;
+        case "lab_date_preset_none":
+          document.querySelectorAll(".date-checkbox:checked").forEach(checkbox => checkbox.checked = false);
+          break;
+        default: break;
+      }
+
+      console.log("*******end date selections update*******");
+    }
+
 
     function labSelectionsUpdate () {
       console.log("*******start lab selections update*******");
