@@ -8,7 +8,7 @@
     [ ] 新增問診重點等文件下載
     [ ] 自動轉換成體重
     [ ] local storage
-    [ ] 計算
+    [ ] Gas BV, B, 大檢
     [ ] growth chart: 
         - 比較 fenton, intergrowth-21
         - 計算PMA, CA
@@ -430,7 +430,7 @@
             <div class="card h-100" id="dex_content">
               <div class="card-header text-center">普通點滴dextrose計算</div>
               <div class="card-body d-flex align-items-center pb-0">
-                <div>
+                <div class="w-100">
                   <div class="input-group">
                     <span class="input-group-text justify-content-center" style="width: 15%;">Dex</span>
                     <input type="number" id="dextrose_original_concentration" class="form-control text-center" value="5" oninput="calculateDex()" />
@@ -1877,6 +1877,8 @@
         "Monocyte": "Mono",
         "Eosinophil": "Eos",
         "Basophil": "Baso",
+        "Atypical-Lympho": "Atyp Lym",
+        "Meta-Myelocyte": "Meta Mye",
         "Abs Neutro. #": "ANC",
         "Blast cell": "Blast",
         "Nucleated RBC": "nRBC",
@@ -1918,12 +1920,13 @@
       let remainingRowKeywords = {};
       let excludingRowKeywords = {};
       remainingRowKeywords = {
-        "檢體別": ["B", "BV"] //其他檢體別都刪掉
+        "檢體別": ["B", "BV"] //其他檢體別都刪掉, "CSF" ?, "MIC" ?
       };
       excludingRowKeywords = {
         "項目代號": [
-          //刪除 NBS  
-          "72R285", "72S285", "72T285", "72A285", "72B285", "72C285", "72D285", "72E285", "72F285", "72G285", "72H285", "72I285", "72J285", "72K285", "72L285", "72M285", "72N285", "72P285", "72Q285", "72U285", "72O285",
+          //刪除 NBS 1 & 2
+          "72A285", "72B285", "72C285", "72D285", "72E285", "72F285", "72G285", "72H285", "72I285", "72J285", "72K285", "72L285", "72M285", "72N285", "72O285", "72P285", "72Q285", "72R285", "72S285", "72T285", "72U285", "72V285", "72W285", "72X285", "72Y285", "72Z285", 
+          "72a285", "72b285", "72c285", "72d285", "72e285", "72f285", "72g285", "72h285", "72i285",
           //刪除 INR/aPTT的MNPT
           "72B037", "72B038",
           //刪除 Dbil/Tbil ratio
@@ -1931,7 +1934,9 @@
           //刪除 G6PD
           "72-065",
           //刪除 gas 多餘項目 72A530(Temperature) 72G530(ctCO2) 72L530(72L530) 72M530(AaDO2) 72A530(TEMP) 72K530(SAT) 72L530(Po2(A-a)) 72M530(FIO2)
-          "72A530", "72G530", "72L530", "72M530", "72A530", "72A530", "72K530", "72L530", "72M530"
+          "72A530", "72G530", "72L530", "72M530", "72A530", "72A530", "72K530", "72L530", "72M530",
+          //刪除 RBC, MCV, MCH, MCHC, RDW, PDW, MPV
+          "72B001", "72E001", "72F001", "72G001", "72H001", "72K001", "72L001"
         ]
       }; 
       remainingRowIndices = Object.keys(remainingRowKeywords).map(header => labHeaders.indexOf(header)).filter(index => index !== -1);
@@ -2037,7 +2042,7 @@
         case "lab_preset_TPN_major": presetSelections = ["TG", "Chol", "TP", "Alb", "ALP", "rGT", "iPTH", "fT4", "TSH"]; break;
         case "lab_preset_gas": presetSelections = ["pH", "pCO2", "pO2", "HCO3", "SBE"]; break;
         case "lab_preset_cv": presetSelections = ["CK-MB", "Troponin-I", "Lactate", "BNP", "NT-ProBNP"]; break;
-        case "lab_preset_gi": presetSelections = ["BUN", "Cr", "AST", "ALT", "DB", "TB", "Na ", "K  ", "Cl ", "iCa", "Ca", "Mg ", "P  "]; break;
+        case "lab_preset_gi": presetSelections = ["BUN", "Cr", "AST", "ALT", "DB", "TB", "Na ", "K  ", "Cl ", "iCa", "Ca ", "Mg ", "P  "]; break;
         case "lab_preset_inf": presetSelections = ["WBC", "Seg", "Lym", "ANC", "CRP", "Pct"]; break;
         case "lab_preset_hema": presetSelections = ["Hb", "Hct", "Plt"]; break;
         case "lab_preset_none": presetSelections = []; break;
@@ -2076,7 +2081,13 @@
       ];
 
       // 讓[Lab]按照預設的順序排列 
-      let labOrder = ["WBC", "Hb", "Hct", "Plt", "Na ", "K  ", "Cl ", "Ca ", "Mg ", "P  ", "BUN", "Cr", "AST", "ALT", "DB", "TB ", "CRP", "Pct", "TG", "Chol", "TP", "Alb", "ALP", "rGT", "iPTH", "fT4", "TSH"];
+      let labOrder = [
+        "WBC", "Hb", "Hct", "Plt", "nRBC", "Seg", "Band", "Lym", "Mono", "Eos", "Baso", "Atyp Lym", "Meta Mye", "Myelocyt", "Promyelo", "Blast", "MegaKary", "ANC", 
+        "Na ", "K  ", "Cl ", "iCa", "Ca ", "Mg ", "P  ", 
+        "BUN", "Cr", "AST", "ALT", "DB", "TB ", 
+        "CRP", "Pct", 
+        "TG", "Chol", "TP", "Alb", "ALP", "rGT", "iPTH", "fT4", "TSH"
+      ];
       let[labHeaders, ...labRows] = filteredLabArray;
       labRows.sort((a, b) => {
         const indexA = labOrder.indexOf(a[0]) === -1 ? Infinity : labOrder.indexOf(a[0]);
@@ -2095,7 +2106,7 @@
       filteredLabArray = [labHeaders, ...labRows];
 
       // 轉置
-      if (shouldTranspose) {
+      if (shouldTranspose ) {
         filteredLabArray = filteredLabArray[0].map((_, i) => filteredLabArray.map(row => row[i] || '')); 
         let classificationEndTexts = ["Plt", "P  ", "TB "];
         //在這些文字後面加上 " |"
