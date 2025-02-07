@@ -1913,7 +1913,8 @@
         "PO2" : "pO2",
         "cHCO3": "HCO3",
         "BEecf": "SBE",
-        "Uric Acid (B)": "Uric acid"
+        "Uric Acid (B)": "Uric acid",
+        "Lactate(B)": "Lactate"
       }
       labHeaders = labHeaders.map(header => labHeaderAbbrDict[header] || header);
       labRows = labRows.map(row => row.map(cell => labHeaderAbbrDict[cell] || cell));
@@ -2042,11 +2043,11 @@
       let presetSelections = []; //預設選中的檢驗項目
       switch (preset) {
         case "lab_preset_TPN_minor": presetSelections = ["WBC", "Hb", "Hct", "Plt", "Na ", "K  ", "Cl ", "Ca ", "Mg ", "P  ", "BUN", "Cr", "AST", "ALT", "DB", "TB ", "CRP", "Pct"]; break;
-        case "lab_preset_TPN_major": presetSelections = ["TG", "Chol", "TP", "Alb", "ALP", "rGT", "iPTH", "fT4", "TSH"]; break;
+        case "lab_preset_TPN_major": presetSelections = ["TG", "Chol", "TP", "Alb", "ALP", "γGT", "iPTH", "fT4", "TSH"]; break;
         case "lab_preset_gas": presetSelections = ["pH", "pCO2", "pO2", "HCO3", "SBE"]; break;
         case "lab_preset_cv": presetSelections = ["CK-MB", "hs-Troponin I", "Lactate", "BNP", "NT-ProBNP"]; break;
-        case "lab_preset_gi": presetSelections = ["BUN", "Cr", "AST", "ALT", "DB", "TB ", "Na ", "K  ", "Cl ", "iCa", "Ca ", "Mg ", "P  "]; break;
-        case "lab_preset_inf": presetSelections = ["WBC", "Seg", "Lym", "ANC", "CRP", "Pct"]; break;
+        case "lab_preset_gi": presetSelections = ["BUN", "Cr", "AST", "ALT", "DB", "TB ", "ALP", "γGT", "Amylase", "Lipase", "Na ", "K  ", "Cl ", "iCa", "Ca ", "Mg ", "P  "]; break;
+        case "lab_preset_inf": presetSelections = ["WBC", "Seg", "Lym", "ANC", "CRP", "Pct", "Ferritin"]; break;
         case "lab_preset_hema": presetSelections = ["Hb", "Hct", "Plt", "PT", "INR", "aPTT", "aPTT/m"]; break;
         case "lab_preset_none": presetSelections = []; break;
         default: break;
@@ -2090,7 +2091,7 @@
         "Na ", "K  ", "Cl ", "iCa", "Ca ", "Mg ", "P  ", "Zn", 
         "BUN", "Cr", "AST", "ALT", "DB", "TB ", 
         "CRP", "Pct", 
-        "TG", "Chol", "TP", "Alb", "ALP", "rGT", "iPTH", "fT4", "TSH"
+        "TG", "Chol", "TP", "Alb", "ALP", "γGT", "iPTH", "fT4", "TSH"
       ];
       let[labHeaders, ...labRows] = filteredLabArray;
       labRows.sort((a, b) => {
