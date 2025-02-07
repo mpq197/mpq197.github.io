@@ -2060,7 +2060,7 @@
           document.querySelectorAll(".date-checkbox").forEach((checkbox, index) => checkbox.checked = (index === 0 || index >= checkboxes.length - 10) );
           break;
         case "lab_date_preset_last_5":
-          document.querySelectorAll(".date-checkbox").forEach((checkbox, index) => checkbox.checked = (index === 0 || index >= checkboxes.length - 10) );
+          document.querySelectorAll(".date-checkbox").forEach((checkbox, index) => checkbox.checked = (index === 0 || index >= checkboxes.length - 5) );
           break;
         case "lab_date_preset_none":
           document.querySelectorAll(".date-checkbox:checked").forEach(checkbox => checkbox.checked = false);
