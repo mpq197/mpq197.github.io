@@ -1993,14 +1993,30 @@
       labRows = labRows.map(row => row.filter((_, i) => !emptyColumns[i]));
 
       // 2.8 處理gas重複問題
-      // 轉成結構化陣列再轉回來
-      let gasIndices = labHeaders.map((header, index) => header === "pCO2" || header === "pO2" || header === "HCO3" || header === "SBE" ? index : -1).filter(index => index !== -1);
-      if (gasIndices.length > 0) {
-        let gasRows = labRows.map(row => gasIndices.map(index => row[index]));
-        let gasRowsUnique = gasRows.map(row => [...new Set(row)]);
-        labRows = labRows.map((row, i) => gasIndices.map((index, j) => gasRowsUnique[i][j]));
-      } 
-      
+      // 將labHeaders and labRows 轉成 data = { "header": {row 1: value 2, row 2: value 2, ...} }
+      let data = labHeaders.reduce((acc, header, index) => {
+        acc[header] = labRows.reduce((obj, row, i) => {
+          obj[i] = row[index];
+          return obj;
+        }, {});
+        return acc;
+      }, {});
+      // 若有重複的header，則將其合併
+      let duplicateHeaders = labHeaders.filter((header, index) => labHeaders.indexOf(header) !== index);
+      duplicateHeaders.forEach(header => {
+        let indices = labHeaders.map((h, i) => h === header ? i : -1).filter(i => i !== -1);
+        labHeaders = labHeaders.filter(h => h !== header);
+        labRows = labRows.map(row => {
+          indices.forEach(i => {
+            row[indices[0]] = row[indices[0]] || row[i];
+          });
+          return row.filter((_, i) => !indices.includes(i));
+        });
+      });
+      // 將data轉回labHeaders and labRows
+      labHeaders = Object.keys(data);
+      labRows = Array.from({ length: labRows.length }, (_, i) => labHeaders.map(header => data[header][i]));
+
 
 
       // 3.  生成選擇
