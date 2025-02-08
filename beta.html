@@ -1993,26 +1993,14 @@
       labRows = labRows.map(row => row.filter((_, i) => !emptyColumns[i]));
 
       // 2.8 處理gas重複問題
-      // 找到'[lab]'在headers的index
-      // 遍歷每個row，若發現該index的值重複出現，則讀取該row裡面每個cell，若有值再看上面重複的row是否沒有值，沒有值的話就用這個值填上去，若該row的每個數值都成功填上去則刪除該row
-      let labIndex = labHeaders.indexOf("[Lab]");
-      if (labIndex !== -1) {
-        let labValues = labRows.map(row => row[labIndex]);
-        let duplicatedValues = labValues.filter((value, index) => labValues.indexOf(value) !== index);
-        duplicatedValues.forEach(value => {
-          let duplicatedRows = labRows.map((row, index) => row[labIndex] === value ? index : -1).filter(index => index !== -1);
-          duplicatedRows.forEach(rowIndex => {
-            let row = labRows[rowIndex];
-            let emptyRow = labRows.find((row, index) => index !== rowIndex && row[labIndex] === '' && labRows[index][labIndex] !== value);
-            if (emptyRow) {
-              labRows[rowIndex] = row.map((cell, index) => cell || emptyRow[index]);
-              if (labRows[rowIndex].every(cell => cell)) {
-                labRows.splice(rowIndex, 1);
-              }
-            }
-          });
-        });
-      }
+      // 轉成結構化陣列再轉回來
+      let gasIndices = labHeaders.map((header, index) => header === "pCO2" || header === "pO2" || header === "HCO3" || header === "SBE" ? index : -1).filter(index => index !== -1);
+      if (gasIndices.length > 0) {
+        let gasRows = labRows.map(row => gasIndices.map(index => row[index]));
+        let gasRowsUnique = gasRows.map(row => [...new Set(row)]);
+        labRows = labRows.map((row, i) => gasIndices.map((index, j) => gasRowsUnique[i][j]));
+      } 
+      
 
 
       // 3.  生成選擇
