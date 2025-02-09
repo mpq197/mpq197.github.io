@@ -12,6 +12,7 @@
     [ ] growth chart: 
         - 比較 fenton, intergrowth-21
         - 計算PMA, CA
+    [ ] 黃疸
   -->
 
   <meta charset="UTF-8" />
@@ -782,12 +783,15 @@
                           <!--選項: 全選 -->
                           <input type="radio" class="btn-check" name="lab_date_presets_selection" id="lab_date_preset_all" autocomplete="off">
                           <label class="btn btn-outline-secondary" for="lab_date_preset_all">全選</label>
-                          <!--選項: 近十次 -->
+                          <!--選項: 近15次 -->
+                          <input type="radio" class="btn-check" name="lab_date_presets_selection" id="lab_date_preset_last_15" autocomplete="off" checked>
+                          <label class="btn btn-outline-secondary" for="lab_date_preset_last_15">近15次</label>
+                          <!--選項: 近10次 -->
                           <input type="radio" class="btn-check" name="lab_date_presets_selection" id="lab_date_preset_last_10" autocomplete="off" checked>
-                          <label class="btn btn-outline-secondary" for="lab_date_preset_last_10">近十次</label>
-                          <!--選項: 近五次 -->
+                          <label class="btn btn-outline-secondary" for="lab_date_preset_last_10">近10次</label>
+                          <!--選項: 近5次 -->
                           <input type="radio" class="btn-check" name="lab_date_presets_selection" id="lab_date_preset_last_5" autocomplete="off">
-                          <label class="btn btn-outline-secondary" for="lab_date_preset_last_5">近五次</label>
+                          <label class="btn btn-outline-secondary" for="lab_date_preset_last_5">近5次</label>
                           <!--選項: 全不選 -->
                           <input type="radio" class="btn-check" name="lab_date_presets_selection" id="lab_date_preset_none" autocomplete="off">
                           <label class="btn btn-outline-secondary" for="lab_date_preset_none">全不選</label>
@@ -1978,10 +1982,14 @@
       // 2.4 標題行日期時間格式更改 mm/dd
       labHeaders = labHeaders.map(header => header.replace(/^(\d{4})(\d{2})(\d{2}) (\d{4})/, '$2/$3'));
 
-      // 2.5 遍歷所有array 資料
-      labRows = labRows.map(row => row.map(cell => cell.replace(/( [H,L])$/, ""))); //去掉結尾的H或L
-      labRows = labRows.map(row => row.map(cell => cell.replace(/< /, "<"))); //若是"< "開頭替換成"<"
-      labRows = labRows.map(row => row.map(cell => cell.replace(/(\.0+|(\.\d*[1-9])0+)$/, '$2'))); //去掉小數點後的0
+      // 2.5 遍歷所有lab並整理格式
+      labRows = labRows.map(row => 
+        row.map(cell => cell
+          .replace(/( [H,L])$/, "")  // 去掉結尾的 H 或 L
+          .replace(/^< /, "<")       // 若是 "< " 開頭，替換成 "<"
+          .replace(/(\.0+|(\.\d*[1-9])0+)$/, '$2') // 去掉小數點後的 0
+        )
+      );
 
       // 2.6 讓日期升冪排列
       labHeaders = [labHeaders[0], ...labHeaders.slice(1).reverse()];
@@ -2053,6 +2061,9 @@
       switch (preset) {
         case "lab_date_preset_all": 
           document.querySelectorAll(".date-checkbox").forEach(checkbox => checkbox.checked = true);
+          break;
+        case "lab_date_preset_last_15":
+          document.querySelectorAll(".date-checkbox").forEach((checkbox, index) => checkbox.checked = (index === 0 || index >= checkboxes.length - 15) );
           break;
         case "lab_date_preset_last_10":
           document.querySelectorAll(".date-checkbox").forEach((checkbox, index) => checkbox.checked = (index === 0 || index >= checkboxes.length - 10) );
