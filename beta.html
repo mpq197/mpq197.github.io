@@ -1868,6 +1868,7 @@
     // 整理 raw lab data，並生選擇框
     // [ ] gas 重複問題
     // [ ] 新增檢體別選項
+    // [ ] 處理重複監聽問題
     // *****************************************   
     function labProcessor() {
       // 0. Declare variables 宣告變數
@@ -1993,7 +1994,7 @@
       abbrHeaders = abbrHeaders.filter((_, i) => !emptyColumns[i]);
       abbrRows = abbrRows.map(row => row.filter((_, i) => !emptyColumns[i]));
 
-      // gas重複問題待解決
+      // 2.7 row重複問題待解決
 
 
       // 3. Generate selections
