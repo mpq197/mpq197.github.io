@@ -25,6 +25,15 @@
   <!-- Cloudflare Web Analytics -->
   <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "4bbd1cbd757c4891bb1a3712af7fecdf"}'></script>
 
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-86B7X5XGSJ"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-86B7X5XGSJ');
+  </script>
+
   <style>
     body {
       background-color: #f1e6d8;
@@ -2404,6 +2413,23 @@
     // `;
 
 
+    // 追蹤使用者點擊事件to google analytics
+    document.addEventListener("DOMContentLoaded", function() {
+      // 取得所有分頁按鈕
+      let tabs = document.querySelectorAll(".nav-link");
+
+      tabs.forEach(tab => {
+        tab.addEventListener("click", function() {
+          let tabName = this.textContent.trim();  // 取得按鈕的名稱
+          gtag('event', 'tab_click', {
+            'event_category': 'Navigation',
+            'event_label': tabName
+          });
+          console.log("User clicked tab:", tabName); // 測試時可開啟 console 查看
+        });
+      });
+    });
+
     // 頁面載入時先執行一次計算
     calculateFluid();
     calculateGIR();
@@ -2420,7 +2446,7 @@
 
 <footer class="bg-dark text-white text-center py-3 mt-auto">
   <div class="container">
-    <p>© 2025 NeoAssist | v20250228 | All Rights Reserved</p>
+    <p>© 2025 NeoAssist | v20250302 | All Rights Reserved</p>
     <p>聯絡我們：<a href="mailto:mpq197@google.com" class="text-white">mpq197@google.com</a></p>
   </div>
 </footer>
