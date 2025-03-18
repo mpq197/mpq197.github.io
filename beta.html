@@ -336,6 +336,7 @@
                     <option value="Dex 2.5% in 0.45 Saline">Dex 2.5% in 0.45 saline</option>
                     <option value="H/S">H/S</option>
                     <option value="N/S">N/S</option>
+                    <option value="Tai2">Taita No.2</option>
                   </select>
                   <input type="number" id="fluid_regular_IV_rate" class="form-control text-center" oninput="calculateFluid()" />
                   <span class="input-group-text  justify-content-center" style="width: 15%;">ml/hr</span>
@@ -941,12 +942,12 @@
       let fluidTotalP  = 0;
       let fluidTotalMg = 0;
       if(fluidVersion === 'advanced'){
-        fluidTPNDex = parseFloat(document.getElementById('fluid_TPN_dex').value) || 10;
-        fluidTPNNa = parseFloat(document.getElementById('fluid_TPN_Na').value) || 40;
-        fluidTPNK = parseFloat(document.getElementById('fluid_TPN_K').value) || 20;
-        fluidTPNCa = parseFloat(document.getElementById('fluid_TPN_Ca').value) || 20;
-        fluidTPNP = parseFloat(document.getElementById('fluid_TPN_P').value) || 9;
-        fluidTPNMg = parseFloat(document.getElementById('fluid_TPN_Mg').value) || 2;
+        fluidTPNDex = parseFloat(document.getElementById('fluid_TPN_dex').value);
+        fluidTPNNa = parseFloat(document.getElementById('fluid_TPN_Na').value);
+        fluidTPNK = parseFloat(document.getElementById('fluid_TPN_K').value);
+        fluidTPNCa = parseFloat(document.getElementById('fluid_TPN_Ca').value);
+        fluidTPNP = parseFloat(document.getElementById('fluid_TPN_P').value);
+        fluidTPNMg = parseFloat(document.getElementById('fluid_TPN_Mg').value);
         fluidOtherInIOBase = document.querySelectorAll('[name="fluid_other_in_IO_base"]');
         fluidOtherSolutionBase = document.querySelectorAll('[name="fluid_other_solution_base"]');
       }
@@ -1190,6 +1191,11 @@
         case 'D10W': {fluidTotalGIR += fluidRegularIVRate*10; break;}
         case 'H/S' : {fluidTotalNa  += fluidRegularIVTotalVolume/1000*77;   break;} // H/S 1000ml = 77 mEq Na
         case 'N/S' : {fluidTotalNa  += fluidRegularIVTotalVolume/1000*154;  break;} // N/S 1000ml = 154 mEq Na; 
+        case 'Tai2': {
+          fluidTotalNa += fluidRegularIVTotalVolume/1000*40; // Taita No.2 1000ml = 40 mEq Na
+          fluidTotalGIR += fluidRegularIVRate*3.3;
+          break;
+        }
       }
       
 
@@ -1685,9 +1691,8 @@
       const antiNBDrugName = document.getElementById('anti_NB_drug_name').value;
       const antiNBBW = parseFloat(document.getElementById('anti_NB_BW').value) || 0;
       const antiNBGAWeek = parseFloat(document.getElementById('anti_NB_gestational_age_week').value) || 0;
-      const antiNBGADay = parseFloat(document.getElementById('anti_NB_gestational_age_day').value);
+      const antiNBGADay = parseFloat(document.getElementById('anti_NB_gestational_age_day').value) || 0;
       const antiNBBirthday = new Date(document.getElementById('anti_NB_birthday').value);
-      console.log(!0);
 
       //檢查輸入值
       if (!antiNBDrugName || !antiNBBW || !antiNBGAWeek || (antiNBGADay>=7) || !antiNBBirthday) {
@@ -2446,7 +2451,7 @@
 
 <footer class="bg-dark text-white text-center py-3 mt-auto">
   <div class="container">
-    <p>© 2025 NeoAssist | v20250302 | All Rights Reserved</p>
+    <p>© 2025 NeoAssist | v20250318 | All Rights Reserved</p>
     <p>聯絡我們：<a href="mailto:mpq197@google.com" class="text-white">mpq197@google.com</a></p>
   </div>
 </footer>
