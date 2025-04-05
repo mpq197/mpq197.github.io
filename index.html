@@ -344,7 +344,7 @@
                 <!-- 加入小計算機 -->
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">計算機</span>
-                  <input type="text" id="fluid_calc" class="form-control text-center" oninput="fluidCalclator()" />
+                  <input type="text" id="fluid_calc" class="form-control text-center" oninput="calculator('fluid_calc', 'fluid_calc_result')" />
                   <span class="input-group-text justify-content-center">=</span>
                   <span class="input-group-text justify-content-center" id="fluid_calc_result" style="width: 15%;"></span>
                 </div>
@@ -556,6 +556,7 @@
                     <option value="MgSO4"         >MgSO4          </option>
                     <option value="Lidocaine"     >Lidocaine      </option>
                     <option value="Insulin"       >Insulin</option>
+                    <option value="Heparin (5000U/ml)"       >Heparin</option>
                     <!-- More options -->
                   </select>
                   <input type="text" id="drug_extract_amount" class="form-control text-center" oninput="calculateDrugPreperation()" />
@@ -579,6 +580,13 @@
                   <span class="input-group-text justify-content-center">=</span>
                   <input type="number" id="drug_infusion_final_rate" class="form-control text-center" oninput="calculateDrugPreperation()" />
                   <span class="input-group-text justify-content-center" id="drug_infusion_final_rate_unit" style="min-width: 15%;">mcg/kg/min</span>
+                </div>
+                <!-- 小計算機 -->
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">計算機</span>
+                  <input type="text" id="drug_calc" class="form-control text-center" oninput="calculator('drug_calc', 'drug_calc_result')" />
+                  <span class="input-group-text justify-content-center">=</span>
+                  <span class="input-group-text justify-content-center" id="drug_calc_result" style="width: 15%;"></span>
                 </div>
               </div>
               <div class="card-footer">
@@ -641,6 +649,13 @@
                   <span class="input-group-text justify-content-center" style="width: 15%;">Birthday</span>
                   <input type="date" id="anti_NB_birthday" class="form-control text-center" oninput="calculateAntibioticsForNB()" value=/>
                   <span class="input-group-text justify-content-center" style="width: 15%;" id="drug_extract_amount_unit"> </span>
+                </div>
+                <!-- 小計算機 -->
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 15%;">計算機</span>
+                  <input type="text" id="anti_calc" class="form-control text-center" oninput="calculator('anti_calc', 'anti_calc_result')" />
+                  <span class="input-group-text justify-content-center">=</span>
+                  <span class="input-group-text justify-content-center" id="anti_calc_result" style="width: 15%;"></span>
                 </div>
               </div>
               <div class="card-footer">
@@ -1297,12 +1312,11 @@
     // *****************************************
     // 計算機
     // *****************************************
-    function fluidCalclator(){
-      const calc = document.getElementById('fluid_calc').value;
-      document.getElementById('fluid_calc_result').textContent = (parseExpression(calc)).toFixed(3) || "";
-      return;
+    function calculator(inputId, resultId){
+      const calc = document.getElementById(inputId).value;
+      const result = parseExpression(calc);
+      document.getElementById(resultId).textContent = isNaN(result) ? "" : result.toFixed(3);
     }
-
     
     // ***************************************
     // fluidIntro 導入教學
@@ -1421,29 +1435,30 @@
     // 設定藥物資料
     // *****************************************
     const drugSpecs = {
-      'Dopamine'      : { concentration: 40     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
-      'Dobutamine'    : { concentration: 12.5   , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
-      'Milrinone'     : { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
-      'Epinephrine'   : { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},
-      'Midazolam'     : { concentration: 5      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
-      'Fentanyl'      : { concentration: 0.05   , unit: 'mg/ml' , rateUnit: 'mcg/kg/hr'  , decimalPlace: 3},
-      'Bumetanide'    : { concentration: 0.25   , unit: 'mg/ml' , rateUnit: 'mcg/kg/hr'  , decimalPlace: 1},
-      'Norepinephrine': { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},
-      'Nicardipine'   : { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
-      'Nitroglycerin' : { concentration: 0.5    , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}, //小數點待確定
-      'Labetalol'     : { concentration: 5      , unit: 'mg/ml' , rateUnit: 'mg/kg/hr'   , decimalPlace: 2}, //小數點待確定
-      'PGE1'          : { concentration: 0.5    , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},
-      'Vasopressin'   : { concentration: 20     , unit: 'U/ml'  , rateUnit: 'mU/kg/min'  , decimalPlace: 1},
-      'Isoproterenol' : { concentration: 0.2    , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
-      'Rocuronium'    : { concentration: 10     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
-      'Cisatracurium' : { concentration: 2      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
-      'Morphine'      : { concentration: 10     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}, //小數點待確定
-      'Lorazepam'     : { concentration: 2      , unit: 'mg/ml' , rateUnit: 'mg/kg/hr'   , decimalPlace: 2}, //小數點待確定
-      'Ketamine'      : { concentration: 50     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
-      'Propofol'      : { concentration: 10     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}, //小數點待確定
-      'MgSO4'         : { concentration: 100    , unit: 'mg/ml' , rateUnit: 'mg/kg/hr'   , decimalPlace: 1},
-      'Lidocaine'     : { concentration: 50     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},  //小數點待確定
-      'Insulin'       : { concentration: 100    , unit: 'U/ml'  , rateUnit: 'U/kg/hr'    , decimalPlace: 0}
+      'Dopamine'          : { concentration: 40     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Dobutamine'        : { concentration: 12.5   , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Milrinone'         : { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Epinephrine'       : { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},
+      'Midazolam'         : { concentration: 5      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Fentanyl'          : { concentration: 0.05   , unit: 'mg/ml' , rateUnit: 'mcg/kg/hr'  , decimalPlace: 3},
+      'Bumetanide'        : { concentration: 0.25   , unit: 'mg/ml' , rateUnit: 'mcg/kg/hr'  , decimalPlace: 1},
+      'Norepinephrine'    : { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},
+      'Nicardipine'       : { concentration: 1      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Nitroglycerin'     : { concentration: 0.5    , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}, //小數點待確定
+      'Labetalol'         : { concentration: 5      , unit: 'mg/ml' , rateUnit: 'mg/kg/hr'   , decimalPlace: 2}, //小數點待確定
+      'PGE1'              : { concentration: 0.5    , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},
+      'Vasopressin'       : { concentration: 20     , unit: 'U/ml'  , rateUnit: 'mU/kg/min'  , decimalPlace: 1},
+      'Isoproterenol'     : { concentration: 0.2    , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Rocuronium'        : { concentration: 10     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Cisatracurium'     : { concentration: 2      , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Morphine'          : { concentration: 10     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}, //小數點待確定
+      'Lorazepam'         : { concentration: 2      , unit: 'mg/ml' , rateUnit: 'mg/kg/hr'   , decimalPlace: 2}, //小數點待確定
+      'Ketamine'          : { concentration: 50     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},
+      'Propofol'          : { concentration: 10     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2}, //小數點待確定
+      'MgSO4'             : { concentration: 100    , unit: 'mg/ml' , rateUnit: 'mg/kg/hr'   , decimalPlace: 1},
+      'Lidocaine'         : { concentration: 50     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},  //小數點待確定
+      'Insulin'           : { concentration: 100    , unit: 'U/ml'  , rateUnit: 'U/kg/hr'    , decimalPlace: 0},
+      'Heparin (5000U/ml)': { concentration: 5000   , unit: 'U/ml'  , rateUnit: 'U/kg/hr'    , decimalPlace: 1}
     };
 
 
@@ -2451,7 +2466,7 @@
 
 <footer class="bg-dark text-white text-center py-3 mt-auto">
   <div class="container">
-    <p>© 2025 NeoAssist | v20250318 | All Rights Reserved</p>
+    <p>© 2025 NeoAssist | v20250405 | All Rights Reserved</p>
     <p>聯絡我們：<a href="mailto:mpq197@google.com" class="text-white">mpq197@google.com</a></p>
   </div>
 </footer>
