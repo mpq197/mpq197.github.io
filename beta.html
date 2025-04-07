@@ -1837,9 +1837,10 @@
       const growthPonderalIndex = (growthBBW&&growthBBL)? (growthBBW / Math.pow(growthBBL, 3) * 100) : null; //計算ponderal index
       console.log(`Ponderal index: ${growthPonderalIndex}`);
 
-      indexingByFenton(growthGAWeek, growthGADay, growthDaysSinceGA22w0d, growthGender, growthBBW, growthBBL, growthBHC, growthPonderalIndex);
-      indexingByIntergrowth21(growthGAWeek, growthGADay, growthDaysSinceGA22w0d, growthGender, growthBBW, growthBBL, growthBHC, growthPonderalIndex);
-      indexingByLubchenco(growthGAWeek, growthGADay, growthGender, growthBBW, growthBBL, growthBHC, growthPonderalIndex);
+      //若該參數有成功載入，再呼叫涵式
+      if (fentonRefs) indexingByFenton(growthGAWeek, growthGADay, growthDaysSinceGA22w0d, growthGender, growthBBW, growthBBL, growthBHC, growthPonderalIndex);
+      if (intergrowth21Refs) indexingByIntergrowth21(growthGAWeek, growthGADay, growthDaysSinceGA22w0d, growthGender, growthBBW, growthBBL, growthBHC, growthPonderalIndex);
+      if (lubchencoRefs) indexingByLubchenco(growthGAWeek, growthGADay, growthGender, growthBBW, growthBBL, growthBHC, growthPonderalIndex);
     }
 
     // 計算Fenton growth index
