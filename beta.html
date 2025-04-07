@@ -1838,9 +1838,9 @@
       console.log(`Ponderal index: ${growthPonderalIndex}`);
 
       //若該參數有成功載入，再呼叫涵式
-      if (fentonRefs) indexingByFenton(growthGAWeek, growthGADay, growthDaysSinceGA22w0d, growthGender, growthBBW, growthBBL, growthBHC, growthPonderalIndex);
-      if (intergrowth21Refs) indexingByIntergrowth21(growthGAWeek, growthGADay, growthDaysSinceGA22w0d, growthGender, growthBBW, growthBBL, growthBHC, growthPonderalIndex);
-      if (lubchencoRefs) indexingByLubchenco(growthGAWeek, growthGADay, growthGender, growthBBW, growthBBL, growthBHC, growthPonderalIndex);
+      if (typeof fentonRefs !== 'undefined') indexingByFenton(growthGAWeek, growthGADay, growthDaysSinceGA22w0d, growthGender, growthBBW, growthBBL, growthBHC, growthPonderalIndex);
+      if (typeof intergrowth21Refs !== 'undefined') indexingByIntergrowth21(growthGAWeek, growthGADay, growthDaysSinceGA22w0d, growthGender, growthBBW, growthBBL, growthBHC, growthPonderalIndex);
+      if (typeof lubchencoRefs !== 'undefined') indexingByLubchenco(growthGAWeek, growthGADay, growthGender, growthBBW, growthBBL, growthBHC, growthPonderalIndex);
     }
 
     // 計算Fenton growth index
