@@ -11,7 +11,6 @@
     [ ] local storage
     [ ] Gas BV, B, 大檢
     [ ] growth chart: 
-        - 比較 fenton, intergrowth-21
         - 計算PMA, CA
     [ ] 黃疸
   -->
@@ -156,7 +155,7 @@
     <li class="nav-item" role="presentation">
       <button class="nav-link" id="growthTab" data-bs-toggle="tab" data-bs-target="#growthContent" type="button"
         role="tab" aria-controls="growthContent" aria-selected="false">
-        生長測量
+        生長測量 (新)
       </button>
     </li>
     <li class="nav-item" role="presentation">
@@ -712,7 +711,7 @@
         <div class="row mb-3">
           <div class="col">
             <div class="card h-100" id="growth_content">
-              <div class="card-header text-center">生長測量 (開發中)</div>
+              <div class="card-header text-center">生長測量</div>
               <div class="card-body pb-0">
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">GA</span>
@@ -752,30 +751,30 @@
                   <div class="col-10">
                     <!-- Lubcheno -->
                     <ul class="list-group mt-2 mb-2">
-                      <li class="list-group-item copy-item" id="lubchenco_growth_output">
+                      <li class="list-group-item copy-item" id="lubchenco_growth_output" title="同舊版生長資料分析">
                         GA:<br>Gender:<br>BBW:<br>BBL:<br>BHC:<br>Ponderal index:
                       </li>
                     </ul>
                     <div class="ps-2">
-                      <p> 本數據參考自 <a href="https://doi.org/10.1542/peds.37.3.403">Lubchenco growth chart</a>，特此感謝。 [僅限醫院內部使用] <br>Lubcheno LO, Hansman C, and Boyd E: Pediatr. 1966;37:403; Battaglia FC, and Lubchenco LO: J Pediatr. 1967;71:159.</p>
+                      <p> 本數據參考自 <a href="https://doi.org/10.1542/peds.37.3.403">Lubchenco growth chart</a>，特此感謝。僅限醫院內部使用。 <br> Lubcheno et al. (1966). Pediatrics; Battaglia & Lubcheno (1967). The Journal of pediatrics.</p>
                     </div>
                     <!-- Fenton -->
                     <ul class="list-group mt-2 mb-2">
-                      <li class="list-group-item copy-item" id="fenton_growth_output">
+                      <li class="list-group-item copy-item" id="fenton_growth_output" title="暫無ponderal index的reference">
                         GA:<br>Gender:<br>BBW:<br>BBL:<br>BHC:<br>Ponderal index:
                       </li>
                     </ul>
                     <div class="ps-2">
-                      <p> 本數據參考自 <a href="https://ucalgary.ca/resource/preterm-growth-chart">Fenton growth chart</a>，特此感謝。 [僅限醫院內部使用] <br> Fenton TR, and Kim JH: BMC Pediatr. 2013;13:59.</p>
+                      <p> 本數據參考自 <a href="https://ucalgary.ca/resource/preterm-growth-chart">Fenton growth chart</a>，特此感謝。僅限醫院內部使用。 <br> Fenton & Kim (2013). BMC pediatrics. </p>
                     </div>
                     <!-- Intergrowth-21st -->
                     <ul class="list-group mt-2 mb-2">
-                      <li class="list-group-item copy-item" id="intergrowth21_growth_output">
+                      <li class="list-group-item copy-item" id="intergrowth21_growth_output" title="33周以上和以下的數據來自不同數據集，部分參考值區間重疊。">
                         GA:<br>Gender:<br>BBW:<br>BBL:<br>BHC:<br>Ponderal index:
                       </li>
                     </ul>
                     <div class="ps-2">
-                      <p> 本數據參考自 <a href="https://intergrowth21.ndog.ox.ac.uk/">Intergrowth-21st growth chart</a>，特此感謝。 </p>
+                      <p> 本數據參考自 <a href="https://intergrowth21.ndog.ox.ac.uk/">Intergrowth-21st growth chart</a>，特此感謝。 <br> Villar et al. (2014). Lancet; Villar et al. (2016). Lancet. </p>
                     </div>
                   </div>
                   <div class="col-2" style="padding-left: 0%;">
@@ -924,8 +923,9 @@
   <script src="https://cdn.jsdelivr.net/npm/intro.js/minified/intro.min.js"></script>
   <!-- 引入生長參數資料 -->
   <script src="https://lnkwww.cgmh.org.tw/intr/c4a00/bigwig/bulletin/11404/growthRefs.js"></script> 
-  <!-- <script src="growthRefs.js"></script> -->
   <script src="js/intergrowth21Refs.js"></script> 
+  <!-- 本地測試使用 -->
+  <!-- <script src="growthRefs.js"></script> -->
   <!-- <script src="intergrowth21Refs.js"></script> -->
 
   <script>
@@ -2099,7 +2099,7 @@
         interpretationList.push(`Z score = ${result.zScore.toFixed(2)}`);
       }
       if (result && result.estimatedPercentile) {
-        // interpretationList.push(`~= ${result.estimatedPercentile} percentile`);
+        interpretationList.push(`~ ${result.estimatedPercentile} percentile`);
       }
       if (result && result.percentileRange && result.percentileRange !== "N/A") {
         interpretationList.push(`${result.percentileRange} percentile`);
@@ -2723,7 +2723,7 @@
 
 <footer class="bg-dark text-white text-center py-3 mt-auto">
   <div class="container">
-    <p>© 2025 NeoAssist | v20250407 | All Rights Reserved</p>
+    <p>© 2025 NeoAssist | v20250408 | All Rights Reserved</p>
     <p>聯絡我們：<a href="mailto:mpq197@google.com" class="text-white">mpq197@google.com</a></p>
   </div>
 </footer>
