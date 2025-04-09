@@ -1555,13 +1555,14 @@
 
       
       
-      //輸出到網頁
+      //輸出體重
       if (drugBW) {
         document.getElementById('drug_BW_corrected').textContent = drugBW > 5 ? `BW = ${drugBW} kg`:`BW = ${drugBW*1000} g`;
       } else {
         document.getElementById('drug_BW_corrected').textContent = "BW";
       }
-      
+
+      //輸出到網頁
       if (drugBW && drugName && drugDiluterName && drugTotalFinalVolume && drugInfusionRate && (drugExtractAmount||drugInfusionFinalRate)) {
         document.getElementById('drug_text_for_order').textContent = drugTextForOrder;
         document.getElementById('drug_text_for_med').textContent = drugTextForMed;
