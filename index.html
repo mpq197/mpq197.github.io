@@ -5,12 +5,12 @@
   <!-- 
     代辦事項
     [ ] 新增ICD10搜尋功能
+    [ ] 磨粉藥物計算
     [ ] 新增問診重點等文件下載
     [ ] 自動轉換成體重
     [ ] local storage
     [ ] Gas BV, B, 大檢
     [ ] growth chart: 
-        - 比較 fenton, intergrowth-21
         - 計算PMA, CA
     [ ] 黃疸
   -->
@@ -155,7 +155,7 @@
     <li class="nav-item" role="presentation">
       <button class="nav-link" id="growthTab" data-bs-toggle="tab" data-bs-target="#growthContent" type="button"
         role="tab" aria-controls="growthContent" aria-selected="false">
-        生長測量
+        生長測量 (新)
       </button>
     </li>
     <li class="nav-item" role="presentation">
@@ -711,7 +711,7 @@
         <div class="row mb-3">
           <div class="col">
             <div class="card h-100" id="growth_content">
-              <div class="card-header text-center">生長測量 (開發中)</div>
+              <div class="card-header text-center">生長測量</div>
               <div class="card-body pb-0">
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">GA</span>
@@ -745,23 +745,43 @@
                   <span class="input-group-text justify-content-center" style="width: 15%;">cm</span>
                 </div>
               </div>
+              <!-- Fenton -->
               <div class="card-footer">
                 <div class="row">
                   <div class="col-10">
+                    <!-- Lubcheno -->
                     <ul class="list-group mt-2 mb-2">
-                      <li class="list-group-item copy-item" id="growth_output">
+                      <li class="list-group-item copy-item" id="lubchenco_growth_output" title="同舊版生長資料分析">
                         GA:<br>Gender:<br>BBW:<br>BBL:<br>BHC:<br>Ponderal index:
                       </li>
                     </ul>
+                    <div class="ps-2">
+                      <p> 本數據參考自 <a href="https://doi.org/10.1542/peds.37.3.403">Lubchenco growth chart</a>，特此感謝。僅限醫院內部使用。 <br> Lubcheno et al. (1966). Pediatrics; Battaglia & Lubcheno (1967). The Journal of pediatrics.</p>
+                    </div>
+                    <!-- Fenton -->
+                    <ul class="list-group mt-2 mb-2">
+                      <li class="list-group-item copy-item" id="fenton_growth_output" title="無ponderal index的reference。">
+                        GA:<br>Gender:<br>BBW:<br>BBL:<br>BHC:<br>Ponderal index:
+                      </li>
+                    </ul>
+                    <div class="ps-2">
+                      <p> 本數據參考自 <a href="https://ucalgary.ca/resource/preterm-growth-chart">Fenton growth chart</a>，特此感謝。僅限醫院內部使用。 <br> Fenton & Kim (2013). BMC pediatrics. </p>
+                    </div>
+                    <!-- Intergrowth-21st -->
+                    <ul class="list-group mt-2 mb-2">
+                      <li class="list-group-item copy-item" id="intergrowth21_growth_output" title="無ponderal index的reference。33周以上和以下的數據來自不同數據集，部分參考值區間有重疊現象。">
+                        GA:<br>Gender:<br>BBW:<br>BBL:<br>BHC:<br>Ponderal index:
+                      </li>
+                    </ul>
+                    <div class="ps-2">
+                      <p> 本數據參考自 <a href="https://intergrowth21.ndog.ox.ac.uk/">Intergrowth-21st growth chart</a>，特此感謝。 <br> Villar et al. (2014). Lancet; Villar et al. (2016). Lancet. </p>
+                    </div>
                   </div>
                   <div class="col-2" style="padding-left: 0%;">
                     <div class="d-flex justify-content-center align-items-center h-100">
                       <button class="btn btn-secondary" onclick="resetForm('growth_content')">Reset</button>
                     </div>
                   </div>
-                </div>
-                <div class="row">
-                  <p> 本網站使用的生長曲線數據參數由 Dr.Fenton 提供，特此感謝。 (Creative Commons license) <br> Fenton TR, Kim JH. A systematic review and meta-analysis to revise the Fenton growth chart for preterm infants. BMC Pediatr. 2013;13:59. </p>
                 </div>
               </div>
             </div>
@@ -901,6 +921,12 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.0.0/math.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/intro.js/minified/intro.min.js"></script>
+  <!-- 引入生長參數資料 -->
+  <script src="https://lnkwww.cgmh.org.tw/intr/c4a00/bigwig/bulletin/4AC00/growthRefs.js"></script> 
+  <script src="js/intergrowth21Refs.js"></script> 
+  <!-- 本地測試使用 -->
+  <!-- <script src="growthRefs.js"></script> -->
+  <!-- <script src="intergrowth21Refs.js"></script> -->
 
   <script>
     //*****************************************
@@ -1772,9 +1798,11 @@
 
 
     // *****************************************
-    // lmsData 
+    // growthRefs 
     // *****************************************
-    const lmsData = {}; //資料不公開
+    // const fentonRefs = {}; //資料不公開 改用js引入的方式
+    // const lubchencoRefs = {}; //資料不公開 改用js引入的方式
+    // const intergrowth21Refs = {}; //資料不公開 改用js引入的方式  
 
     // *****************************************
     // 計算早產兒生長指標
@@ -1782,7 +1810,9 @@
     // *****************************************    
     function calculateGrowthIndex() {
       //歸零
-      document.getElementById('growth_output').innerHTML = "GA:<br>Gender:<br>BBW:<br>BBL:<br>BHC:<br>Ponderal index:";
+      document.getElementById('fenton_growth_output').innerHTML = "GA:<br>Gender:<br>BBW:<br>BBL:<br>BHC:<br>Ponderal index:";
+      document.getElementById('lubchenco_growth_output').innerHTML = "GA:<br>Gender:<br>BBW:<br>BBL:<br>BHC:<br>Ponderal index:";
+      document.getElementById('intergrowth21_growth_output').innerHTML = "GA:<br>Gender:<br>BBW:<br>BBL:<br>BHC:<br>Ponderal index:";
 
       //讀取輸入值
       const growthGAWeek = parseFloat(document.getElementById('growth_GA_week').value) || 0;
@@ -1791,14 +1821,10 @@
       const growthBBW = parseFloat(document.getElementById('growth_BBW').value) || 0;
       const growthBBL = parseFloat(document.getElementById('growth_BBL').value) || 0;
       const growthBHC = parseFloat(document.getElementById('growth_BHC').value) || 0;
-      let growthMeasurements = {
-        "weight": growthBBW,
-        "height": growthBBL,
-        "hc": growthBHC
-      }
+
 
       //檢查輸入值
-      if (!growthGAWeek || (growthGADay>=7) || !growthGender || !growthBBW || !growthBBL || !growthBHC) {
+      if (!growthGAWeek || (growthGADay>=7) || !growthGender || !(growthBBW || growthBBL || growthBHC)) {
         console.log("Growth Content: Missing or incorrect inputs!");
         console.log(`growthGAWeek: ${growthGAWeek}, growthGADay: ${growthGADay}, growthGender: ${growthGender}, growthBBW: ${growthBBW}, growthBBL: ${growthBBL}, growthBHC: ${growthBHC}`);
         return;
@@ -1808,61 +1834,281 @@
       let growthDaysSinceGA22w0d = (growthGAWeek-22)*7+growthGADay; //計算自22w0d以來的天數
       console.log(`Days since 22w0d: ${growthDaysSinceGA22w0d} days`);
 
+      //計算Ponderal index
+      const growthPonderalIndex = (growthBBW&&growthBBL)? (growthBBW / Math.pow(growthBBL, 3) * 100) : null; //計算ponderal index
+      console.log(`Ponderal index: ${growthPonderalIndex}`);
+
+      //若該參數有成功載入，再呼叫涵式
+      if (typeof fentonRefs !== 'undefined') indexingByFenton(growthGAWeek, growthGADay, growthDaysSinceGA22w0d, growthGender, growthBBW, growthBBL, growthBHC, growthPonderalIndex);
+      if (typeof intergrowth21Refs !== 'undefined') indexingByIntergrowth21(growthGAWeek, growthGADay, growthDaysSinceGA22w0d, growthGender, growthBBW, growthBBL, growthBHC, growthPonderalIndex);
+      if (typeof lubchencoRefs !== 'undefined') indexingByLubchenco(growthGAWeek, growthGADay, growthGender, growthBBW, growthBBL, growthBHC, growthPonderalIndex);
+    }
+
+    // 計算Fenton growth index
+    function indexingByFenton (growthGAWeek, growthGADay, growthDaysSinceGA22w0d, growthGender, growthBBW, growthBBL, growthBHC, growthPonderalIndex) {
+
+      let growthMeasurements = {
+        "weight": growthBBW,
+        "height": growthBBL,
+        "hc": growthBHC
+      };
+
       const growthResults = Object.fromEntries(
         //對每個參數進行計算(BW, BL, HC)
         Object.entries(growthMeasurements).map(([parameter, measurement]) => {
           //檢查是否有該參數的LMS資料
-          const lms = lmsData[parameter][growthGender][growthDaysSinceGA22w0d];
-          const {L, M, S, "3%":percentile_3, "10%":percentile_10, "50%":percentile_50, "90%":percentile_90, "97%":percentile_97} = lms;
+          const fentonRef = fentonRefs[parameter]?.[growthGender]?.[growthDaysSinceGA22w0d];
+          
           //若無資料則輸出錯誤訊息
-          if (!lms) {
-            console.error(`No LMS data found for ${parameter} at ${growthGender}`);
+          if (!fentonRef) {
+            console.error(`No fentonRef data found for ${parameter} at ${growthGender}`);
             return [parameter, { zScore: null, percentileRange: null }];
           }
+          //若有資料則解構fentonRef & percentile
+          const {L, M, S, "3%":percentile_3, "10%":percentile_10, "50%":percentile_50, "90%":percentile_90, "97%":percentile_97} = fentonRef;
+
           //計算Z-Score, 若趨近0則使用極限公式, 否則用常規公式 
           const zScore = L === 0 ? Math.log(measurement / M) / S : ((Math.pow(measurement / M, L) - 1) / (S * L));
           //用Z-score反推估計之百分位
           const estimatedPercentile = zScoreToPercentile(zScore);
           //計算落在哪個百分位
-          const percentileRange = measurement < percentile_3  ? "<3%"    :
-                                  measurement < percentile_10 ? "3-10%"  :
-                                  measurement < percentile_50 ? "10-50%" :
-                                  measurement < percentile_90 ? "50-90%" :
-                                  measurement < percentile_97 ? "90-97%" : ">97%";
+          const percentileRange = !measurement ? "N/A" :  
+                                  measurement <  percentile_3  ? "<3%"    :
+                                  measurement == percentile_3  ? "3%"     :
+                                  measurement <  percentile_10 ? "3-10%"  :
+                                  measurement == percentile_10 ? "10%"    :
+                                  measurement <  percentile_50 ? "10-50%" :
+                                  measurement == percentile_50 ? "50%"    :
+                                  measurement <  percentile_90 ? "50-90%" :
+                                  measurement == percentile_90 ? "90%"    :
+                                  measurement <  percentile_97 ? "90-97%" : 
+                                  measurement == percentile_97 ? "97%"    : ">97%";
           console.log(`Parameter: ${parameter}, Measurement: ${measurement}, Z-Score: ${zScore}, Percentile Range: ${percentileRange}`);
           return [parameter, { zScore, estimatedPercentile, percentileRange }];
         })
       );
       console.log(growthResults);
 
-      //計算Ponderal index
-      const growthPonderalIndex = (growthBBW / Math.pow(growthBBL, 3) * 100);
-      console.log(`Ponderal index: ${growthPonderalIndex}`);
-
       //計算SGA, AGA, LGA
       let growthCategory = "";
-      if (growthResults.weight.percentileRange === "<3%" || growthResults.weight.percentileRange === "3-10%") {
-          growthCategory = "Small for gestational age (SGA)";
-      } else if (growthResults.weight.percentileRange === "90-97%" || growthResults.weight.percentileRange === ">97%") {
-          growthCategory = "Large for gestational age (LGA)";
-      } else {
+      if (["<3%", "3%", "3-10%"].includes(growthResults.weight.percentileRange)) {
+          // 因沒有ponderal index ref 所以掠過判讀ponderal index
+          growthCategory = "Small for gestational age (SGA, defined as BBW <10th percentile)";
+      } else if (["90-97%", "97%", ">97%"].includes(growthResults.weight.percentileRange)) {
+          growthCategory = "Large for gestational age (LGA, defined as BBW >90th percentile)";
+      } else if (growthResults.weight.percentileRange !== null) {
           growthCategory = "Appropriate for gestational age (AGA)";
+      } else {
+          growthCategory = "Unable to determine SGA or LGA classification due to no reference data.";
       }
 
       //輸出成文字
-      let growthIndexTextsList = [];
-      growthIndexTextsList.push(`GA: ${growthGAWeek} ${growthGADay}/7 weeks`);
-      growthIndexTextsList.push(`Gender: ${growthGender==='boy'? "Male":"Female"}`);
-      growthIndexTextsList.push(`BBW: ${growthBBW} g (Z score = ${growthResults.weight.zScore.toFixed(2)}, ~ ${growthResults.weight.estimatedPercentile} percentile, ${growthResults.weight.percentileRange} percentile)`); 
-      growthIndexTextsList.push(`BBL: ${growthBBL} cm (Z score = ${growthResults.height.zScore.toFixed(2)}, ~ ${growthResults.height.estimatedPercentile} percentile, ${growthResults.height.percentileRange} percentile)`);
-      growthIndexTextsList.push(`BHC: ${growthBHC} cm (Z score = ${growthResults.hc.zScore.toFixed(2)}, ~ ${growthResults.hc.estimatedPercentile} percentile, ${growthResults.hc.percentileRange} percentile)`);
-      growthIndexTextsList.push(`Ponderal index: ${growthPonderalIndex.toFixed(2)} (100g/cm3)`);
-      growthIndexTextsList.push(`${growthCategory}`);
+      let growthIndexTextsList = [
+        `GA: ${growthGAWeek} ${growthGADay}/7 weeks`,
+        `Gender: ${growthGender === 'boy' ? "Male" : "Female"}`,
+        formatGrowthLine("BBW", "g", growthBBW, growthResults.weight),
+        formatGrowthLine("BBL", "cm", growthBBL, growthResults.height),
+        formatGrowthLine("BHC", "cm", growthBHC, growthResults.hc),
+        formatGrowthLine("Ponderal index", "(unit: 100g/cm3)", growthPonderalIndex ? growthPonderalIndex.toFixed(2) : "N/A", growthResults.ponderalIndex),
+        growthCategory,
+        `* Analyzed by Fenton growth chart (2013)`
+      ];
+
       console.log(growthIndexTextsList);
 
       //輸出到網頁
-      document.getElementById('growth_output').innerHTML = growthIndexTextsList.join('<br>');
+      document.getElementById('fenton_growth_output').innerHTML = growthIndexTextsList.join('<br>');
 
+    }
+
+    // 計算Fenton growth index
+    function indexingByIntergrowth21 (growthGAWeek, growthGADay, growthDaysSinceGA22w0d, growthGender, growthBBW, growthBBL, growthBHC, growthPonderalIndex) {
+
+      let growthMeasurements = {
+        "weight": growthBBW,
+        "height": growthBBL,
+        "hc": growthBHC
+      };
+
+      const growthResults = Object.fromEntries(
+        //對每個參數進行計算(BW, BL, HC)
+        Object.entries(growthMeasurements).map(([parameter, measurement]) => {
+          //檢查是否有該參數的LMS資料
+          const intergrowth21Ref = intergrowth21Refs[parameter]?.[growthGender]?.[growthDaysSinceGA22w0d];
+          
+          //若無資料則輸出錯誤訊息
+          if (!intergrowth21Ref) {
+            console.error(`No intergrowth21Ref data found for ${parameter} at ${growthGender}`);
+            return [parameter, { percentileRange: null }];
+          }
+          //若有資料則解構intergrowth21Ref & percentile
+          const {"3%":percentile_3, "5%":percentile_5, "10%":percentile_10, "50%":percentile_50, "90%":percentile_90, "95%":percentile_95, "97%":percentile_97} = intergrowth21Ref;
+
+          //intergrowth21 的體重資料只有精確到10位, 故若parameter == weights 比較Math.round(measurement/ 10) * 10;
+          if (parameter === "weight") measurement = Math.round(measurement / 10) * 10;
+
+          //計算落在哪個百分位
+          const percentileRange = !measurement ? "N/A" :  
+                                  measurement <  percentile_3  ? "<3%"    :
+                                  measurement == percentile_3  ? "3%"     :
+                                  measurement <  percentile_5  ? "3-5%"   :
+                                  measurement == percentile_5  ? "5%"     :
+                                  measurement <  percentile_10 ? "5-10%"  :
+                                  measurement == percentile_10 ? "10%"    :
+                                  measurement <  percentile_50 ? "10-50%" :
+                                  measurement == percentile_50 ? "50%"    :
+                                  measurement <  percentile_90 ? "50-90%" :
+                                  measurement == percentile_90 ? "90%"    :
+                                  measurement <  percentile_95 ? "90-95%" :
+                                  measurement == percentile_95 ? "95%"    :
+                                  measurement <  percentile_97 ? "95-97%" : 
+                                  measurement == percentile_97 ? "97%"    : ">97%";
+          console.log(`Parameter: ${parameter}, Measurement: ${measurement}, Percentile Range: ${percentileRange}`);
+          return [parameter, { percentileRange }];
+        })
+      );
+      console.log(growthResults);
+
+      //計算SGA, AGA, LGA
+      let growthCategory = "";
+      if ( ["<3%", "3%", "3-5%", "5%", "5-10%"].includes(growthResults.weight.percentileRange) ) {
+          // 因沒有ponderal index ref 所以掠過判讀ponderal index
+          growthCategory = "Small for gestational age (SGA, defined as BBW <10th percentile)";
+      } else if ( ["90-95%", "95%", "95-97%", "97%", ">97%"].includes(growthResults.weight.percentileRange) ) {
+          growthCategory = "Large for gestational age (LGA, defined as BBW >90th percentile)";
+      } else if (growthResults.weight.percentileRange !== null) {
+          growthCategory = "Appropriate for gestational age (AGA)";
+      } else {
+          growthCategory = "Unable to determine SGA or LGA classification due to no reference data.";
+      }
+
+      //輸出成文字
+      let growthIndexTextsList = [
+        `GA: ${growthGAWeek} ${growthGADay}/7 weeks`,
+        `Gender: ${growthGender === 'boy' ? "Male" : "Female"}`,
+        formatGrowthLine("BBW", "g", growthBBW, growthResults.weight),
+        formatGrowthLine("BBL", "cm", growthBBL, growthResults.height),
+        formatGrowthLine("BHC", "cm", growthBHC, growthResults.hc),
+        formatGrowthLine("Ponderal index", "(unit: 100g/cm3)", growthPonderalIndex ? growthPonderalIndex.toFixed(2) : "N/A", growthResults.ponderalIndex),
+        growthCategory,
+        `* Analyzed by Intergrowth-21st growth chart`
+      ];
+
+      console.log(growthIndexTextsList);
+
+      //輸出到網頁
+      document.getElementById('intergrowth21_growth_output').innerHTML = growthIndexTextsList.join('<br>');
+
+    }
+
+
+    // 計算Lubchenco growth index
+    function indexingByLubchenco (growthGAWeek, growthGADay, growthGender, growthBBW, growthBBL, growthBHC, growthPonderalIndex) {
+
+      let growthMeasurements = {
+        "weight": growthBBW,
+        "height": growthBBL,
+        "hc": growthBHC,
+        "ponderalIndex": growthPonderalIndex
+      };
+
+      const growthResults = Object.fromEntries(
+        //對每個參數進行計算(BW, BL, HC)
+        Object.entries(growthMeasurements).map(([parameter, measurement]) => {
+          //檢查是否有該參數的lubchenco ref資料
+          const lubchencoRef = lubchencoRefs[parameter]?.[growthGAWeek];
+
+          //若無資料則輸出錯誤訊息
+          if (!lubchencoRef) {
+            console.error(`No LMS data found for ${parameter}`);
+            return [parameter, { percentileRange: null }];
+          }
+
+          const {"10%":percentile_10, "25%":percentile_25, "50%":percentile_50, "75%":percentile_75, "90%":percentile_90} = lubchencoRef;
+          //計算落在哪個百分位
+          const percentileRange = !measurement ? "N/A" :
+                                  measurement <  percentile_10 ? "<10%"   :
+                                  measurement == percentile_10 ? "10%"    :
+                                  measurement <  percentile_25 ? "10-25%" :
+                                  measurement == percentile_25 ? "25%"    :
+                                  measurement <  percentile_50 ? "25-50%" :
+                                  measurement == percentile_50 ? "50%"    :
+                                  measurement <  percentile_75 ? "50-75%" :
+                                  measurement == percentile_75 ? "75%"    :
+                                  measurement <  percentile_90 ? "75-90%" :
+                                  measurement == percentile_90 ? "90%"    : ">90%";
+          console.log(`Parameter: ${parameter}, Measurement: ${measurement}, Percentile Range: ${percentileRange}`);
+          return [parameter, { percentileRange }];
+        })
+      );
+      console.log(growthResults);
+
+      //計算SGA, AGA, LGA
+      let growthCategory = "";
+      if (growthResults.weight.percentileRange === "<10%") {
+          //判斷ponderal index是否小於10th percentile
+          if (growthResults.ponderalIndex.percentileRange === "<10%") {
+              growthCategory += "Asymmetric small for gestational age (aSGA, defined as BBW and PI both <10th percentile)";
+          } else if (growthResults.ponderalIndex.percentileRange !== null && growthResults.ponderalIndex.percentileRange !== "N/A") {
+              growthCategory += "Symmetric small for gestational age (sSGA, defined as BBW <10th percentile and PI >10th percentile)";
+          } else {
+              growthCategory += "Small for gestational age (SGA, defined as BBW <10th percentile)";
+          }
+      } else if (growthResults.weight.percentileRange === ">90%") {
+          growthCategory = "Large for gestational age (LGA, defined as BBW >90th percentile)";
+      } else if (growthResults.weight.percentileRange !== null) {
+          growthCategory = "Appropriate for gestational age (AGA)";
+      } else {
+          growthCategory = "Unable to determine SGA or LGA classification due to no reference data.";
+      }
+
+      //輸出成文字
+      let growthIndexTextsList = [
+        `GA: ${growthGAWeek} ${growthGADay}/7 weeks`,
+        `Gender: ${growthGender === 'boy' ? "Male" : "Female"}`,
+        formatGrowthLine("BBW", "g", growthBBW, growthResults.weight),
+        formatGrowthLine("BBL", "cm", growthBBL, growthResults.height),
+        formatGrowthLine("BHC", "cm", growthBHC, growthResults.hc),
+        formatGrowthLine("Ponderal index", "(unit: 100g/cm3)", growthPonderalIndex ? growthPonderalIndex.toFixed(2) : "N/A", growthResults.ponderalIndex),
+        // `Ponderal index: ${growthPonderalIndex.toFixed(2)} (no reference data, unit: 100g/cm3)`,
+        growthCategory,
+        `* Analyzed by Lubchenco growth chart (1966 & 1967)`
+      ];
+
+      //輸出到網頁
+      document.getElementById('lubchenco_growth_output').innerHTML = growthIndexTextsList.join('<br>');
+
+    }
+
+
+    // 計算Intergrowth-21st growth index
+    // function indexingByIntergrowth21 (growthGAWeek, growthGADay, growthGender, growthBBW, growthBBL, growthBHC, growthPonderalIndex) {
+    // }
+
+
+    // 格式化生長index輸出
+    function formatGrowthLine(label, unit, value, result) {
+      // 檢查是否有值
+      if (value === null || value === undefined || value === 0) {
+        return `${label}: N/A`;
+      }
+
+      let formatGrowthText = `${label}: ${value} ${unit}`;
+      let interpretationList = [];
+      if (result && result.zScore) {
+        interpretationList.push(`Z score = ${result.zScore.toFixed(2)}`);
+      }
+      if (result && result.estimatedPercentile) {
+        interpretationList.push(`~ ${result.estimatedPercentile} percentile`);
+      }
+      if (result && result.percentileRange && result.percentileRange !== "N/A") {
+        interpretationList.push(`${result.percentileRange} percentile`);
+      }
+      if (interpretationList.length > 0) {
+        formatGrowthText += ' ( ' + interpretationList.join(', ') + ' )';
+      }
+
+      return formatGrowthText;
     }
 
 
@@ -2335,9 +2581,11 @@
     function addCopyEventListener() {
       document.querySelectorAll('.copy-item').forEach(item => {
         item.addEventListener('click', () => {
-          let content = item.dataset.content || item.innerHTML; // 取得 HTML
-          content = content.replace(/<br\s*\/?>/g, "\n"); // 替換 <br> 為 \n
-          content = content.replace(/<[^>]*>/g, ""); // 移除所有 HTML 標籤
+          let content = item.dataset.content || item.innerHTML;
+
+          content = content.replace(/<br\s*\/?>/g, "\n"); // <br> 換行
+          content = content.replace(/<[^>]*>/g, "");      // 移除 HTML 標籤
+          content = decodeHTMLEntities(content);          // 轉回原始符號（像 &lt; 變 <）
 
           navigator.clipboard.writeText(content).then(() => {
             console.log(`已複製: ${content}`);
@@ -2348,6 +2596,13 @@
       });
     }
 
+
+    //處理 HTML 實體（像 &lt;, &gt;）
+    function decodeHTMLEntities(str) {
+      const txt = document.createElement("textarea");
+      txt.innerHTML = str;
+      return txt.value;
+    }
 
     // *****************************************    
     // reset input
@@ -2406,7 +2661,9 @@
           calculateAntibioticsForNB();
           break;
         case 'growth_content':
-          document.getElementById('growth_output').innerHTML = "GA:<br>Gender:<br>BBW:<br>BBL:<br>BHC:<br>Ponderal index:";
+          document.getElementById('fenton_growth_output').innerHTML = "GA:<br>Gender:<br>BBW:<br>BBL:<br>BHC:<br>Ponderal index:";
+          document.getElementById('intergrowth21_growth_output').innerHTML = "GA:<br>Gender:<br>BBW:<br>BBL:<br>BHC:<br>Ponderal index:";
+          document.getElementById('lubchenco_growth_output').innerHTML = "GA:<br>Gender:<br>BBW:<br>BBL:<br>BHC:<br>Ponderal index:";
           break;
         case 'lab_content':
           break;
@@ -2466,7 +2723,7 @@
 
 <footer class="bg-dark text-white text-center py-3 mt-auto">
   <div class="container">
-    <p>© 2025 NeoAssist | v20250405 | All Rights Reserved</p>
+    <p>© 2025 NeoAssist | v20250408 | All Rights Reserved</p>
     <p>聯絡我們：<a href="mailto:mpq197@google.com" class="text-white">mpq197@google.com</a></p>
   </div>
 </footer>
