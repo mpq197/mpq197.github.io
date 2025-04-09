@@ -7,7 +7,6 @@
     [ ] 新增ICD10搜尋功能
     [ ] 磨粉藥物計算
     [ ] 新增問診重點等文件下載
-    [ ] 自動轉換成體重
     [ ] local storage
     [ ] Gas BV, B, 大檢
     [ ] growth chart: 
@@ -528,7 +527,7 @@
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">BW</span>
                   <input type="text" id="drug_BW" class="form-control text-center" oninput="calculateDrugPreperation()"/>
-                  <span class="input-group-text justify-content-center" style="width: 15%;">kg</span>
+                  <span class="input-group-text justify-content-center" style="width: 15%;">g or Kg</span>
                 </div>
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">Drug</span>
@@ -593,6 +592,7 @@
                 <div class="row">
                   <div class="col-10">
                     <ul class="list-group mt-2 mb-2">
+                      <li class="list-group-item copy-item" id="drug_BW_corrected">BW</li>
                       <li class="list-group-item copy-item" id="drug_text_for_order">&nbsp;</li>
                       <li class="list-group-item copy-item" id="drug_text_for_med">&nbsp;</li>
                       <li class="list-group-item copy-item" id="drug_text_for_pure_line">&nbsp;</li>
@@ -1493,13 +1493,16 @@
     // *****************************************
     function calculateDrugPreperation() {
       //讀取輸入值
-      const drugBW = parseFloat(document.getElementById('drug_BW').value) || 0;
+      let drugBW = parseFloat(document.getElementById('drug_BW').value) || 0; 
       const drugName = document.getElementById('drug_name').value;
       let drugExtractAmount = parseFloat(document.getElementById('drug_extract_amount').value) || 0;
       const drugDiluterName = document.getElementById('drug_diluter_name').value;
       const drugTotalFinalVolume = parseFloat(document.getElementById('drug_total_final_volume').value) || 0;
       const drugInfusionRate = parseFloat(document.getElementById('drug_infusion_rate').value) || 0;
       let drugInfusionFinalRate = parseFloat(document.getElementById('drug_infusion_final_rate').value) || 0;
+
+      //處理體重單位，轉為單位kg以方便後續計算
+      drugBW = drugBW > 200 ? drugBW/1000 : drugBW; //若>200，視為g要除以1000轉為kg
 
       //取得藥物資料
       const drugSpec = drugSpecs[drugName];
@@ -1551,10 +1554,12 @@
 
       //輸出到網頁
       if (drugBW && drugName && drugDiluterName && drugTotalFinalVolume && drugInfusionRate && (drugExtractAmount||drugInfusionFinalRate)) {
+        document.getElementById('drug_BW_corrected').textContent = drugBW > 5 ? `BW = ${drugBW} kg`:`BW = ${drugBW*1000} g`;
         document.getElementById('drug_text_for_order').textContent = drugTextForOrder;
         document.getElementById('drug_text_for_med').textContent = drugTextForMed;
         document.getElementById('drug_text_for_pure_line').textContent = drugTextForPureLine;
       } else {
+        document.getElementById('drug_BW_corrected').textContent = "BW";
         document.getElementById('drug_text_for_order').textContent = "醫囑";
         document.getElementById('drug_text_for_med').textContent = "藥囑";
         document.getElementById('drug_text_for_pure_line').textContent = "Pure Line";
@@ -2723,7 +2728,7 @@
 
 <footer class="bg-dark text-white text-center py-3 mt-auto">
   <div class="container">
-    <p>© 2025 NeoAssist | v20250408 | All Rights Reserved</p>
+    <p>© 2025 NeoAssist | v20250410 | All Rights Reserved</p>
     <p>聯絡我們：<a href="mailto:mpq197@google.com" class="text-white">mpq197@google.com</a></p>
   </div>
 </footer>
