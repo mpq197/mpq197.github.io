@@ -328,14 +328,14 @@
                   <span class="input-group-text justify-content-center" style="width: 15%;">普通IV</span>
                   <select id="fluid_regular_IV_type" class="form-select text-center" onchange="calculateFluid()">
                     <option value=""></option>
-                    <option value="D5W">D5W</option>
-                    <option value="D10W">D10W</option>
+                    <option value="D5W(250)">D5W(250)</option>
+                    <option value="D10W(500)">D10W(500)</option>
                     <option value="D0.225S(500)">D0.225S(500)</option>
                     <option value="D0.225S(500) + 2PC D50W">D0.225S(500) + 2PC D50W</option>
                     <option value="Dex 2.5% in 0.45 Saline">Dex 2.5% in 0.45 saline</option>
                     <option value="H/S">H/S</option>
                     <option value="N/S">N/S</option>
-                    <option value="Tai2">Taita No.2</option>
+                    <option value="Taita No.2">Taita No.2</option>
                   </select>
                   <input type="number" id="fluid_regular_IV_rate" class="form-control text-center" oninput="calculateFluid()" />
                   <span class="input-group-text  justify-content-center" style="width: 15%;">ml/hr</span>
@@ -1061,7 +1061,7 @@
         // base value 用於計算Na intake
         if (fluidVersion === 'advanced') {
           let baseValue = fluidOtherInIOBase[i].value;
-          if (baseValue === "3% NaCl") { fluidTotalNa += eachVolume*77/1000;} // 3% NaCl 1000ml = 77mEq Na
+          if (baseValue === "3% NaCl") { fluidTotalNa += eachVolume*513/1000;} // 3% NaCl 1000ml = 513mEq Na
         }
       }
       console.log(`Other in I/O: ${fluidOtherInIOTotalVolume} ml/day`);
@@ -1075,7 +1075,11 @@
         //再算成分
         if (fluidVersion === 'advanced') {
           let baseValue = fluidOtherSolutionBase[i].value;
-          if      (baseValue === "L/R" ) { fluidTotalNa += rateValue*24/1000*130; } // L/R 1000ml = 130mEq Na
+          if (baseValue === "L/R" ) {
+            fluidTotalNa += rateValue*24/1000*130; // L/R 1000ml = 130mEq Na
+            fluidTotalK  += rateValue*24/1000*4.0; // L/R 1000ml = 4.0mEq K
+            fluidTotalCa += rateValue*24/1000*3.0; // L/R 1000ml = 3.0mEq Ca
+          } 
           else if (baseValue === "H/S" ) { fluidTotalNa += rateValue*24/1000*77 ; } // H/S 1000ml = 77mEq Na
           else if (baseValue === "N/S" ) { fluidTotalNa += rateValue*24/1000*154; } // N/S 1000ml = 154mEq Na
           else if (baseValue === "D/W" ) { }
@@ -1219,21 +1223,23 @@
           break;
         } 
         case 'D0.225S(500) + 2PC D50W': {
-          fluidTotalNa += fluidRegularIVTotalVolume/1000*38.5; // D0.225S(500) 1000ml = 38.5mEq Na
+          fluidTotalNa += fluidRegularIVTotalVolume/1000*35.6; // D0.225S(500) + 2PC D50W(40) 1000ml = 35.6mEq Na
           fluidTotalGIR += fluidRegularIVRate*8.33;
           break;
         } 
         case 'Dex 2.5% in 0.45 Saline': {
-          fluidTotalNa += fluidRegularIVTotalVolume/1000*77; // H/S 1000ml = 77 mEq Na
+          fluidTotalNa += fluidRegularIVTotalVolume/1000*77; // Dex 2.5% in 0.45 Saline 1000ml = 77 mEq Na
           fluidTotalGIR += fluidRegularIVRate*2.5;
           break;
         } 
-        case 'D5W' : {fluidTotalGIR += fluidRegularIVRate*5; break;}
-        case 'D10W': {fluidTotalGIR += fluidRegularIVRate*10; break;}
+        case 'D5W(250)' : {fluidTotalGIR += fluidRegularIVRate*5; break;}
+        case 'D10W(500)': {fluidTotalGIR += fluidRegularIVRate*10; break;}
         case 'H/S' : {fluidTotalNa  += fluidRegularIVTotalVolume/1000*77;   break;} // H/S 1000ml = 77 mEq Na
         case 'N/S' : {fluidTotalNa  += fluidRegularIVTotalVolume/1000*154;  break;} // N/S 1000ml = 154 mEq Na; 
-        case 'Tai2': {
-          fluidTotalNa += fluidRegularIVTotalVolume/1000*40; // Taita No.2 1000ml = 40 mEq Na
+        case 'Taita No.2': {
+          fluidTotalNa += fluidRegularIVTotalVolume/1000*40;   // Taita No.2 1000ml = 40 mEq Na
+          fluidTotalK  += fluidRegularIVTotalVolume/1000*12.0; // Taita No.2 1000ml = 12.0 mEq K
+          fluidTotalP  += fluidRegularIVTotalVolume/1000*6.0;  // Taita No.2 1000ml = 6.0 mmol P
           fluidTotalGIR += fluidRegularIVRate*3.3;
           break;
         }
