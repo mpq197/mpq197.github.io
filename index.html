@@ -13,6 +13,8 @@
         - 計算PMA, CA
     [ ] 黃疸
     [ ] 怎麼補jusomin? 怎麼補3% NaCl? Dextrose 反向計算(給定20% Dex 反推泡法)
+    [ ] % percentile 修正
+
   -->
 
   <meta charset="UTF-8" />
@@ -333,10 +335,13 @@
                     <option value="D10W(500)">D10W(500)</option>
                     <option value="D0.225S(500)">D0.225S(500)</option>
                     <option value="D0.225S(500) + 2PC D50W">D0.225S(500) + 2PC D50W</option>
-                    <option value="Dex 2.5% in 0.45 Saline">Dex 2.5% in 0.45 saline</option>
-                    <option value="H/S">H/S</option>
-                    <option value="N/S">N/S</option>
-                    <option value="Taita No.2">Taita No.2</option>
+                    <option value="Dex 2.5% in 0.45 Saline(500)">Dex 2.5% in 0.45 saline(500)</option>
+                    <option value="H/S(500)">H/S(500)</option>
+                    <option value="N/S(500)">N/S(500)</option>
+                    <option value="D5S(500)">D5S(500)</option>
+                    <option value="Taita No.2(500)">Taita No.2(500)</option>
+                    <option value="Taita No.2(500) + 2PC D50W">Taita No.2(500) + 2PC D50W</option>
+                    <option value="Taita No.2(500) + 3PC D50W">Taita No.2(500) + 3PC D50W</option>
                   </select>
                   <input type="number" id="fluid_regular_IV_rate" class="form-control text-center" oninput="calculateFluid()" />
                   <span class="input-group-text  justify-content-center" style="width: 15%;">ml/hr</span>
@@ -1228,20 +1233,39 @@
           fluidTotalGIR += fluidRegularIVRate*8.33;
           break;
         } 
-        case 'Dex 2.5% in 0.45 Saline': {
+        case 'Dex 2.5% in 0.45 Saline(500)': {
           fluidTotalNa += fluidRegularIVTotalVolume/1000*77; // Dex 2.5% in 0.45 Saline 1000ml = 77 mEq Na
           fluidTotalGIR += fluidRegularIVRate*2.5;
           break;
         } 
         case 'D5W(250)' : {fluidTotalGIR += fluidRegularIVRate*5; break;}
         case 'D10W(500)': {fluidTotalGIR += fluidRegularIVRate*10; break;}
-        case 'H/S' : {fluidTotalNa  += fluidRegularIVTotalVolume/1000*77;   break;} // H/S 1000ml = 77 mEq Na
-        case 'N/S' : {fluidTotalNa  += fluidRegularIVTotalVolume/1000*154;  break;} // N/S 1000ml = 154 mEq Na; 
-        case 'Taita No.2': {
+        case 'H/S(500)' : {fluidTotalNa  += fluidRegularIVTotalVolume/1000*77;   break;} // H/S 1000ml = 77 mEq Na
+        case 'N/S(500)' : {fluidTotalNa  += fluidRegularIVTotalVolume/1000*154;  break;} // N/S 1000ml = 154 mEq Na; 
+        case 'D5S(500)' : {
+          fluidTotalNa += fluidRegularIVTotalVolume/1000*154; // D5S 1000ml = 154mEq Na
+          fluidTotalGIR += fluidRegularIVRate*5;
+          break;
+        } 
+        case 'Taita No.2(500)': {
           fluidTotalNa += fluidRegularIVTotalVolume/1000*40;   // Taita No.2 1000ml = 40 mEq Na
           fluidTotalK  += fluidRegularIVTotalVolume/1000*12.0; // Taita No.2 1000ml = 12.0 mEq K
           fluidTotalP  += fluidRegularIVTotalVolume/1000*6.0;  // Taita No.2 1000ml = 6.0 mmol P
           fluidTotalGIR += fluidRegularIVRate*3.3;
+          break;
+        }
+        case 'Taita No.2(500) + 2PC D50W': {
+          fluidTotalNa += fluidRegularIVTotalVolume/1000*37;   // Taita No.2(500) + 2PC D50W(40), 1000ml = 37 mEq Na
+          fluidTotalK  += fluidRegularIVTotalVolume/1000*11.1; // Taita No.2(500) + 2PC D50W(40), 1000ml = 11.1 mEq K
+          fluidTotalP  += fluidRegularIVTotalVolume/1000*5.6;  // Taita No.2(500) + 2PC D50W(40), 1000ml = 5.6 mmol P
+          fluidTotalGIR += fluidRegularIVRate*6.76;
+          break;
+        }
+        case 'Taita No.2(500) + 3PC D50W': {
+          fluidTotalNa += fluidRegularIVTotalVolume/1000*35.7; // Taita No.2(500) + 3PC D50W(60), 1000ml = 35.7 mEq Na
+          fluidTotalK  += fluidRegularIVTotalVolume/1000*10.7; // Taita No.2(500) + 3PC D50W(60), 1000ml = 10.7 mEq K
+          fluidTotalP  += fluidRegularIVTotalVolume/1000*5.4;  // Taita No.2(500) + 3PC D50W(60), 1000ml = 5.4 mmol P
+          fluidTotalGIR += fluidRegularIVRate*8.3;
           break;
         }
       }
@@ -2743,7 +2767,7 @@
 
 <footer class="bg-dark text-white text-center py-3 mt-auto">
   <div class="container">
-    <p>© 2025 NeoAssist | v20250502 | All Rights Reserved</p>
+    <p>© 2025 NeoAssist | v20250725 | All Rights Reserved</p>
     <p>聯絡我們：<a href="mailto:mpq197@google.com" class="text-white">mpq197@google.com</a></p>
   </div>
 </footer>
