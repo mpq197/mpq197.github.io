@@ -13,7 +13,6 @@
         - 計算PMA, CA
     [ ] 黃疸
     [ ] 怎麼補jusomin? 怎麼補3% NaCl? Dextrose 反向計算(給定20% Dex 反推泡法)
-    [ ] % percentile 修正
 
   -->
 
@@ -1917,16 +1916,16 @@
           const estimatedPercentile = zScoreToPercentile(zScore);
           //計算落在哪個百分位
           const percentileRange = !measurement ? "N/A" :  
-                                  measurement <  percentile_3  ? "<3%"    :
-                                  measurement == percentile_3  ? "3%"     :
-                                  measurement <  percentile_10 ? "3-10%"  :
-                                  measurement == percentile_10 ? "10%"    :
-                                  measurement <  percentile_50 ? "10-50%" :
-                                  measurement == percentile_50 ? "50%"    :
-                                  measurement <  percentile_90 ? "50-90%" :
-                                  measurement == percentile_90 ? "90%"    :
-                                  measurement <  percentile_97 ? "90-97%" : 
-                                  measurement == percentile_97 ? "97%"    : ">97%";
+                                  measurement <  percentile_3  ? "<3rd"      :
+                                  measurement == percentile_3  ? "3rd"       :
+                                  measurement <  percentile_10 ? "3rd–10th"  :
+                                  measurement == percentile_10 ? "10th"      :
+                                  measurement <  percentile_50 ? "10th–50th" :
+                                  measurement == percentile_50 ? "50th"      :
+                                  measurement <  percentile_90 ? "50th–90th" :
+                                  measurement == percentile_90 ? "90th"      :
+                                  measurement <  percentile_97 ? "90th–97th" : 
+                                  measurement == percentile_97 ? "97th"      : ">97th";
           console.log(`Parameter: ${parameter}, Measurement: ${measurement}, Z-Score: ${zScore}, Percentile Range: ${percentileRange}`);
           return [parameter, { zScore, estimatedPercentile, percentileRange }];
         })
@@ -1935,10 +1934,10 @@
 
       //計算SGA, AGA, LGA
       let growthCategory = "";
-      if (["<3%", "3%", "3-10%"].includes(growthResults.weight.percentileRange)) {
+      if (["<3rd", "3rd", "3rd–10th"].includes(growthResults.weight.percentileRange)) {
           // 因沒有ponderal index ref 所以掠過判讀ponderal index
           growthCategory = "Small for gestational age (SGA, defined as BBW <10th percentile)";
-      } else if (["90-97%", "97%", ">97%"].includes(growthResults.weight.percentileRange)) {
+      } else if (["90th–97th", "97th", ">97th"].includes(growthResults.weight.percentileRange)) {
           growthCategory = "Large for gestational age (LGA, defined as BBW >90th percentile)";
       } else if (growthResults.weight.percentileRange !== null) {
           growthCategory = "Appropriate for gestational age (AGA)";
@@ -1993,20 +1992,20 @@
 
           //計算落在哪個百分位
           const percentileRange = !measurement ? "N/A" :  
-                                  measurement <  percentile_3  ? "<3%"    :
-                                  measurement == percentile_3  ? "3%"     :
-                                  measurement <  percentile_5  ? "3-5%"   :
-                                  measurement == percentile_5  ? "5%"     :
-                                  measurement <  percentile_10 ? "5-10%"  :
-                                  measurement == percentile_10 ? "10%"    :
-                                  measurement <  percentile_50 ? "10-50%" :
-                                  measurement == percentile_50 ? "50%"    :
-                                  measurement <  percentile_90 ? "50-90%" :
-                                  measurement == percentile_90 ? "90%"    :
-                                  measurement <  percentile_95 ? "90-95%" :
-                                  measurement == percentile_95 ? "95%"    :
-                                  measurement <  percentile_97 ? "95-97%" : 
-                                  measurement == percentile_97 ? "97%"    : ">97%";
+                                  measurement <  percentile_3  ? "<3rd"    :
+                                  measurement == percentile_3  ? "3rd"     :
+                                  measurement <  percentile_5  ? "3rd–5th"   :
+                                  measurement == percentile_5  ? "5th"     :
+                                  measurement <  percentile_10 ? "5th–10th"  :
+                                  measurement == percentile_10 ? "10th"    :
+                                  measurement <  percentile_50 ? "10th–50th" :
+                                  measurement == percentile_50 ? "50th"    :
+                                  measurement <  percentile_90 ? "50th–90th" :
+                                  measurement == percentile_90 ? "90th"    :
+                                  measurement <  percentile_95 ? "90th–95th" :
+                                  measurement == percentile_95 ? "95th"    :
+                                  measurement <  percentile_97 ? "95th–97th" : 
+                                  measurement == percentile_97 ? "97th"    : ">97th";
           console.log(`Parameter: ${parameter}, Measurement: ${measurement}, Percentile Range: ${percentileRange}`);
           return [parameter, { percentileRange }];
         })
@@ -2015,10 +2014,10 @@
 
       //計算SGA, AGA, LGA
       let growthCategory = "";
-      if ( ["<3%", "3%", "3-5%", "5%", "5-10%"].includes(growthResults.weight.percentileRange) ) {
+      if ( ["<3rd", "3rd", "3rd–5th", "5th", "5th–10th"].includes(growthResults.weight.percentileRange) ) {
           // 因沒有ponderal index ref 所以掠過判讀ponderal index
           growthCategory = "Small for gestational age (SGA, defined as BBW <10th percentile)";
-      } else if ( ["90-95%", "95%", "95-97%", "97%", ">97%"].includes(growthResults.weight.percentileRange) ) {
+      } else if ( ["90th–95th", "95th", "95th–97th", "97th", ">97th"].includes(growthResults.weight.percentileRange) ) {
           growthCategory = "Large for gestational age (LGA, defined as BBW >90th percentile)";
       } else if (growthResults.weight.percentileRange !== null) {
           growthCategory = "Appropriate for gestational age (AGA)";
@@ -2071,16 +2070,16 @@
           const {"10%":percentile_10, "25%":percentile_25, "50%":percentile_50, "75%":percentile_75, "90%":percentile_90} = lubchencoRef;
           //計算落在哪個百分位
           const percentileRange = !measurement ? "N/A" :
-                                  measurement <  percentile_10 ? "<10%"   :
-                                  measurement == percentile_10 ? "10%"    :
-                                  measurement <  percentile_25 ? "10-25%" :
-                                  measurement == percentile_25 ? "25%"    :
-                                  measurement <  percentile_50 ? "25-50%" :
-                                  measurement == percentile_50 ? "50%"    :
-                                  measurement <  percentile_75 ? "50-75%" :
-                                  measurement == percentile_75 ? "75%"    :
-                                  measurement <  percentile_90 ? "75-90%" :
-                                  measurement == percentile_90 ? "90%"    : ">90%";
+                                  measurement <  percentile_10 ? "<10th"   :
+                                  measurement == percentile_10 ? "10th"    :
+                                  measurement <  percentile_25 ? "10th–25th" :
+                                  measurement == percentile_25 ? "25th"    :
+                                  measurement <  percentile_50 ? "25th–50th" :
+                                  measurement == percentile_50 ? "50th"    :
+                                  measurement <  percentile_75 ? "50th–75th" :
+                                  measurement == percentile_75 ? "75th"    :
+                                  measurement <  percentile_90 ? "75th–90th" :
+                                  measurement == percentile_90 ? "90th"    : ">90th";
           console.log(`Parameter: ${parameter}, Measurement: ${measurement}, Percentile Range: ${percentileRange}`);
           return [parameter, { percentileRange }];
         })
@@ -2089,16 +2088,16 @@
 
       //計算SGA, AGA, LGA
       let growthCategory = "";
-      if (growthResults.weight.percentileRange === "<10%") {
+      if (growthResults.weight.percentileRange === "<10th") {
           //判斷ponderal index是否小於10th percentile
-          if (growthResults.ponderalIndex.percentileRange === "<10%") {
+          if (growthResults.ponderalIndex.percentileRange === "<10th") {
               growthCategory += "Asymmetric small for gestational age (aSGA, defined as BBW and PI both <10th percentile)";
           } else if (growthResults.ponderalIndex.percentileRange !== null && growthResults.ponderalIndex.percentileRange !== "N/A") {
               growthCategory += "Symmetric small for gestational age (sSGA, defined as BBW <10th percentile and PI >10th percentile)";
           } else {
               growthCategory += "Small for gestational age (SGA, defined as BBW <10th percentile)";
           }
-      } else if (growthResults.weight.percentileRange === ">90%") {
+      } else if (growthResults.weight.percentileRange === ">90th") {
           growthCategory = "Large for gestational age (LGA, defined as BBW >90th percentile)";
       } else if (growthResults.weight.percentileRange !== null) {
           growthCategory = "Appropriate for gestational age (AGA)";
@@ -2767,7 +2766,7 @@
 
 <footer class="bg-dark text-white text-center py-3 mt-auto">
   <div class="container">
-    <p>© 2025 NeoAssist | v20250725 | All Rights Reserved</p>
+    <p>© 2025 NeoAssist | v20250807 | All Rights Reserved</p>
     <p>聯絡我們：<a href="mailto:mpq197@google.com" class="text-white">mpq197@google.com</a></p>
   </div>
 </footer>
