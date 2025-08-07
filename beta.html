@@ -2178,9 +2178,22 @@
     }
     // 使用 Z-score 反推百分位
     function zScoreToPercentile(z) {
-        return (normalCDF(z) * 100).toFixed(2) + "%";
+        return (addOrdinalSuffix(normalCDF(z) * 100));
     }
-    
+    // add ordinal suffix: st, nd, rd, th ...
+    function addOrdinalSuffix(number) {
+      //自動把傳入數字無條件捨去小數點留下整數，並加上後綴
+      let intPart = Math.floor(number); // 取整數
+      const j = intPart % 10;
+      const k = intPart % 100;
+
+      let suffix = 'th';
+      if (k < 11 || k > 13){  // 11, 12, 13是用th
+        if (j===1) suffix = 'st';
+        else if (j===2) suffix = 'nd';
+        else if (j===3) suffix = 'rd';
+      }
+    }
 
     // *****************************************
     // 整理 raw lab data，並生選擇框
@@ -2773,3 +2786,4 @@
 
 
 </html>
+
