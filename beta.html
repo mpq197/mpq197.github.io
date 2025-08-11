@@ -545,22 +545,29 @@
               <div class="card-body d-flex align-items-center pb-0">
                 <div class="w-100">
                   <div class="input-group">
-                    <span class="input-group-text justify-content-center" style="width: 15%;">BW</span>
+                    <span class="input-group-text justify-content-center" style="width: 20%;">BW</span>
                     <input type="number" id="jusomin_BW" class="form-control text-center" oninput="calculateJusomin()" />
-                    <span class="input-group-text  justify-content-center" style="width: 15%;">g</span>                  
+                    <span class="input-group-text  justify-content-center" style="width: 20%;">g</span>                  
                   </div>
                   <div class="input-group">
-                    <span class="input-group-text justify-content-center" style="width: 15%;">BE</span>
+                    <span class="input-group-text justify-content-center" style="width: 20%;">BE</span>
                     <input type="number" id="jusomin_BE" class="form-control text-center" oninput="calculateJusomin()" />
-                    <span class="input-group-text  justify-content-center" style="width: 15%;">mEq/L</span>                  
+                    <span class="input-group-text  justify-content-center" style="width: 20%;">mEq/L</span>                  
                   </div>
                   <div class="input-group">
-                    <span class="input-group-text justify-content-center w-100" style="background-color: transparent; border: 0cm;"> or </span>          
+                    <span class="input-group-text justify-content-center" style="width: 20%;">Correct</span>
+                    <input type="number" id="jusomin_NaHCO3_correct_ratio" class="form-control text-center" oninput="calculateJusomin()" />
+                    <span class="input-group-text justify-content-center" style="width: 20%;">% = NaHCO3</span>
+                    <input type="number" id="jusomin_NaHCO3_to_correct" class="form-control text-center" oninput="calculateJusomin()" />
+                    <span class="input-group-text  justify-content-center" style="width: 20%;">mEq</span>                  
                   </div>
                   <div class="input-group">
-                    <span class="input-group-text justify-content-center" style="width: 15%;">NaHCO3</span>
-                    <input type="number" id="jusomin_NaHCO3_amount" class="form-control text-center" oninput="calculateJusomin()" />
-                    <span class="input-group-text  justify-content-center" style="width: 15%;">mEq</span>                  
+                    <span class="input-group-text justify-content-center" style="width: 20%;">via</span>
+                    <select id="jusomin_catheter" class="form-select text-center" onchange="calculateJusomin()">
+                      <option value="central" selected>central</option>
+                      <option value="peripheral"      >peripheral</option>
+                    </select>
+                    <span class="input-group-text  justify-content-center" style="width: 20%;">line</span>                  
                   </div>
                 </div>
               </div>
@@ -569,7 +576,7 @@
                   <div class="col-10">
                     <ul class="list-group mt-2 mb-2" id="jusomin_supplement_outputs">
                       <li class="list-group-item copy-item" name="jusomin_supplement_output">NaHCO3 given: </li>
-                      <li class="list-group-item copy-item" name="jusomin_supplement_output">7% NaHCO3 __ ml dilute to __ ml run 1 hr via central line</li>
+                      <li class="list-group-item copy-item" name="jusomin_supplement_output">7% NaHCO3 __ ml dilute with N/S to __ ml run 1 hr</li>
                     </ul>    
                   </div>
                   <div class="col-2" style="padding-left: 0%;">
@@ -1582,7 +1589,7 @@
       setMutualDisableByIds(['hypoNa_BW', 'hypoNa_current_Na', 'hypoNa_target_Na', 'hypoNa_deficit_correction_ratio'], ['hypoNa_deficit_to_correct']);
 
       let hypoNaOutputArray = []; //用於儲存輸出結果
-      let hypoNaTotalDeficit = 0;
+      let hypoNaCorrectAmount = 0;
       
       //計算總缺失量
       let output = "Na given: ";
@@ -1630,6 +1637,59 @@
 
         // 將 li 元素附加到指定的 div 底下
         hypoNaSupplementOutputDiv.appendChild(listItem);
+      });
+
+      addCopyEventListener(); // 為新增的元素添加複製功能
+    }
+
+
+    // *****************************************
+    // 計算Metabolic Acidosis如何矯正
+    // *****************************************
+    function calculateJusomin(){
+      //讀取輸入值
+      const jusominBW = parseFloat(document.getElementById('jusomin_BW').value);
+      const jusominBE = parseFloat(document.getElementById('jusomin_BE').value);
+      const jusominNaHCO3CorrectRatio = parseFloat(document.getElementById('jusomin_NaHCO3_correct_ratio').value)/100;
+      const jusominNaHCO3ToCorrect = parseFloat(document.getElementById('jusomin_NaHCO3_to_correct').value);
+      const jusominCatheter = document.getElementById('jusomin_catheter').value || 'central';
+      const jusominDilutionRatio = jusominCatheter === 'central' ? 2:4;
+      // Only one of these elements can be entered
+      setMutualDisableByIds(['jusomin_BW', 'jusomin_BE', 'jusomin_NaHCO3_correct_ratio'], ['jusomin_NaHCO3_to_correct']);
+
+      let jusominOutputArray = []; //用於儲存輸出結果
+      let jusominCorrectAmount = 0;
+      
+      //計算總缺失量
+      let output = "NaHCO3 given: ";
+      const safe = (v) => isNaN(v) ? "__" : v;
+      output += jusominNaHCO3ToCorrect
+          ? ""
+          : `${safe(jusominBE)} * ${safe(jusominBW/1000)} kg * 0.3 * ${safe(jusominNaHCO3CorrectRatio*100)}% =`;
+      jusominCorrectAmount = jusominNaHCO3ToCorrect || (jusominBE * jusominBW/1000 * 0.3 * jusominNaHCO3CorrectRatio); //mEq
+      jusominCorrectAmountVolume = jusominCorrectAmount * 20 / 16.67 ;
+      output += ` ${safe(jusominCorrectAmount.toFixed(1))} mEq = ${safe(jusominCorrectAmountVolume.toFixed(1))} ml`;
+      jusominOutputArray.push(output);
+
+      //輸出結果
+      let order = `7% NaHCO3 ${safe(jusominCorrectAmountVolume.toFixed(1))} ml dilute with N/S to ${safe((jusominCorrectAmountVolume*jusominDilutionRatio).toFixed(1))} ml run 1 hr`;
+      jusominOutputArray.push(order);
+        
+      // 先將name=hypoNa_supplement_output都移除
+      let jusominSupplementOutput= document.querySelectorAll('[name="jusomin_supplement_output"]');
+      jusominSupplementOutput.forEach(output => output.remove());
+      
+      //將結果輸出到網頁
+      const jusominSupplementOutputDiv = document.getElementById('jusomin_supplement_outputs');
+      jusominOutputArray.forEach((output, index) => {
+        // 創建新的 li 元素
+        const listItem = document.createElement('li');
+        listItem.className = 'list-group-item copy-item';
+        listItem.setAttribute('name', 'jusomin_supplement_output');
+        listItem.textContent = output; // 設定 li 的內容
+
+        // 將 li 元素附加到指定的 div 底下
+        jusominSupplementOutputDiv.appendChild(listItem);
       });
 
       addCopyEventListener(); // 為新增的元素添加複製功能
@@ -2905,6 +2965,9 @@
           document.getElementById('hypoNa_correction_fluid').selectedIndex = 0; // index 0 = 3% NaCl
           calculateNaSupplement();
           break;
+        case 'jusomin_content':
+          calculateJusomin();
+          break;
         case 'umbilical_cath_len_content':
           calculateUmbilicalCathLen();
           break;
@@ -2967,6 +3030,7 @@
     calculateGIR();
     calculateDex();
     calculateNaSupplement();
+    calculateJusomin();
     calculateUmbilicalCathLen();
     calculateDrugPreperation();
     calculateAntibioticsForNB();
@@ -2979,7 +3043,7 @@
 
 <footer class="bg-dark text-white text-center py-3 mt-auto">
   <div class="container">
-    <p>© 2025 NeoAssist | v20250810 | All Rights Reserved</p>
+    <p>© 2025 NeoAssist | v20250811 | All Rights Reserved</p>
     <p>聯絡我們：<a href="mailto:mpq197@google.com" class="text-white">mpq197@google.com</a></p>
   </div>
 </footer>
