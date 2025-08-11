@@ -1770,9 +1770,8 @@
       document.getElementById('drug_extract_amount_unit').textContent = (drugSpec.unit).replace("/ml","");
       document.getElementById('drug_infusion_final_rate_unit').textContent = drugSpec.rateUnit;
 
-      //限制網頁上的輸入框，若drugExtractAmount>0則drugInfusionFinalRate不能輸入，反之亦然，若都沒有值則都可以輸入
-      document.getElementById('drug_infusion_final_rate').disabled = drugExtractAmount > 0;
-      document.getElementById('drug_extract_amount').disabled = drugInfusionFinalRate > 0;
+      // //限制網頁上的輸入框，若drugExtractAmount有值則drugInfusionFinalRate不能輸入，反之亦然，若都沒有值則都可以輸入
+      setMutualDisableByIds(['drug_infusion_final_rate'],['drug_extract_amount']);
 
       //重量單位換算
       let drugUnitConversionRatio = 1;
