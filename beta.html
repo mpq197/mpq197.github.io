@@ -1597,7 +1597,7 @@
       const safe = (v) => isNaN(v) ? "__" : v;
       output += hypoNaDeficitToCorrect
           ? ""
-          : `(${safe(hypoNaTargetNa)} - ${safe(hypoNaCurrentNa)}) * ${safe(hypoNaBW/1000)} kg * 0.6 * ${safe(hypoNaDeficitCorrectionRatio*100)}% =`;
+          : `(${safe(hypoNaTargetNa)} - ${safe(hypoNaCurrentNa)}) * ${safe(hypoNaBW/1000)} kg * 0.6 * ${safe((hypoNaDeficitCorrectionRatio*100)).toFixed(0)}% =`;
       hypoNaCorrectAmount = hypoNaDeficitToCorrect || (hypoNaBW/1000 * (hypoNaTargetNa - hypoNaCurrentNa) * 0.6) * hypoNaDeficitCorrectionRatio;
       hypoNaCorrectAmount = Math.max(hypoNaCorrectAmount, 0); // 確保不會是負數
       output += ` ${safe(hypoNaCorrectAmount.toFixed(1))} mEq`;
@@ -1666,14 +1666,14 @@
       const safe = (v) => isNaN(v) ? "__" : v;
       output += jusominNaHCO3ToCorrect
           ? ""
-          : `${safe(jusominBE)} * ${safe(jusominBW/1000)} kg * 0.3 * ${safe(jusominNaHCO3CorrectRatio*100)}% =`;
+          : `${safe(jusominBE)} * ${safe(jusominBW/1000)} kg * 0.3 * ${safe((jusominNaHCO3CorrectRatio*100).toFixed(0))}% =`;
       jusominCorrectAmount = jusominNaHCO3ToCorrect || (jusominBE * jusominBW/1000 * 0.3 * jusominNaHCO3CorrectRatio); //mEq
       jusominCorrectAmountVolume = jusominCorrectAmount * 20 / 16.67 ;
       output += ` ${safe(jusominCorrectAmount.toFixed(1))} mEq = ${safe(jusominCorrectAmountVolume.toFixed(1))} ml`;
       jusominOutputArray.push(output);
 
       //輸出結果
-      let order = `7% NaHCO3 ${safe(jusominCorrectAmountVolume.toFixed(1))} ml dilute with N/S to ${safe((jusominCorrectAmountVolume*jusominDilutionRatio).toFixed(1))} ml run 1 hr`;
+      let order = `7% NaHCO3 ${safe(jusominCorrectAmountVolume.toFixed(1))} ml dilute with N/S to ${safe(((jusominCorrectAmountVolume.toFixed(1))*jusominDilutionRatio).toFixed(1))} ml run 1 hr`;
       jusominOutputArray.push(order);
         
       // 先將name=hypoNa_supplement_output都移除
@@ -3053,5 +3053,6 @@
 
 
 </html>
+
 
 
