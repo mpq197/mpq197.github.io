@@ -527,7 +527,7 @@
                   <div class="col-10">
                     <ul class="list-group mt-2 mb-2" id="hypoNa_supplement_outputs">
                       <li class="list-group-item copy-item" name="hypoNa_supplement_output">Na given: </li>
-                      <li class="list-group-item copy-item" name="hypoNa_supplement_output">3% NaCl __ ml run __ hours (= __ ml/hr) (= Na __ mEq)</li>
+                      <li class="list-group-item copy-item" name="hypoNa_supplement_output">3% NaCl __ ml run __ hr (= __ ml/hr) (= Na __ mEq)</li>
                     </ul>    
                   </div>
                   <div class="col-2" style="padding-left: 0%;">
@@ -1622,7 +1622,7 @@
       const hypoNaActualSupplementMEQ = (hypoNaActualSupplementVolume / 1000 * hypoNaCorrectionFluidConcentration).toFixed(1); // mEq
 
       //輸出結果
-      hypoNaOutputArray.push(`${hypoNaCorrectionFluid} ${safe(hypoNaActualSupplementVolume)} ml run ${safe(hypoNaSupplementDuration)} hours (= ${safe(hypoNaCorrectionRate)} ml/hr) (= Na ${safe(hypoNaActualSupplementMEQ)} mEq)`);
+      hypoNaOutputArray.push(`${hypoNaCorrectionFluid} ${safe(hypoNaActualSupplementVolume)} ml run ${safe(hypoNaSupplementDuration)} hr (= ${safe(hypoNaCorrectionRate)} ml/hr) (= Na ${safe(hypoNaActualSupplementMEQ)} mEq)`);
         
       // 先將name=hypoNa_supplement_output都移除
       let hypoNaOutput = document.querySelectorAll('[name="hypoNa_supplement_output"]');
