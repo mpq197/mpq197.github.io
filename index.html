@@ -7,7 +7,7 @@
     [ ] 新增ICD10搜尋功能
     [ ] 磨粉藥物計算
     [ ] 新增問診重點等文件下載
-    [ ] local storage
+    [ ] local storage 
     [ ] Gas BV, B, 大檢
     [ ] growth chart: 
         - 計算PMA, CA
@@ -485,6 +485,110 @@
             </div>
           </div>
         </div>
+        <div class="row mb-3">
+          <div class="col">
+            <div class="card h-100" id="hypoNa_content">
+              <div class="card-header text-center">Hyponatremia Correction</div>
+              <div class="card-body pb-0">
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 20%;">BW</span>
+                  <input type="number" id="hypoNa_BW" class="form-control text-center" oninput="calculateNaSupplement()" />
+                  <span class="input-group-text  justify-content-center" style="width: 20%;">g</span>
+                </div>
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 20%;">[Na]</span>
+                  <input type="number" id="hypoNa_current_Na" class="form-control text-center" placeholder="current" oninput="calculateNaSupplement()" />
+                  <span class="input-group-text  justify-content-center" style="width: 10%;">→</span>
+                  <input type="number" id="hypoNa_target_Na" class="form-control text-center" placeholder="target" oninput="calculateNaSupplement()" />
+                  <span class="input-group-text  justify-content-center" style="width: 20%;">mEq/L</span>
+                </div>   
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 20%;">Correct</span>
+                  <input type="number" id="hypoNa_deficit_correction_ratio" class="form-control text-center" oninput="calculateNaSupplement()" />
+                  <span class="input-group-text  justify-content-center"style="width: 10%;">% =</span>
+                  <input type="number" id="hypoNa_deficit_to_correct" class="form-control text-center" oninput="calculateNaSupplement()" />
+                  <span class="input-group-text  justify-content-center" style="width: 20%;">mEq</span>
+                </div>   
+                <div class="input-group">
+                  <span class="input-group-text justify-content-center" style="width: 20%;">by</span>
+                  <select id="hypoNa_correction_fluid" class="form-select text-center" onchange="calculateNaSupplement()">
+                    <option value="3% NaCl" selected>3% NaCl</option>
+                    <option value="N/S"             >N/S</option>
+                    <option value="H/S"             >H/S</option>
+                    <option value="D0.225S"         >D0.225S</option>
+                  </select>
+                  <span class="input-group-text justify-content-center" style="width: 10%;">in</span>
+                  <input type="number" id="hypoNa_supplement_duration" class="form-control text-center" oninput="calculateNaSupplement()" />
+                  <span class="input-group-text  justify-content-center" style="width: 20%;">hr</span>
+                </div>   
+              </div>
+              <div class="card-footer">
+                <div class="row">
+                  <div class="col-10">
+                    <ul class="list-group mt-2 mb-2" id="hypoNa_supplement_outputs">
+                      <li class="list-group-item copy-item" name="hypoNa_supplement_output">Na given: </li>
+                      <li class="list-group-item copy-item" name="hypoNa_supplement_output">3% NaCl __ ml run __ hr (= __ ml/hr) (= Na __ mEq)</li>
+                    </ul>    
+                  </div>
+                  <div class="col-2" style="padding-left: 0%;">
+                    <div class="d-flex justify-content-center align-items-center h-100">
+                      <button class="btn btn-secondary" onclick="resetForm('hypoNa_content')">Reset</button>
+                    </div>    
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="card h-100" id="jusomin_content">
+              <div class="card-header text-center">Metabolic Acidosis Correction</div>
+              <div class="card-body d-flex align-items-center pb-0">
+                <div class="w-100">
+                  <div class="input-group">
+                    <span class="input-group-text justify-content-center" style="width: 20%;">BW</span>
+                    <input type="number" id="jusomin_BW" class="form-control text-center" oninput="calculateJusomin()" />
+                    <span class="input-group-text  justify-content-center" style="width: 20%;">g</span>                  
+                  </div>
+                  <div class="input-group">
+                    <span class="input-group-text justify-content-center" style="width: 20%;">BE</span>
+                    <input type="number" id="jusomin_BE" class="form-control text-center" oninput="calculateJusomin()" />
+                    <span class="input-group-text  justify-content-center" style="width: 20%;">mEq/L</span>                  
+                  </div>
+                  <div class="input-group">
+                    <span class="input-group-text justify-content-center" style="width: 20%;">Correct</span>
+                    <input type="number" id="jusomin_NaHCO3_correct_ratio" class="form-control text-center" oninput="calculateJusomin()" />
+                    <span class="input-group-text justify-content-center" style="width: 20%;">% = NaHCO3</span>
+                    <input type="number" id="jusomin_NaHCO3_to_correct" class="form-control text-center" oninput="calculateJusomin()" />
+                    <span class="input-group-text  justify-content-center" style="width: 20%;">mEq</span>                  
+                  </div>
+                  <div class="input-group">
+                    <span class="input-group-text justify-content-center" style="width: 20%;">via</span>
+                    <select id="jusomin_catheter" class="form-select text-center" onchange="calculateJusomin()">
+                      <option value="central" selected>central</option>
+                      <option value="peripheral"      >peripheral</option>
+                    </select>
+                    <span class="input-group-text  justify-content-center" style="width: 20%;">line</span>                  
+                  </div>
+                </div>
+              </div>
+              <div class="card-footer">
+                <div class="row">
+                  <div class="col-10">
+                    <ul class="list-group mt-2 mb-2" id="jusomin_supplement_outputs">
+                      <li class="list-group-item copy-item" name="jusomin_supplement_output">NaHCO3 given: </li>
+                      <li class="list-group-item copy-item" name="jusomin_supplement_output">7% NaHCO3 __ ml dilute with N/S to __ ml run 1 hr</li>
+                    </ul>    
+                  </div>
+                  <div class="col-2" style="padding-left: 0%;">
+                    <div class="d-flex justify-content-center align-items-center h-100">
+                      <button class="btn btn-secondary" onclick="resetForm('jusomin_content')">Reset</button>
+                    </div>    
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="row mb-4">
           <div class="col">
             <div class="card h-100" id="umbilical_cath_len_content">
@@ -561,6 +665,7 @@
                     <option value="Lidocaine"     >Lidocaine      </option>
                     <option value="Insulin"       >Insulin</option>
                     <option value="Heparin (5000U/ml)"       >Heparin</option>
+                    <option value="Jusomin"       >Jusomin</option>
                     <!-- More options -->
                   </select>
                   <input type="text" id="drug_extract_amount" class="form-control text-center" oninput="calculateDrugPreperation()" />
@@ -999,10 +1104,7 @@
       }
 
       // Only one of fluidTPNGrams and fluidRegularIVRate can be entered
-      const fluidRegularIVRateDIV = document.getElementById('fluid_regular_IV_rate');
-      const fluidTPNGramsDIV = document.getElementById('fluid_TPN_grams');
-      fluidRegularIVRateDIV.disabled = fluidTPNGramsDIV.value !== "";
-      fluidTPNGramsDIV.disabled = fluidRegularIVRateDIV.value !== "";
+      setMutualDisableByIds(['fluid_TPN_grams'], ['fluid_regular_IV_rate']);
 
       // *****************************************
       // 歸零GIR, 離子統計
@@ -1472,6 +1574,131 @@
 
 
     // *****************************************
+    // 計算hypoNa如何矯正
+    // *****************************************
+    function calculateNaSupplement(){
+      //讀取輸入值
+      const hypoNaBW = parseFloat(document.getElementById('hypoNa_BW').value);
+      const hypoNaCurrentNa = parseFloat(document.getElementById('hypoNa_current_Na').value);
+      const hypoNaTargetNa = parseFloat(document.getElementById('hypoNa_target_Na').value); 
+      const hypoNaDeficitCorrectionRatio = parseFloat(document.getElementById('hypoNa_deficit_correction_ratio').value)/100;
+      const hypoNaDeficitToCorrect = parseFloat(document.getElementById('hypoNa_deficit_to_correct').value);
+      const hypoNaCorrectionFluid = document.getElementById('hypoNa_correction_fluid').value || "3% NaCl"; //預設使用3% NaCl
+      const hypoNaSupplementDuration = parseFloat(document.getElementById('hypoNa_supplement_duration').value); //預設補充時間為24小時
+
+      // Only one of these elements can be entered
+      setMutualDisableByIds(['hypoNa_BW', 'hypoNa_current_Na', 'hypoNa_target_Na', 'hypoNa_deficit_correction_ratio'], ['hypoNa_deficit_to_correct']);
+
+      let hypoNaOutputArray = []; //用於儲存輸出結果
+      let hypoNaCorrectAmount = 0;
+      
+      //計算總缺失量
+      let output = "Na given: ";
+      const safe = (v) => isNaN(v) ? "__" : v;
+      output += hypoNaDeficitToCorrect
+          ? ""
+          : `(${safe(hypoNaTargetNa)} - ${safe(hypoNaCurrentNa)}) * ${safe(hypoNaBW/1000)} kg * 0.6 * ${safe((hypoNaDeficitCorrectionRatio*100).toFixed(0))}% =`;
+      hypoNaCorrectAmount = hypoNaDeficitToCorrect || (hypoNaBW/1000 * (hypoNaTargetNa - hypoNaCurrentNa) * 0.6) * hypoNaDeficitCorrectionRatio;
+      hypoNaCorrectAmount = Math.max(hypoNaCorrectAmount, 0); // 確保不會是負數
+      output += ` ${safe(hypoNaCorrectAmount.toFixed(1))} mEq`;
+      hypoNaOutputArray.push(output);
+
+      let hypoNaCorrectionFluidConcentration = 0; // 用於儲存補充液體的濃度, 單位 mEq/1000ml
+      switch (hypoNaCorrectionFluid) {
+        case "3% NaCl": hypoNaCorrectionFluidConcentration = 513 ; break; // 3% NaCl 1000ml = 513mEq Na
+        case "N/S"    : hypoNaCorrectionFluidConcentration = 154 ; break; // N/S 1000ml = 154mEq Na
+        case "H/S"    : hypoNaCorrectionFluidConcentration = 77  ; break; // H/S 1000ml = 77mEq Na
+        case "D0.225S": hypoNaCorrectionFluidConcentration = 38.5; break; // D0.225S 1000ml = 38.5mEq Na
+      }
+      //計算補充液體量
+      let hypoNaCorrectionFluidVolume = 0;
+      hypoNaCorrectionFluidVolume = (hypoNaCorrectAmount / hypoNaCorrectionFluidConcentration * 1000).toFixed(1);  
+
+      //計算預計補充rate
+      const hypoNaCorrectionRate = (hypoNaCorrectionFluidVolume / hypoNaSupplementDuration ).toFixed(1); // unit ml/hr
+
+      //反算實際補充mEq and volume
+      const hypoNaActualSupplementVolume = (hypoNaCorrectionRate * hypoNaSupplementDuration).toFixed(1); //ml
+      const hypoNaActualSupplementMEQ = (hypoNaActualSupplementVolume / 1000 * hypoNaCorrectionFluidConcentration).toFixed(1); // mEq
+
+      //輸出結果
+      hypoNaOutputArray.push(`${hypoNaCorrectionFluid} ${safe(hypoNaActualSupplementVolume)} ml run ${safe(hypoNaSupplementDuration)} hr (= ${safe(hypoNaCorrectionRate)} ml/hr) (= Na ${safe(hypoNaActualSupplementMEQ)} mEq)`);
+        
+      // 先將name=hypoNa_supplement_output都移除
+      let hypoNaOutput = document.querySelectorAll('[name="hypoNa_supplement_output"]');
+      hypoNaOutput.forEach(output => output.remove());
+      
+      //將結果輸出到網頁
+      const hypoNaSupplementOutputDiv = document.getElementById('hypoNa_supplement_outputs');
+      hypoNaOutputArray.forEach((output, index) => {
+        // 創建新的 li 元素
+        const listItem = document.createElement('li');
+        listItem.className = 'list-group-item copy-item';
+        listItem.setAttribute('name', 'hypoNa_supplement_output');
+        listItem.textContent = output; // 設定 li 的內容
+
+        // 將 li 元素附加到指定的 div 底下
+        hypoNaSupplementOutputDiv.appendChild(listItem);
+      });
+
+      addCopyEventListener(); // 為新增的元素添加複製功能
+    }
+
+
+    // *****************************************
+    // 計算Metabolic Acidosis如何矯正
+    // *****************************************
+    function calculateJusomin(){
+      //讀取輸入值
+      const jusominBW = parseFloat(document.getElementById('jusomin_BW').value);
+      const jusominBE = parseFloat(document.getElementById('jusomin_BE').value);
+      const jusominNaHCO3CorrectRatio = parseFloat(document.getElementById('jusomin_NaHCO3_correct_ratio').value)/100;
+      const jusominNaHCO3ToCorrect = parseFloat(document.getElementById('jusomin_NaHCO3_to_correct').value);
+      const jusominCatheter = document.getElementById('jusomin_catheter').value || 'central';
+      const jusominDilutionRatio = jusominCatheter === 'central' ? 2:4;
+      // Only one of these elements can be entered
+      setMutualDisableByIds(['jusomin_BW', 'jusomin_BE', 'jusomin_NaHCO3_correct_ratio'], ['jusomin_NaHCO3_to_correct']);
+
+      let jusominOutputArray = []; //用於儲存輸出結果
+      let jusominCorrectAmount = 0;
+      
+      //計算總缺失量
+      let output = "NaHCO3 given: ";
+      const safe = (v) => isNaN(v) ? "__" : v;
+      output += jusominNaHCO3ToCorrect
+          ? ""
+          : `${safe(jusominBE)} * ${safe(jusominBW/1000)} kg * 0.3 * ${safe((jusominNaHCO3CorrectRatio*100).toFixed(0))}% =`;
+      jusominCorrectAmount = jusominNaHCO3ToCorrect || (jusominBE * jusominBW/1000 * 0.3 * jusominNaHCO3CorrectRatio); //mEq
+      jusominCorrectAmountVolume = jusominCorrectAmount * 20 / 16.67 ;
+      output += ` ${safe(jusominCorrectAmount.toFixed(1))} mEq = ${safe(jusominCorrectAmountVolume.toFixed(1))} ml`;
+      jusominOutputArray.push(output);
+
+      //輸出結果
+      let order = `7% NaHCO3 ${safe(jusominCorrectAmountVolume.toFixed(1))} ml dilute with N/S to ${safe(((jusominCorrectAmountVolume.toFixed(1))*jusominDilutionRatio).toFixed(1))} ml run 1 hr`;
+      jusominOutputArray.push(order);
+        
+      // 先將name=hypoNa_supplement_output都移除
+      let jusominSupplementOutput= document.querySelectorAll('[name="jusomin_supplement_output"]');
+      jusominSupplementOutput.forEach(output => output.remove());
+      
+      //將結果輸出到網頁
+      const jusominSupplementOutputDiv = document.getElementById('jusomin_supplement_outputs');
+      jusominOutputArray.forEach((output, index) => {
+        // 創建新的 li 元素
+        const listItem = document.createElement('li');
+        listItem.className = 'list-group-item copy-item';
+        listItem.setAttribute('name', 'jusomin_supplement_output');
+        listItem.textContent = output; // 設定 li 的內容
+
+        // 將 li 元素附加到指定的 div 底下
+        jusominSupplementOutputDiv.appendChild(listItem);
+      });
+
+      addCopyEventListener(); // 為新增的元素添加複製功能
+    }
+
+
+    // *****************************************
     // 計算UA、UV深度
     // *****************************************
     function calculateUmbilicalCathLen(){
@@ -1514,7 +1741,8 @@
       'MgSO4'             : { concentration: 100    , unit: 'mg/ml' , rateUnit: 'mg/kg/hr'   , decimalPlace: 1},
       'Lidocaine'         : { concentration: 50     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},  //小數點待確定
       'Insulin'           : { concentration: 100    , unit: 'U/ml'  , rateUnit: 'U/kg/hr'    , decimalPlace: 0},
-      'Heparin (5000U/ml)': { concentration: 5000   , unit: 'U/ml'  , rateUnit: 'U/kg/hr'    , decimalPlace: 1}
+      'Heparin (5000U/ml)': { concentration: 5000   , unit: 'U/ml'  , rateUnit: 'U/kg/hr'    , decimalPlace: 1},
+      'Jusomin'           : { concentration: 0.83   , unit: 'mEq/ml', rateUnit: 'mEq/kg/hr'  , decimalPlace: 1}
     };
 
 
@@ -1542,9 +1770,8 @@
       document.getElementById('drug_extract_amount_unit').textContent = (drugSpec.unit).replace("/ml","");
       document.getElementById('drug_infusion_final_rate_unit').textContent = drugSpec.rateUnit;
 
-      //限制網頁上的輸入框，若drugExtractAmount>0則drugInfusionFinalRate不能輸入，反之亦然，若都沒有值則都可以輸入
-      document.getElementById('drug_infusion_final_rate').disabled = drugExtractAmount > 0;
-      document.getElementById('drug_extract_amount').disabled = drugInfusionFinalRate > 0;
+      // //限制網頁上的輸入框，若drugExtractAmount有值則drugInfusionFinalRate不能輸入，反之亦然，若都沒有值則都可以輸入
+      setMutualDisableByIds(['drug_infusion_final_rate'],['drug_extract_amount']);
 
       //重量單位換算
       let drugUnitConversionRatio = 1;
@@ -1555,6 +1782,7 @@
         case 'mg-mcg': drugUnitConversionRatio = 1/1000; break;
         case 'U-mU'  : drugUnitConversionRatio = 1/1000; break;
         case 'mg-mg' : drugUnitConversionRatio = 1; break;
+        case 'mEq-mEq': drugUnitConversionRatio = 1; break;
         default: drugUnitConversionRatio = 1; break;
       }
 
@@ -2632,6 +2860,35 @@
     }
 
 
+    //********************************************
+    // * 互斥輸入：
+    // * 任一組有任一欄位有值，則另一組全部 disabled
+    // * @param {string[]} groupAIds - 第一組欄位的 ID 陣列
+    // * @param {string[]} groupBIds - 第二組欄位的 ID 陣列
+    //********************************************
+    function setMutualDisableByIds(groupAIds, groupBIds) {
+        const elemsA = groupAIds.map(id => document.getElementById(id));
+        const elemsB = groupBIds.map(id => document.getElementById(id));
+
+        const hasValue = elems =>
+            elems.some(el => el && el.value.trim() !== "");
+
+        const updateStatus = () => {
+            const aHas = hasValue(elemsA);
+            const bHas = hasValue(elemsB);
+
+            elemsA.forEach(el => el.disabled = bHas);
+            elemsB.forEach(el => el.disabled = aHas);
+        };
+
+        [...elemsA, ...elemsB].forEach(el => {
+            if (el) el.addEventListener('input', updateStatus);
+        });
+
+        updateStatus(); // 初始化檢查一次
+    }
+
+
     // *****************************************
     //對每個.copy-item新增onclick事件，讓點擊後複製其data-content的內容，若沒有data-content，則複製其textContent
     // *****************************************
@@ -2707,6 +2964,13 @@
           document.getElementById('dextrose_add_concentration').value = 50;
           calculateDex();
           break;
+        case 'hypoNa_content':
+          document.getElementById('hypoNa_correction_fluid').selectedIndex = 0; // index 0 = 3% NaCl
+          calculateNaSupplement();
+          break;
+        case 'jusomin_content':
+          calculateJusomin();
+          break;
         case 'umbilical_cath_len_content':
           calculateUmbilicalCathLen();
           break;
@@ -2768,6 +3032,8 @@
     calculateFluid();
     calculateGIR();
     calculateDex();
+    calculateNaSupplement();
+    calculateJusomin();
     calculateUmbilicalCathLen();
     calculateDrugPreperation();
     calculateAntibioticsForNB();
@@ -2780,13 +3046,14 @@
 
 <footer class="bg-dark text-white text-center py-3 mt-auto">
   <div class="container">
-    <p>© 2025 NeoAssist | v20250807 | All Rights Reserved</p>
+    <p>© 2025 NeoAssist | v20250811 | All Rights Reserved</p>
     <p>聯絡我們：<a href="mailto:mpq197@google.com" class="text-white">mpq197@google.com</a></p>
   </div>
 </footer>
 
 
 </html>
+
 
 
 
