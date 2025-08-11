@@ -1597,7 +1597,7 @@
       const safe = (v) => isNaN(v) ? "__" : v;
       output += hypoNaDeficitToCorrect
           ? ""
-          : `(${safe(hypoNaTargetNa)} - ${safe(hypoNaCurrentNa)}) * ${safe(hypoNaBW/1000)} kg * 0.6 * ${safe((hypoNaDeficitCorrectionRatio*100)).toFixed(0)}% =`;
+          : `(${safe(hypoNaTargetNa)} - ${safe(hypoNaCurrentNa)}) * ${safe(hypoNaBW/1000)} kg * 0.6 * ${safe((hypoNaDeficitCorrectionRatio*100).toFixed(0))}% =`;
       hypoNaCorrectAmount = hypoNaDeficitToCorrect || (hypoNaBW/1000 * (hypoNaTargetNa - hypoNaCurrentNa) * 0.6) * hypoNaDeficitCorrectionRatio;
       hypoNaCorrectAmount = Math.max(hypoNaCorrectAmount, 0); // 確保不會是負數
       output += ` ${safe(hypoNaCorrectAmount.toFixed(1))} mEq`;
@@ -1617,11 +1617,12 @@
       //計算預計補充rate
       const hypoNaCorrectionRate = (hypoNaCorrectionFluidVolume / hypoNaSupplementDuration ).toFixed(1); // unit ml/hr
 
-      //反算實際補充mEq
-      const hypoNaActualSupplement = (hypoNaCorrectionRate * hypoNaSupplementDuration / 1000 * hypoNaCorrectionFluidConcentration).toFixed(1); // mEq
+      //反算實際補充mEq and volume
+      const hypoNaActualSupplementVolume = (hypoNaCorrectionRate * hypoNaSupplementDuration).toFixed(1); //ml
+      const hypoNaActualSupplementMEQ = (hypoNaActualSupplementVolume / 1000 * hypoNaCorrectionFluidConcentration).toFixed(1); // mEq
 
       //輸出結果
-      hypoNaOutputArray.push(`${hypoNaCorrectionFluid} ${safe(hypoNaCorrectionFluidVolume)} ml run ${safe(hypoNaSupplementDuration)} hours (= ${safe(hypoNaCorrectionRate)} ml/hr) (= Na ${safe(hypoNaActualSupplement)} mEq)`);
+      hypoNaOutputArray.push(`${hypoNaCorrectionFluid} ${safe(hypoNaActualSupplementVolume)} ml run ${safe(hypoNaSupplementDuration)} hours (= ${safe(hypoNaCorrectionRate)} ml/hr) (= Na ${safe(hypoNaActualSupplementMEQ)} mEq)`);
         
       // 先將name=hypoNa_supplement_output都移除
       let hypoNaOutput = document.querySelectorAll('[name="hypoNa_supplement_output"]');
