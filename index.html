@@ -666,6 +666,7 @@
                     <option value="Insulin"       >Insulin</option>
                     <option value="Heparin (5000U/ml)"       >Heparin</option>
                     <option value="Jusomin"       >Jusomin</option>
+                    <option value="Octreotide"    >Octreotide</option>
                     <!-- More options -->
                   </select>
                   <input type="text" id="drug_extract_amount" class="form-control text-center" oninput="calculateDrugPreperation()" />
@@ -1742,7 +1743,8 @@
       'Lidocaine'         : { concentration: 50     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},  //小數點待確定
       'Insulin'           : { concentration: 100    , unit: 'U/ml'  , rateUnit: 'U/kg/hr'    , decimalPlace: 0},
       'Heparin (5000U/ml)': { concentration: 5000   , unit: 'U/ml'  , rateUnit: 'U/kg/hr'    , decimalPlace: 1},
-      'Jusomin'           : { concentration: 0.83   , unit: 'mEq/ml', rateUnit: 'mEq/kg/hr'  , decimalPlace: 1}
+      'Jusomin'           : { concentration: 0.83   , unit: 'mEq/ml', rateUnit: 'mEq/kg/hr'  , decimalPlace: 1},  //小數點待確定
+      'Octreotide'        : { concentration: 100    , unit: 'mcg/ml', rateUnit: 'mcg/kg/hr'  , decimalPlace: 1}   //小數點待確定
     };
 
 
@@ -1783,6 +1785,7 @@
         case 'U-mU'  : drugUnitConversionRatio = 1/1000; break;
         case 'mg-mg' : drugUnitConversionRatio = 1; break;
         case 'mEq-mEq': drugUnitConversionRatio = 1; break;
+        case 'mcg-mcg': drugUnitConversionRatio = 1; break;
         default: drugUnitConversionRatio = 1; break;
       }
 
@@ -3046,13 +3049,14 @@
 
 <footer class="bg-dark text-white text-center py-3 mt-auto">
   <div class="container">
-    <p>© 2025 NeoAssist | v20250811 | All Rights Reserved</p>
+    <p>© 2025 NeoAssist | v20250815 | All Rights Reserved</p>
     <p>聯絡我們：<a href="mailto:mpq197@google.com" class="text-white">mpq197@google.com</a></p>
   </div>
 </footer>
 
 
 </html>
+
 
 
 
