@@ -338,6 +338,9 @@
                     <option value="H/S(500)">H/S(500)</option>
                     <option value="N/S(500)">N/S(500)</option>
                     <option value="D5S(500)">D5S(500)</option>
+                    <option value="Taita No.1(500)">Taita No.1(500)</option>
+                    <option value="Taita No.1(500) + 2PC D50W">Taita No.1(500) + 2PC D50W</option>
+                    <option value="Taita No.1(500) + 3PC D50W">Taita No.1(500) + 3PC D50W</option>
                     <option value="Taita No.2(500)">Taita No.2(500)</option>
                     <option value="Taita No.2(500) + 2PC D50W">Taita No.2(500) + 2PC D50W</option>
                     <option value="Taita No.2(500) + 3PC D50W">Taita No.2(500) + 3PC D50W</option>
@@ -562,7 +565,10 @@
                     <span class="input-group-text  justify-content-center" style="width: 20%;">mEq</span>                  
                   </div>
                   <div class="input-group">
-                    <span class="input-group-text justify-content-center" style="width: 20%;">via</span>
+                    <span class="input-group-text justify-content-center" style="width: 20%;">Run</span>
+                    <input type="number" id="jusomin_duration" class="form-control text-center" placeholder="≥ 1" oninput="calculateJusomin()" />
+                    <span class="input-group-text justify-content-center" style="width: 10%;">hrs</span>
+                    <span class="input-group-text justify-content-center" style="width: 10%;">via</span>
                     <select id="jusomin_catheter" class="form-select text-center" onchange="calculateJusomin()">
                       <option value="central" selected>central</option>
                       <option value="peripheral"      >peripheral</option>
@@ -1349,6 +1355,27 @@
           fluidTotalGIR += fluidRegularIVRate*5;
           break;
         } 
+        case 'Taita No.1(500)': {
+          fluidTotalNa += fluidRegularIVTotalVolume/1000*25;   // Taita No.1 1000ml = 25 mEq Na
+          fluidTotalK  += fluidRegularIVTotalVolume/1000*18.0; // Taita No.1 1000ml = 18.0 mEq K
+          fluidTotalP  += fluidRegularIVTotalVolume/1000*6.0;  // Taita No.1 1000ml = 6.0 mmol P
+          fluidTotalGIR += fluidRegularIVRate*3.8;
+          break;
+        }
+        case 'Taita No.1(500) + 2PC D50W': {
+          fluidTotalNa += fluidRegularIVTotalVolume/1000*23.1; // Taita No.1(500) + 2PC D50W(40), 1000ml = 23.1 mEq Na
+          fluidTotalK  += fluidRegularIVTotalVolume/1000*16.7; // Taita No.1(500) + 2PC D50W(40), 1000ml = 16.7 mEq K
+          fluidTotalP  += fluidRegularIVTotalVolume/1000*5.6;  // Taita No.1(500) + 2PC D50W(40), 1000ml = 5.6 mmol P
+          fluidTotalGIR += fluidRegularIVRate*7.22;
+          break;
+        }
+        case 'Taita No.1(500) + 3PC D50W': {
+          fluidTotalNa += fluidRegularIVTotalVolume/1000*22.3; // Taita No.1(500) + 3PC D50W(60), 1000ml = 22.3 mEq Na
+          fluidTotalK  += fluidRegularIVTotalVolume/1000*16.1; // Taita No.1(500) + 3PC D50W(60), 1000ml = 16.1 mEq K
+          fluidTotalP  += fluidRegularIVTotalVolume/1000*5.4;  // Taita No.1(500) + 3PC D50W(60), 1000ml = 5.4 mmol P
+          fluidTotalGIR += fluidRegularIVRate*8.75;
+          break;
+        }
         case 'Taita No.2(500)': {
           fluidTotalNa += fluidRegularIVTotalVolume/1000*40;   // Taita No.2 1000ml = 40 mEq Na
           fluidTotalK  += fluidRegularIVTotalVolume/1000*12.0; // Taita No.2 1000ml = 12.0 mEq K
@@ -1655,14 +1682,16 @@
       const jusominBE = parseFloat(document.getElementById('jusomin_BE').value);
       const jusominNaHCO3CorrectRatio = parseFloat(document.getElementById('jusomin_NaHCO3_correct_ratio').value)/100;
       const jusominNaHCO3ToCorrect = parseFloat(document.getElementById('jusomin_NaHCO3_to_correct').value);
+      const jusominDuration = parseFloat(document.getElementById('jusomin_duration').value) || 2;
       const jusominCatheter = document.getElementById('jusomin_catheter').value || 'central';
       const jusominDilutionRatio = jusominCatheter === 'central' ? 2:4;
       // Only one of these elements can be entered
-      setMutualDisableByIds(['jusomin_BW', 'jusomin_BE', 'jusomin_NaHCO3_correct_ratio'], ['jusomin_NaHCO3_to_correct']);
+      setMutualDisableByIds(['jusomin_BE', 'jusomin_NaHCO3_correct_ratio'], ['jusomin_NaHCO3_to_correct']);
 
       let jusominOutputArray = []; //用於儲存輸出結果
       let jusominCorrectAmount = 0;
-      
+      let jusominConcentrationRate = 0;
+
       //計算總缺失量
       let output = "NaHCO3 given: ";
       const safe = (v) => isNaN(v) ? "__" : v;
@@ -1674,10 +1703,15 @@
       output += ` ${safe(jusominCorrectAmount.toFixed(1))} mEq = ${safe(jusominCorrectAmountVolume.toFixed(1))} ml`;
       jusominOutputArray.push(output);
 
+      //計算mEq/kg/hr
+      jusominConcentrationRate = jusominCorrectAmount / (jusominBW/1000) / jusominDuration;
+
       //輸出結果
-      let order = `7% NaHCO3 ${safe(jusominCorrectAmountVolume.toFixed(1))} ml dilute with N/S to ${safe(((jusominCorrectAmountVolume.toFixed(1))*jusominDilutionRatio).toFixed(1))} ml run 1 hr`;
+      let order = `7% NaHCO3 ${safe(jusominCorrectAmountVolume.toFixed(1))} ml dilute with D5W to ${safe(((jusominCorrectAmountVolume.toFixed(1))*jusominDilutionRatio).toFixed(1))} ml run ${jusominDuration} hrs`;
       jusominOutputArray.push(order);
-        
+      let concentrationRateOutput = `= ${safe(jusominConcentrationRate.toFixed(1))} mEq/kg/hr  ( max 1 mEq/kg/hr )`;
+      jusominOutputArray.push(concentrationRateOutput);
+      
       // 先將name=hypoNa_supplement_output都移除
       let jusominSupplementOutput= document.querySelectorAll('[name="jusomin_supplement_output"]');
       jusominSupplementOutput.forEach(output => output.remove());
@@ -3049,7 +3083,7 @@
 
 <footer class="bg-dark text-white text-center py-3 mt-auto">
   <div class="container">
-    <p>© 2025 NeoAssist | v20250817 | All Rights Reserved</p>
+    <p>© 2025 NeoAssist | v20251008 | All Rights Reserved</p>
     <p>Contact us：<a href="mailto:mpq197@google.com" class="text-white">mpq197@google.com</a></p>
 
     <!-- 文件下載連結 (無標題版) -->
@@ -3071,6 +3105,10 @@
 
 
 </html>
+
+
+
+
 
 
 
