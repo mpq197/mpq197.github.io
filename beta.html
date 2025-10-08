@@ -1686,7 +1686,7 @@
       const jusominCatheter = document.getElementById('jusomin_catheter').value || 'central';
       const jusominDilutionRatio = jusominCatheter === 'central' ? 2:4;
       // Only one of these elements can be entered
-      setMutualDisableByIds(['jusomin_BW', 'jusomin_BE', 'jusomin_NaHCO3_correct_ratio'], ['jusomin_NaHCO3_to_correct']);
+      setMutualDisableByIds(['jusomin_BE', 'jusomin_NaHCO3_correct_ratio'], ['jusomin_NaHCO3_to_correct']);
 
       let jusominOutputArray = []; //用於儲存輸出結果
       let jusominCorrectAmount = 0;
