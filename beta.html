@@ -1571,7 +1571,7 @@
       let girTotal = 0;
       for (let i = 0; i < girDex.length; i++) {
         let dex = parseFloat(girDex[i].value) || 0;
-        let rate = parseFloat(girRate[i].value) || 0;
+        let rate = parseFloat(parseExpression(girRate[i].value)) || 0;
         girTotal += dex*rate;
       }
 
@@ -3083,7 +3083,7 @@
 
 <footer class="bg-dark text-white text-center py-3 mt-auto">
   <div class="container">
-    <p>© 2025 NeoAssist | v20251008 | All Rights Reserved</p>
+    <p>© 2025 NeoAssist | v20251104 | All Rights Reserved</p>
     <p>Contact us：<a href="mailto:mpq197@google.com" class="text-white">mpq197@google.com</a></p>
 
     <!-- 文件下載連結 (無標題版) -->
@@ -3105,6 +3105,7 @@
 
 
 </html>
+
 
 
 
