@@ -945,7 +945,7 @@
                   </div>
                   <div class="col-2" style="padding-left: 0%;">
                     <div class="d-flex justify-content-center align-items-center h-100">
-                      <button class="btn btn-secondary" onclick="resetForm('growth_content')">Reset</button>
+                      <button class="btn btn-secondary" onclick="resetForm('age_content')">Reset</button>
                     </div>
                   </div>
                 </div>
@@ -3197,6 +3197,12 @@
           document.getElementById('fenton_growth_output').innerHTML = "GA:<br>Gender:<br>BBW:<br>BBL:<br>BHC:<br>Ponderal index:";
           document.getElementById('intergrowth21_growth_output').innerHTML = "GA:<br>Gender:<br>BBW:<br>BBL:<br>BHC:<br>Ponderal index:";
           document.getElementById('lubchenco_growth_output').innerHTML = "GA:<br>Gender:<br>BBW:<br>BBL:<br>BHC:<br>Ponderal index:";
+          calculateGrowthIndex();
+          break;
+        case 'age_content':
+          loadTodayDate('age_birthday');
+          loadTodayDate('age_day_of_interest');
+          calculateAge();
           break;
         case 'lab_content':
           break;
@@ -3253,6 +3259,7 @@
     calculateAntibioticsForNB();
     addCopyEventListener();
     calculateGrowthIndex();
+    calculateAge();
     fluidVersionToggle('basic');
     labProcessor();
   </script>
