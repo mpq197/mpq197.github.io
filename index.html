@@ -670,7 +670,7 @@
                     <option value="MgSO4"         >MgSO4          </option>
                     <option value="Lidocaine"     >Lidocaine      </option>
                     <option value="Insulin"       >Insulin</option>
-                    <option value="Heparin (5000U/ml)"       >Heparin</option>
+                    <option value="Heparin"       >Heparin (5000 U/ml)</option>
                     <option value="Jusomin"       >Jusomin</option>
                     <option value="Octreotide"    >Octreotide</option>
                     <!-- More options -->
@@ -683,6 +683,7 @@
                   <select id="drug_diluter_name" class="form-select text-center" onchange="calculateDrugPreperation()">
                     <option value="D5W">D5W</option>
                     <option value="N/S">N/S</option>
+                    <option value="H/S">H/S</option>
                     <option value="D/W">D/W</option>
                   </select>  
                   <span class="input-group-text justify-content-center">total</span>
@@ -753,19 +754,19 @@
                     <!-- <option value="Teicoplanin"   >Teicoplanin</option> -->
                     <!-- More options -->
                   </select>
-                  <span class="input-group-text justify-content-center" style="width: 15%;" id="drug_extract_amount_unit"> </span>
+                  <span class="input-group-text justify-content-center" style="width: 15%;"> </span>
                 </div>
                 <div class="input-group">
-                  <span class="input-group-text justify-content-center" style="width: 15%;" id="drug_extract_amount_unit">GA</span>
+                  <span class="input-group-text justify-content-center" style="width: 15%;">GA</span>
                   <input type="text" id="anti_NB_gestational_age_week" class="form-control text-center" oninput="calculateAntibioticsForNB()" />
-                  <span class="input-group-text justify-content-center" id="drug_extract_amount_unit">week</span>
+                  <span class="input-group-text justify-content-center">week</span>
                   <input type="text" id="anti_NB_gestational_age_day" class="form-control text-center" oninput="calculateAntibioticsForNB()" />
                   <span class="input-group-text justify-content-center" style="width: 15%;" >day</span>
                 </div>
                 <div class="input-group">
                   <span class="input-group-text justify-content-center" style="width: 15%;">Birthday</span>
                   <input type="date" id="anti_NB_birthday" class="form-control text-center" oninput="calculateAntibioticsForNB()" >
-                  <span class="input-group-text justify-content-center" style="width: 15%;" id="drug_extract_amount_unit"> </span>
+                  <span class="input-group-text justify-content-center" style="width: 15%;"> </span>
                 </div>
                 <!-- 小計算機 -->
                 <div class="input-group">
@@ -862,8 +863,9 @@
                   <span class="input-group-text justify-content-center" style="width: 15%;">cm</span>
                 </div>
               </div>
-              <!-- Fenton -->
+              <!-- Result -->
               <div class="card-footer">
+                <!-- Growth Index -->
                 <div class="row">
                   <div class="col-10">
                     <!-- Lubcheno -->
@@ -873,7 +875,7 @@
                       </li>
                     </ul>
                     <div class="ps-2">
-                      <p> 本數據參考自 <a href="https://doi.org/10.1542/peds.37.3.403">Lubchenco growth chart</a>，特此感謝。僅限醫院內部使用。 <br> Lubcheno et al. (1966). Pediatrics; Battaglia & Lubcheno (1967). The Journal of pediatrics.</p>
+                      <p> 本數據參考自 <a href="https://doi.org/10.1542/peds.37.3.403">Lubchenco growth chart</a>，特此感謝。僅限醫院內部使用。 <br> Lubchenco et al. (1966). Pediatrics; Battaglia & Lubcheno (1967). The Journal of pediatrics.</p>
                     </div>
                     <!-- Fenton -->
                     <ul class="list-group mt-2 mb-2">
@@ -897,6 +899,54 @@
                   <div class="col-2" style="padding-left: 0%;">
                     <div class="d-flex justify-content-center align-items-center h-100">
                       <button class="btn btn-secondary" onclick="resetForm('growth_content')">Reset</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Age Calculator -->
+        <div class="row mb-3">
+          <div class="col">
+            <div class="card h-100" id="age_content">
+              <div class="card-header text-center">Age Calculator</div>
+                <div class="card-body pb-0">
+                  <div class="input-group">
+                    <span class="input-group-text justify-content-center" style="width: 15%;">GA</span>
+                    <input type="number" id="age_GA_week" class="form-control text-center" oninput="calculateAge()" />
+                    <span class="input-group-text justify-content-center">weeks</span>
+                    <input type="number" id="age_GA_day" class="form-control text-center" oninput="calculateAge()" />
+                    <span class="input-group-text justify-content-center" style="width: 15%;">days</span>
+                  </div>
+                  <div class="input-group">
+                    <span class="input-group-text justify-content-center" style="width: 15%;">出生日期</span>
+                    <input type="date" id="age_birthday" class="form-control text-center" oninput="calculateAge()" />
+                    <span class="input-group-text justify-content-center" style="width: 15%;"></span>
+                  </div>
+                  <div class="input-group">
+                    <span class="input-group-text justify-content-center" style="width: 15%;">關注日期</span>
+                    <input type="date" id="age_day_of_interest" class="form-control text-center" oninput="calculateAge()" >
+                    <span class="input-group-text justify-content-center" style="width: 15%;"> </span>
+                  </div>
+                </div>
+              <!-- Result -->
+              <div class="card-footer">
+                <!-- Age -->
+                <div class="row">
+                  <div class="col-10">
+                    <div class="input-group flex-nowrap">
+                      <span class="input-group-text justify-content-center" style="width: 15%;">Day of life</span>
+                      <span class="input-group-text text-truncate flex-fill copy-item" id="age_day_of_life"> </span>
+                    </div>
+                    <div class="input-group flex-nowrap">
+                      <span class="input-group-text justify-content-center" style="width: 15%;">Age</span>
+                      <span class="input-group-text text-truncate flex-fill copy-item" id="age_PMA_CA"> </span>
+                    </div>
+                  </div>
+                  <div class="col-2" style="padding-left: 0%;">
+                    <div class="d-flex justify-content-center align-items-center h-100">
+                      <button class="btn btn-secondary" onclick="resetForm('age_content')">Reset</button>
                     </div>
                   </div>
                 </div>
@@ -1776,7 +1826,7 @@
       'MgSO4'             : { concentration: 100    , unit: 'mg/ml' , rateUnit: 'mg/kg/hr'   , decimalPlace: 1},
       'Lidocaine'         : { concentration: 50     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},  //小數點待確定
       'Insulin'           : { concentration: 100    , unit: 'U/ml'  , rateUnit: 'U/kg/hr'    , decimalPlace: 0},
-      'Heparin (5000U/ml)': { concentration: 5000   , unit: 'U/ml'  , rateUnit: 'U/kg/hr'    , decimalPlace: 1},
+      'Heparin'           : { concentration: 5000   , unit: 'U/ml'  , rateUnit: 'U/kg/hr'    , decimalPlace: 1},
       'Jusomin'           : { concentration: 0.83   , unit: 'mEq/ml', rateUnit: 'mEq/kg/hr'  , decimalPlace: 1},  //小數點待確定
       'Octreotide'        : { concentration: 100    , unit: 'mcg/ml', rateUnit: 'mcg/kg/hr'  , decimalPlace: 1}   //小數點待確定
     };
@@ -1789,7 +1839,7 @@
       //讀取輸入值
       let drugBW = parseFloat(document.getElementById('drug_BW').value) || 0; 
       const drugName = document.getElementById('drug_name').value;
-      let drugExtractAmount = parseFloat(document.getElementById('drug_extract_amount').value) || 0;
+      let drugExtractAmount = parseFloat(parseExpression(document.getElementById('drug_extract_amount').value)) || 0;
       const drugDiluterName = document.getElementById('drug_diluter_name').value;
       const drugTotalFinalVolume = parseFloat(document.getElementById('drug_total_final_volume').value) || 0;
       const drugInfusionRate = parseFloat(document.getElementById('drug_infusion_rate').value) || 0;
@@ -2461,6 +2511,132 @@
       return intPart + suffix;
     }
 
+
+    // *****************************************
+    // calculate age
+    // 計算days, PMA, CA
+    // *****************************************
+    function calculateAge() {
+      const gaWeekInput = document.getElementById('age_GA_week');
+      const gaDayInput = document.getElementById('age_GA_day');
+      const birthdayInput = document.getElementById('age_birthday');
+      const doiInput = document.getElementById('age_day_of_interest');
+
+      const dolSpan = document.getElementById('age_day_of_life');
+      const ageSpan = document.getElementById('age_PMA_CA');
+
+      // 工具：字串日期 -> Date 物件
+      function parseDate(value) {
+        if (!value) return null;
+        const parts = value.split('-').map(Number);
+        if (parts.length !== 3 || parts.some(isNaN)) return null;
+        return new Date(parts[0], parts[1] - 1, parts[2]);
+      }
+
+      // 工具：日期差幾天
+      function diffInDays(startDate, endDate) {
+        const msPerDay = 24 * 60 * 60 * 1000;
+        return Math.round((endDate - startDate) / msPerDay);
+      }
+
+      // 工具：轉換 天 → 週＋天
+      function toWeeksDays(totalDays) {
+        return {
+          w: Math.floor(totalDays / 7),
+          d: totalDays % 7
+        };
+      }
+
+      // 工具：月齡（真實日曆）
+      function diffInMonthsAndDays(startDate, endDate) {
+        let years = endDate.getFullYear() - startDate.getFullYear();
+        let months = endDate.getMonth() - startDate.getMonth() + years * 12;
+        let days = endDate.getDate() - startDate.getDate();
+
+        if (days < 0) {
+          months -= 1;
+          const lastDayPrevMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 0).getDate();
+          days = lastDayPrevMonth + days;
+        }
+
+        if (months < 0) {
+          months = 0;
+          days = 0;
+        }
+
+        return { months, days };
+      }
+
+      // 工具：加天數
+      function addDays(date, days) {
+        const d = new Date(date.getTime());
+        d.setDate(d.getDate() + days);
+        return d;
+      }
+
+      // 讀取資料
+      let gaWeek = parseInt(gaWeekInput.value, 10);
+      let gaDay = parseInt(gaDayInput.value, 10);
+      const birthday = parseDate(birthdayInput.value);
+      const doi = parseDate(doiInput.value);
+
+      // ---------- Day of life ----------
+      if (!birthday || !doi) {
+        dolSpan.textContent = '';
+        ageSpan.textContent = '';
+        return;
+      }
+
+      let dol = diffInDays(birthday, doi);
+
+      if (dol < 0) {
+        dolSpan.textContent = '關注日期不可早於出生日期';
+        ageSpan.textContent = '';
+        return;
+      }
+
+      dolSpan.textContent = `${dol} day${dol === 1 ? '' : 's'}`;
+
+      // ---------- GA 處理（天數） ----------
+      let gaTotalDays = null;
+
+      if (!isNaN(gaWeek) || !isNaN(gaDay)) {
+        if (isNaN(gaWeek)) gaWeek = 0;
+        if (isNaN(gaDay)) gaDay = 0;
+        gaTotalDays = gaWeek * 7 + gaDay;
+      }
+
+      // 若沒 GA → 只能顯示 chronological age
+      if (gaTotalDays == null) {
+        const { months, days } = diffInMonthsAndDays(birthday, doi);
+        ageSpan.textContent = `Chronological age: ${months}m ${days}d`;
+        return;
+      }
+
+      // ---------- 判斷早產 / 足月 ----------
+      const isPreterm = gaTotalDays < 37 * 7;
+      const pmaDays = gaTotalDays + dol;
+
+      if (isPreterm) {
+        // 早產兒：PMA < 40w → 用 PMA；>= 40w → corrected age
+        if (pmaDays < 40 * 7) {
+          const { w, d } = toWeeksDays(pmaDays);
+          ageSpan.textContent = `PMA: ${w}w ${d}d`;
+        } else {
+          // corrected age = 從 term 等於 40w0d 開始算
+          const daysToTerm = 280 - gaTotalDays;
+          const termDate = addDays(birthday, daysToTerm);
+          const { months, days } = diffInMonthsAndDays(termDate, doi);
+          ageSpan.textContent = `Corrected age (CA): ${months}m ${days}d`;
+        }
+      } else {
+        // 足月兒 → Chronological age
+        const { months, days } = diffInMonthsAndDays(birthday, doi);
+        ageSpan.textContent = `Chronological age: ${months}m ${days}d`;
+      }
+    }
+
+
     // *****************************************
     // 整理 raw lab data，並生選擇框
     // [ ] gas 重複問題
@@ -3022,6 +3198,12 @@
           document.getElementById('fenton_growth_output').innerHTML = "GA:<br>Gender:<br>BBW:<br>BBL:<br>BHC:<br>Ponderal index:";
           document.getElementById('intergrowth21_growth_output').innerHTML = "GA:<br>Gender:<br>BBW:<br>BBL:<br>BHC:<br>Ponderal index:";
           document.getElementById('lubchenco_growth_output').innerHTML = "GA:<br>Gender:<br>BBW:<br>BBL:<br>BHC:<br>Ponderal index:";
+          calculateGrowthIndex();
+          break;
+        case 'age_content':
+          loadTodayDate('age_birthday');
+          loadTodayDate('age_day_of_interest');
+          calculateAge();
           break;
         case 'lab_content':
           break;
@@ -3033,6 +3215,8 @@
 
     // 載入今天日期
     loadTodayDate('anti_NB_birthday');
+    loadTodayDate('age_birthday');
+    loadTodayDate('age_day_of_interest');
 
     // 載入預設值
     // document.getElementById('lab_raw_text').value = `
@@ -3076,6 +3260,7 @@
     calculateAntibioticsForNB();
     addCopyEventListener();
     calculateGrowthIndex();
+    calculateAge();
     fluidVersionToggle('basic');
     labProcessor();
   </script>
@@ -3083,7 +3268,7 @@
 
 <footer class="bg-dark text-white text-center py-3 mt-auto">
   <div class="container">
-    <p>© 2025 NeoAssist | v20251104 | All Rights Reserved</p>
+    <p>© 2025 NeoAssist | v20251117 | All Rights Reserved</p>
     <p>Contact us：<a href="mailto:mpq197@google.com" class="text-white">mpq197@google.com</a></p>
 
     <!-- 文件下載連結 (無標題版) -->
@@ -3105,6 +3290,7 @@
 
 
 </html>
+
 
 
 
