@@ -670,7 +670,7 @@
                     <option value="MgSO4"         >MgSO4          </option>
                     <option value="Lidocaine"     >Lidocaine      </option>
                     <option value="Insulin"       >Insulin</option>
-                    <option value="Heparin (5000U/ml)"       >Heparin</option>
+                    <option value="Heparin"       >Heparin (5000 U/ml)</option>
                     <option value="Jusomin"       >Jusomin</option>
                     <option value="Octreotide"    >Octreotide</option>
                     <!-- More options -->
@@ -683,6 +683,7 @@
                   <select id="drug_diluter_name" class="form-select text-center" onchange="calculateDrugPreperation()">
                     <option value="D5W">D5W</option>
                     <option value="N/S">N/S</option>
+                    <option value="H/S">H/S</option>
                     <option value="D/W">D/W</option>
                   </select>  
                   <span class="input-group-text justify-content-center">total</span>
@@ -1825,7 +1826,7 @@
       'MgSO4'             : { concentration: 100    , unit: 'mg/ml' , rateUnit: 'mg/kg/hr'   , decimalPlace: 1},
       'Lidocaine'         : { concentration: 50     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 2},  //小數點待確定
       'Insulin'           : { concentration: 100    , unit: 'U/ml'  , rateUnit: 'U/kg/hr'    , decimalPlace: 0},
-      'Heparin (5000U/ml)': { concentration: 5000   , unit: 'U/ml'  , rateUnit: 'U/kg/hr'    , decimalPlace: 1},
+      'Heparin'           : { concentration: 5000   , unit: 'U/ml'  , rateUnit: 'U/kg/hr'    , decimalPlace: 1},
       'Jusomin'           : { concentration: 0.83   , unit: 'mEq/ml', rateUnit: 'mEq/kg/hr'  , decimalPlace: 1},  //小數點待確定
       'Octreotide'        : { concentration: 100    , unit: 'mcg/ml', rateUnit: 'mcg/kg/hr'  , decimalPlace: 1}   //小數點待確定
     };
@@ -1838,7 +1839,7 @@
       //讀取輸入值
       let drugBW = parseFloat(document.getElementById('drug_BW').value) || 0; 
       const drugName = document.getElementById('drug_name').value;
-      let drugExtractAmount = parseFloat(document.getElementById('drug_extract_amount').value) || 0;
+      let drugExtractAmount = parseFloat(parseExpression(document.getElementById('drug_extract_amount').value)) || 0;
       const drugDiluterName = document.getElementById('drug_diluter_name').value;
       const drugTotalFinalVolume = parseFloat(document.getElementById('drug_total_final_volume').value) || 0;
       const drugInfusionRate = parseFloat(document.getElementById('drug_infusion_rate').value) || 0;
