@@ -673,6 +673,7 @@
                     <option value="Heparin"       >Heparin (5000 U/ml)</option>
                     <option value="Jusomin"       >Jusomin</option>
                     <option value="Octreotide"    >Octreotide</option>
+                    <option value="Amiodarone"    >Amiodarone</option>
                     <!-- More options -->
                   </select>
                   <input type="text" id="drug_extract_amount" class="form-control text-center" oninput="calculateDrugPreperation()" />
@@ -1828,7 +1829,8 @@
       'Insulin'           : { concentration: 100    , unit: 'U/ml'  , rateUnit: 'U/kg/hr'    , decimalPlace: 0},
       'Heparin'           : { concentration: 5000   , unit: 'U/ml'  , rateUnit: 'U/kg/hr'    , decimalPlace: 1},
       'Jusomin'           : { concentration: 0.83   , unit: 'mEq/ml', rateUnit: 'mEq/kg/hr'  , decimalPlace: 1},  //小數點待確定
-      'Octreotide'        : { concentration: 100    , unit: 'mcg/ml', rateUnit: 'mcg/kg/hr'  , decimalPlace: 1}   //小數點待確定
+      'Octreotide'        : { concentration: 100    , unit: 'mcg/ml', rateUnit: 'mcg/kg/hr'  , decimalPlace: 1},  //小數點待確定
+      'Octreotide'        : { concentration: 50     , unit: 'mg/ml' , rateUnit: 'mcg/kg/min' , decimalPlace: 1},  //小數點待確定
     };
 
 
@@ -3268,7 +3270,7 @@
 
 <footer class="bg-dark text-white text-center py-3 mt-auto">
   <div class="container">
-    <p>© 2025 NeoAssist | v20251117 | All Rights Reserved</p>
+    <p>© 2025 NeoAssist | v20251120 | All Rights Reserved</p>
     <p>Contact us：<a href="mailto:mpq197@google.com" class="text-white">mpq197@google.com</a></p>
 
     <!-- 文件下載連結 (無標題版) -->
@@ -3290,6 +3292,7 @@
 
 
 </html>
+
 
 
 
