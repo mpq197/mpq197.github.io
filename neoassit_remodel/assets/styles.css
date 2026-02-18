@@ -1,0 +1,421 @@
+:root{
+  --neo-bg: #f1e6d8;
+  --neo-card: #faf9f8;
+  --neo-dark: #333333;
+  --neo-text: #333333;
+  --neo-muted: #777777;
+  --neo-hover: #e9e7e5;
+  --neo-border: #dee2e6;
+  --neo-focus-shadow: 0 0 0 0.2rem #333333;
+
+  /* Sidebar */
+  --sb-collapsed-w: 80px;
+  --sb-expanded-w: 340px;
+  --sb-bg: #23201D;
+  --sb-surface: #2D2925;
+  --sb-hover: #3A342F;
+  --sb-border: rgba(255,255,255,.10);
+  --sb-text: #F4F1EC;
+  --sb-muted: rgba(244,241,236,.70);
+  --sb-accent: #D8C3A5;
+  --sb-focus: rgba(216,195,165,.28);
+  --sb-radius: 14px;
+}
+
+body{
+  background-color: var(--neo-bg);
+  font-family: 'Roboto', sans-serif;
+  color: var(--neo-text);
+}
+
+/* Topbar */
+.neo-topbar{
+  background: var(--neo-dark);
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+.neo-topbar-btn{
+  border-color: rgba(255,255,255,.25);
+  color: #fff;
+}
+.neo-topbar-btn:hover{
+  background: rgba(255,255,255,.12);
+}
+
+/* Shell */
+.neo-shell{
+  display: grid;
+  grid-template-columns: auto 1fr;
+  min-height: calc(100vh - 56px);
+}
+
+/* Sidebar */
+.neo-sidebar{
+  position: sticky;
+  top: 56px;
+  height: calc(100vh - 56px);
+  width: var(--sb-collapsed-w);
+  background: var(--sb-bg);
+  border-right: 1px solid var(--sb-border);
+  overflow: hidden;
+  transition: width 340ms cubic-bezier(.2,.8,.2,1);
+  z-index: 50;
+}
+.neo-sidebar-inner{
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative; /* layers overlay */
+}
+
+/* =========================================================
+   LAYERS (anti-jank in BOTH directions)
+   - two layers are absolute overlays (no layout pushing)
+   - expand: delay expanded fade-in
+   - collapse: delay collapsed fade-in
+========================================================= */
+.neo-collapsed-only,
+.neo-expanded-only{
+  position: absolute;
+  inset: 0;
+
+  transition-property: opacity, visibility;
+  transition-duration: 180ms, 0s;
+  transition-timing-function: ease, linear;
+}
+
+/* default (collapsed): collapsed visible */
+.neo-collapsed-only{
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  overflow: hidden;
+  transition-delay: 0s, 0s;
+}
+
+/* default: expanded hidden */
+.neo-expanded-only{
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  overflow: auto;
+  transition-delay: 0s, 180ms;
+}
+
+/* Desktop: hover expands */
+@media (hover: hover) and (pointer: fine){
+  .neo-sidebar:hover{
+    width: var(--sb-expanded-w);
+  }
+
+  /* expand: show expanded AFTER width grows */
+  .neo-sidebar:hover .neo-expanded-only{
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition-delay: 160ms, 160ms;
+  }
+
+  /* expand: hide collapsed immediately */
+  .neo-sidebar:hover .neo-collapsed-only{
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition-delay: 0s, 180ms;
+  }
+
+  /* collapse: show collapsed AFTER width shrinks */
+  .neo-sidebar:not(:hover) .neo-collapsed-only{
+    transition-delay: 160ms, 160ms;
+  }
+}
+
+/* Touch/manual: toggle expands */
+.neo-sidebar.is-open{
+  width: var(--sb-expanded-w);
+}
+
+/* expand: show expanded AFTER width grows */
+.neo-sidebar.is-open .neo-expanded-only{
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition-delay: 120ms, 120ms;
+}
+
+/* expand: hide collapsed immediately */
+.neo-sidebar.is-open .neo-collapsed-only{
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition-delay: 0s, 180ms;
+}
+
+/* collapse: show collapsed AFTER width shrinks */
+.neo-sidebar:not(.is-open) .neo-collapsed-only{
+  transition-delay: 120ms, 120ms;
+}
+
+/* =========================================================
+   Collapsed (group-only): equally distribute height
+========================================================= */
+.neo-group-mini{
+  height: 100%;
+  display: grid;
+  grid-auto-rows: 1fr;           /* equal height rows */
+  gap: 14px;
+  padding: 18px 12px;
+}
+
+.neo-group-mini-btn{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  border-radius: 16px;
+  text-decoration: none;
+  color: var(--sb-text);
+  border: 1px solid transparent;
+  position: relative;
+  min-height: 56px;
+}
+.neo-group-mini-btn:hover{
+  background: rgba(255,255,255,.08);
+}
+.neo-group-mini-btn.active{
+  background: rgba(255,255,255,.10);
+  border-color: rgba(255,255,255,.10);
+}
+.neo-group-mini-btn.active::before{
+  content:"";
+  position:absolute;
+  left: 7px;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--sb-accent);
+}
+
+/* group-only title */
+.neo-mini-title{
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: .02em;
+  text-align: center;
+  line-height: 1.15;
+  max-width: 100%;
+  white-space: normal;
+}
+
+/* =========================================================
+   Expanded (search + groups + tools)
+========================================================= */
+.neo-search{
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--sb-bg);
+  padding: 12px 12px 10px;
+  border-bottom: 1px solid var(--sb-border);
+}
+.neo-search .form-control{
+  background: var(--sb-surface);
+  border: 1px solid var(--sb-border);
+  color: var(--sb-text);
+  border-radius: 12px;
+}
+.neo-search .form-control::placeholder{ color: var(--sb-muted); }
+.neo-search .form-control:hover{
+  background: var(--sb-surface);
+  color: var(--sb-text);
+}
+.neo-search .form-control:focus{
+  background: var(--sb-surface);
+  color: var(--sb-text);
+  border-color: var(--sb-accent) !important;
+  box-shadow: 0 0 0 0.2rem var(--sb-focus) !important;
+}
+
+#neoSidebarGroupsExpanded{
+  padding: 12px;
+}
+
+/* Group block */
+.neo-group{
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.neo-group-h{
+  background: var(--sb-surface);
+  color: var(--sb-text);
+  font-weight: 750;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.neo-group-h:hover{
+  background: var(--sb-hover);
+}
+.neo-group-b{
+  background: var(--sb-bg);
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+/* Tool link */
+.neo-navlink{
+  position: relative;
+  display: block;
+  padding: 10px 10px 10px 12px;
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--sb-text);
+  border: 1px solid transparent;
+}
+.neo-navlink:hover{
+  background: var(--sb-hover);
+  color: var(--sb-text);
+}
+.neo-navlink.active{
+  background: rgba(255,255,255,.08);
+  border-color: rgba(255,255,255,.10);
+  font-weight: 650;
+}
+.neo-navlink.active::before{
+  content:"";
+  position:absolute;
+  left: 7px;
+  top: 9px;
+  bottom: 9px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--sb-accent);
+}
+
+/* Main */
+.neo-main{
+  padding: 16px 18px;
+}
+
+/* Cards + controls */
+.card{
+  background-color: var(--neo-card);
+  border-color: var(--neo-border);
+  margin-bottom: 12px;
+}
+.card-header{
+  background-color: var(--neo-dark);
+  color: #fff;
+}
+.input-group{
+  margin-bottom: 6px;
+}
+
+input:focus, textarea:focus, select:focus{
+  border-color: var(--neo-dark) !important;
+  box-shadow: var(--neo-focus-shadow) !important;
+}
+
+/* remove number spinners */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button{
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number]{ -moz-appearance: textfield; }
+
+/* remove select arrow */
+.form-select{
+  -webkit-appearance:none;
+  -moz-appearance:none;
+  appearance:none;
+  background-image:none !important;
+  padding-right: 0.75rem !important;
+}
+
+/* copy item */
+.copy-item{
+  background-color: var(--neo-card);
+  border-color: var(--neo-border);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* IMPORTANT: limit hover effects to main area only */
+.copy-item:hover,
+.neo-main input:hover,
+.neo-main .form-select:hover{
+  background-color: var(--neo-hover) !important;
+  color: var(--neo-text);
+}
+
+/* Group title in main */
+.neo-main-group-title{
+  font-weight: 700;
+  color: #333;
+  margin: 6px 0 10px;
+}
+
+/* Footer */
+.neo-footer{
+  background: var(--neo-dark);
+  color:#fff;
+}
+
+
+
+/* ===========================
+   Fluid Tabs – Minimal Style
+   =========================== */
+
+[data-tool="fluid"] .card-header {
+  background: #333333;
+  padding: 0;
+  border-bottom: none;
+
+  /* 圓角跟 card 一致 */
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
+}
+
+/* 移除 bootstrap 底線 */
+[data-tool="fluid"] .nav-tabs {
+  border-bottom: none;
+  display: flex;
+}
+
+/* 平分寬度 */
+[data-tool="fluid"] .nav-tabs .nav-item {
+  flex: 1;
+}
+
+/* 基本狀態 */
+[data-tool="fluid"] .nav-tabs .nav-link {
+  width: 100%;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+
+  color: rgba(255,255,255,0.45);
+  font-weight: 500;
+  padding: 0.8rem 0;
+  transition: color 0.2s ease;
+}
+
+/* hover */
+[data-tool="fluid"] .nav-tabs .nav-link:hover {
+  color: rgba(255,255,255,0.75);
+  background: transparent;
+}
+
+/* active */
+[data-tool="fluid"] .nav-tabs .nav-link.active {
+  background: transparent;
+  color: #ffffff;
+}
+
