@@ -1,0 +1,216 @@
+NeoAssist Tool Module Spec v1
+1) 檔案與路徑
+
+每個工具一個 ES module：/tools/<toolKey>.js
+
+必須輸出：
+
+export function render()
+
+export function init(root, ctx)（ctx 可選）
+
+由 core/app.js 動態 import 後：
+
+main.innerHTML = mod.render()
+
+mod.init(main, ctx)
+
+bindCopyItems(main)（或在 ctx 提供）
+
+2) DOM Scope（必須）
+2.1 外層唯一容器
+
+render() 最外層必須是：
+
+<div class="container mt-2" data-tool="toolKey">
+
+2.2 內部控件用 data-role（禁止 id）
+
+禁止使用 id="..."（避免多工具/多 view 重複）
+
+每個控件用：
+
+<input data-role="bw">
+<span data-role="result" class="copy-item">
+<button data-role="reset" type="button">
+
+2.3 重複列（rows）使用 name + data-role（可選）
+
+多列輸入（如 GIR）用 name="..." 便於 querySelectorAll：
+
+<input name="GIR_dex" data-role="dex10">
+<input name="GIR_rate">
+
+3) 初始化與防重綁（必須）
+3.1 防重綁
+
+init() 必須在 box 上設 bound：
+
+if (box.dataset.bound === "1") return;
+box.dataset.bound = "1";
+
+3.2 box 取得方式
+const box = root.querySelector(`[data-tool="${TOOL_KEY}"]`);
+if (!box) return;
+
+4) 計算與事件（必須）
+4.1 calc() 是唯一計算入口
+
+所有輸入變動都走 calc()（不要散落多個 calculateXxx）
+
+4.2 scheduleCalc()（rAF 合併 input）
+
+必須使用 rAF 版本，避免連續 input 卡頓：
+
+let rafId = 0;
+const scheduleCalc = () => {
+  if (rafId) cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(() => { rafId = 0; calc(); });
+};
+
+4.3 事件監聽策略
+
+優先用事件委派在 box 上（新增動態 row 不用重綁）
+
+box.addEventListener("input", (e) => { ... scheduleCalc(); });
+box.addEventListener("change", (e) => { ... scheduleCalc(); }); // select
+box.addEventListener("click", (e) => { ... }); // buttons
+
+5) Reset 行為（必須）
+
+Reset 必須：
+
+恢復「預設值」
+
+移除動態新增 row（若有）
+
+scheduleCalc()
+
+6) Copy 行為（建議）
+
+任何可複製輸出欄位必須帶 .copy-item
+
+如果要複製不同內容（例如有 <br>），用：
+
+<span class="copy-item" data-content="...">...</span>
+
+
+工具不自己綁 copy（交給全域 bindCopyItems(root)）
+
+7) Debug（建議）
+7.1 每個工具都有 DEBUG 開關
+const DEBUG = false;
+
+7.2 Debug log 標準格式
+
+用 [TOOL_KEY] 前綴
+
+用 console.groupCollapsed 包起來
+
+if (DEBUG) {
+  console.groupCollapsed(`[${TOOL_KEY}] calc`);
+  console.log({...});
+  console.groupEnd();
+}
+
+8) 可選 ctx（推薦，準備進階擴充）
+
+init(root, ctx) 第二參數可提供全域能力，例如：
+
+{
+  bindCopyItems,
+  parseExpression,
+  notify,          // toast
+  storage,         // localStorage wrapper
+  logger,          // 統一 logging
+}
+
+
+但 v1 不強制，你現在先用 import 也行。
+
+Tool Module Template（你可以直接複製改 TOOL_KEY）
+import { parseExpression } from "../core/utils.js";
+
+const DEBUG = false;
+const TOOL_KEY = "toolKey";
+
+export function render(){
+  return `
+    <div class="container mt-2" data-tool="${TOOL_KEY}">
+      <div class="card">
+        <div class="card-header text-center">工具標題</div>
+
+        <div class="card-body pb-0">
+          <!-- inputs -->
+          <div class="input-group">
+            <span class="input-group-text">A</span>
+            <input class="form-control text-center" data-role="a">
+          </div>
+        </div>
+
+        <div class="card-footer">
+          <div class="row">
+            <div class="col-10">
+              <div class="input-group d-flex mt-2 mb-2">
+                <span class="input-group-text copy-item flex-fill justify-content-center" data-role="result"></span>
+              </div>
+            </div>
+            <div class="col-2" style="padding-left:0;">
+              <div class="d-flex justify-content-center align-items-center h-100">
+                <button class="btn btn-secondary" type="button" data-role="reset">Reset</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  `;
+}
+
+export function init(root){
+  const box = root.querySelector(`[data-tool="${TOOL_KEY}"]`);
+  if (!box) return;
+
+  if (box.dataset.bound === "1") return;
+  box.dataset.bound = "1";
+
+  const aEl = box.querySelector('[data-role="a"]');
+  const resetBtn = box.querySelector('[data-role="reset"]');
+  const getOut = () => box.querySelector('[data-role="result"]');
+
+  let rafId = 0;
+  const scheduleCalc = () => {
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(() => { rafId = 0; calc(); });
+  };
+
+  const calc = () => {
+    const out = getOut();
+    if (!out) return;
+
+    const a = parseFloat(aEl?.value) || 0;
+
+    // compute...
+    const ans = a;
+
+    if (DEBUG){
+      console.groupCollapsed(`[${TOOL_KEY}] calc`);
+      console.log({ a, ans });
+      console.groupEnd();
+    }
+
+    out.textContent = `Result = ${ans}`;
+  };
+
+  box.addEventListener("input", (e) => {
+    if (e.target === aEl) scheduleCalc();
+  });
+
+  resetBtn?.addEventListener("click", () => {
+    if (aEl) aEl.value = "";
+    scheduleCalc();
+  });
+
+  calc();
+}
