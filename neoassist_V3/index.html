@@ -14,6 +14,10 @@
   <script src="https://cdn.jsdelivr.net/npm/intro.js/minified/intro.min.js"></script>
   <!-- 引入內網生長參考值 -->
   <script src="https://lnkwww.cgmh.org.tw/intr/c4a00/bigwig/bulletin/4AC00/growthRefs.js"></script>
+  <script>
+  // --- expose to global for NeoAssist ---
+    window.__CGMH_GROWTH__ = { fentonRefs, lubchencoRefs };
+  </script>
 
 </head>
 
@@ -25,7 +29,7 @@
       <div class="d-flex align-items-center gap-2">
         <button class="btn btn-sm neo-topbar-btn" id="sidebarToggleBtn" type="button" aria-label="Toggle sidebar">☰</button>
         <div class="text-white fw-semibold">NeoAssist</div>
-        <div class="text-white opacity-75 small">v20260218</div>
+        <div class="text-white opacity-75 small">v20260222</div>
       </div>
     </div>
   </header>
@@ -60,7 +64,7 @@
   <!-- Footer -->
   <footer class="neo-footer mt-auto">
     <div class="container text-center py-3">
-      <p class="mb-1">© 2025 NeoAssist | v20260218 | All Rights Reserved</p>
+      <p class="mb-1">© 2025 NeoAssist | v20260222 | All Rights Reserved</p>
       <p class="mb-0">Contact us：<a href="mailto:mpq197@gmail.com" class="text-white">mpq197@gmail.com</a></p>
     </div>
   </footer>
