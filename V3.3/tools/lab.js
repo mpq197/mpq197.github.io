@@ -181,6 +181,9 @@ export function init(root) {
   let rowSpecimens = null; // array same len as rows, each specimen string
   let specimens = null; // unique specimen list (sorted)
 
+  // keep user's manual item selection across specimen UI rebuilds (store ORIGINAL row indices)
+  let selectedItemIdxSet = new Set();
+
   // ---- constants (same as your original)
   const labHeaderAbbrDict = {
     "項目": "[Lab]",
@@ -252,7 +255,7 @@ export function init(root) {
 
   const presetSelectionsMap = {
     "lab_preset_TPN_minor": ["WBC", "Hb", "Hct", "Plt", "Na", "K", "Cl", "Ca", "Mg", "P", "BUN", "Cr", "AST", "ALT", "DB", "TB", "CRP", "Pct"],
-    "lab_preset_TPN_major": ["TG", "Chol", "TP", "Alb", "ALP", "γGT", "iPTH", "fT4", "TSH"],
+    "lab_preset_TPN_major": ["TG", "Chol", "TP", "Alb", "ALP", "γGT", "iPTH"],
     "lab_preset_gas": ["pH", "pCO2", "pO2", "HCO3", "SBE"],
     "lab_preset_cv": ["CK-MB", "hs-Troponin I", "Lactate", "BNP", "NT-ProBNP"],
     "lab_preset_gi": ["BUN", "Cr", "AST", "ALT", "DB", "TB", "ALP", "γGT", "Amylase", "Lipase", "Na", "K", "Cl", "iCa", "Ca", "Mg", "P"],
@@ -262,7 +265,6 @@ export function init(root) {
 
   // 合併 minor + major，順序 = minor 在前、major 在後，並去重
   const uniq = (arr) => Array.from(new Set(arr));
-
   presetSelectionsMap["lab_preset_tpn_fixed"] = uniq([
     ...(presetSelectionsMap["lab_preset_TPN_minor"] || []),
     ...(presetSelectionsMap["lab_preset_TPN_major"] || []),
@@ -287,6 +289,26 @@ export function init(root) {
   function clearToBr(el) {
     if (!el) return;
     el.replaceChildren(document.createElement("br"));
+  }
+
+  // Keep user's manual item selections in sync with DOM.
+  function syncSelectedItemsFromDOM() {
+    const cbs = Array.from(box.querySelectorAll('[data-role="itemCb"]'));
+    const next = new Set();
+    for (const cb of cbs) {
+      if (!cb.checked) continue;
+      const idx = Number(cb.dataset.index);
+      if (Number.isFinite(idx)) next.add(idx);
+    }
+    selectedItemIdxSet = next;
+  }
+
+  function applySavedItemSelectionToDOM() {
+    const cbs = Array.from(box.querySelectorAll('[data-role="itemCb"]'));
+    for (const cb of cbs) {
+      const idx = Number(cb.dataset.index);
+      cb.checked = Number.isFinite(idx) ? selectedItemIdxSet.has(idx) : false;
+    }
   }
 
   function buildDateCheckboxes(headers) {
@@ -336,7 +358,10 @@ export function init(root) {
 
     specimenSelEl.replaceChildren();
 
-    // default: all checked
+    // default: prefer B + BV (if exist). If neither exists, fallback to all checked.
+    const preferred = new Set(["B", "BV"]);
+    const hasPreferred = specList.some((sp) => preferred.has(String(sp ?? "").trim()));
+
     specList.forEach((sp, idx) => {
       const input = document.createElement("input");
       input.type = "checkbox";
@@ -344,7 +369,11 @@ export function init(root) {
       input.dataset.role = "specimenCb";
       input.dataset.value = sp;
       input.id = `lab_specimen_${idx}`;
-      input.checked = true;
+      if (hasPreferred) {
+        input.checked = preferred.has(String(sp ?? "").trim());
+      } else {
+        input.checked = true;
+      }
 
       const label = document.createElement("label");
       label.className = "btn btn-outline-secondary btn-check-label mt-1 ml-1";
@@ -361,7 +390,7 @@ export function init(root) {
   }
 
   function getLabCategory(lab) {
-    const hema = new Set(["WBC","Hb","Hct","Plt","Seg","Band","Lym","Mono","Eos","Baso","Atyp Lym","Meta Mye","Myelocyte","Promyelocyte","Blast","ANC","nRBC"]);
+    const hema = new Set(["WBC","Hb","Hct","Plt","Seg","Band","Lym","Mono","Eos","Baso","Atyp Lym","Meta Mye","Myelocyte","Promyelocyte","Blast","Megakaryocyte","ANC","nRBC"]);
     const coag = new Set(["PT","INR","aPTT","aPTT/m","Fibrinogen","D-dimer","FDP"]);
     const lyte = new Set(["Na","K","Cl","iCa","Ca","Mg","P","Zn"]);
     const renalLiver = new Set(["BUN","Cr","AST","ALT","DB","TB","ALP","γGT"]);
@@ -381,7 +410,8 @@ export function init(root) {
     return "Other";
   }
 
-  function buildItemCheckboxes(headers, rows, specimensByRow) {
+  // NOTE: rows/specimensByRow can be filtered view; origIndices maps view-rowIdx -> original abbrRows index
+  function buildItemCheckboxes(headers, rows, specimensByRow, origIndices = null) {
     if (!headers || !rows) {
       clearToBr(itemSelEl);
       return;
@@ -422,10 +452,12 @@ export function init(root) {
         input.type = "checkbox";
         input.className = "btn-check";
         input.dataset.role = "itemCb";
-        input.dataset.index = String(rowIdx);
+        // IMPORTANT: keep dataset.index as ORIGINAL index to keep downstream logic unchanged
+        const originalIndex = origIndices ? origIndices[rowIdx] : rowIdx;
+        input.dataset.index = String(originalIndex);
         input.dataset.lab = lab;
         input.dataset.specimen = sp;
-        input.id = `lab_item_${rowIdx}`;
+        input.id = `lab_item_${originalIndex}`;
 
         const label = document.createElement("label");
         label.className = "btn btn-outline-secondary btn-check-label mt-1 ml-1";
@@ -512,6 +544,157 @@ export function init(root) {
     // if none checked, fallback to first known specimen
     if (specimens && specimens.length) return specimens[0];
     return "(空)";
+  }
+
+  // -----------------------------
+  // Specimen label formatting (NEW)
+  // Rules:
+  // 1) B is default: no marking.
+  // 2) BV -> v-<Lab>, Urine -> u-<Lab>, CSF -> c-<Lab>, Stool -> s-<Lab>, Pleural -> pl-<Lab>, Ascites -> as-<Lab>
+  // 3) If only ONE non-blood specimen selected (e.g., only Urine), show header "Specimen: U (urine)" and suppress per-row prefixes.
+  // 4) If any marking happens, output legend at the very last line.
+  // -----------------------------
+
+  const DEFAULT_BLOOD_SPECIMENS = new Set(["B"]); // ONLY B is default no-mark
+  const BLOOD_RELATED_SPECIMENS = new Set(["B", "BV"]); // treat BV as blood-related for rule #3
+
+  function normalizeSpecimenKey(sp) {
+    const s = String(sp ?? "").trim();
+    if (!s) return "";
+    // keep original for display elsewhere, but normalize for matching
+    return s.toUpperCase();
+  }
+
+  function specimenMeta(sp) {
+    const key = normalizeSpecimenKey(sp);
+
+    // You can expand synonyms here if HIS uses different text.
+    const map = {
+      "B":   { code: "B",  prefix: "",   legendKey: "b",  meaning: "blood (default)" }, // default, usually not shown
+      "BV":  { code: "BV", prefix: "v-", legendKey: "v",  meaning: "venous blood" },
+      "U":   { code: "U",  prefix: "u-", legendKey: "u",  meaning: "urine" },
+      "URINE": { code: "U", prefix: "u-", legendKey: "u", meaning: "urine" },
+
+      "CSF": { code: "CSF", prefix: "c-", legendKey: "c", meaning: "CSF" },
+
+      "S":     { code: "S", prefix: "s-", legendKey: "s", meaning: "stool" },
+      "STOOL": { code: "S", prefix: "s-", legendKey: "s", meaning: "stool" },
+
+      "PLEURAL": { code: "PL", prefix: "pl-", legendKey: "pl", meaning: "pleural" },
+      "PL":      { code: "PL", prefix: "pl-", legendKey: "pl", meaning: "pleural" },
+
+      "ASCITES": { code: "AS", prefix: "as-", legendKey: "as", meaning: "ascites" },
+      "AS":      { code: "AS", prefix: "as-", legendKey: "as", meaning: "ascites" },
+    };
+
+    if (map[key]) return map[key];
+
+    // fallback: use 1–2 letters as prefix
+    const short = key.slice(0, 2);
+    const prefix = short ? `${short.toLowerCase()}-` : "";
+    return {
+      code: key || "(空)",
+      prefix,
+      legendKey: short.toLowerCase() || "?",
+      meaning: String(sp ?? "").trim() || "(unknown)",
+    };
+  }
+
+  function computeSpecimenContextForOutput() {
+    // Selected specimens from UI
+    const sel = Array.from(getSelectedSpecimensSet()).map(normalizeSpecimenKey).filter(Boolean);
+
+    // Rule #3 trigger: only ONE non-blood specimen selected (exclude blood-related specimens B/BV)
+    const nonBlood = sel.filter((k) => !BLOOD_RELATED_SPECIMENS.has(k));
+    const singleNonBloodOnly = nonBlood.length === 1 && sel.length === 1; // only that one selected
+
+    // Build header line if rule #3 active
+    let headerLine = "";
+    let headerLegend = null;
+    if (singleNonBloodOnly) {
+      const m = specimenMeta(nonBlood[0]);
+      headerLine = `Specimen: ${m.code} (${m.meaning})`;
+      headerLegend = m; // for legend at last line
+    }
+
+    return {
+      selectedKeys: new Set(sel),
+      suppressRowPrefix: singleNonBloodOnly, // suppress per-row prefixes when only one non-blood specimen selected
+      headerLine,
+      headerLegend,
+    };
+  }
+
+  function formatLabLabel(labName, specimen, ctx, usedLegendSet) {
+    const lab = String(labName ?? "").trim();
+    const spKey = normalizeSpecimenKey(specimen);
+
+    // Rule #1: B no mark
+    if (DEFAULT_BLOOD_SPECIMENS.has(spKey)) return lab;
+
+    const m = specimenMeta(spKey);
+
+    // If rule #3 active: we already show header, suppress per-row prefix
+    if (ctx?.suppressRowPrefix) {
+      // still record legend usage (so last line shows meaning)
+      if (usedLegendSet) usedLegendSet.set(m.legendKey, m);
+      return lab;
+    }
+
+    // Normal: add prefix for non-default specimen
+    if (usedLegendSet) usedLegendSet.set(m.legendKey, m);
+    return `${m.prefix}${lab}`;
+  }
+
+  function buildLegendLine(usedLegendSet, ctx) {
+    // Only show legend if there is any marking OR header is shown
+    const items = [];
+
+    // header specimen legend
+    if (ctx?.headerLegend) {
+      items.push(`${ctx.headerLegend.legendKey}=${ctx.headerLegend.code}(${ctx.headerLegend.meaning})`);
+    }
+
+    // prefix-used legends
+    if (usedLegendSet && usedLegendSet.size) {
+      for (const [k, m] of usedLegendSet.entries()) {
+        // avoid duplicate with header legendKey
+        if (ctx?.headerLegend && ctx.headerLegend.legendKey === k) continue;
+        items.push(`${k}=${m.code}(${m.meaning})`);
+      }
+    }
+
+    if (!items.length) return "";
+    return `\nSpecimen legend: ${items.join(", ")}`;
+  }
+
+
+  // Rebuild item checkbox UI according to currently selected specimens.
+  // Preserve user's manual item selections (intersection with filtered view).
+  function rebuildItemsForSpecimens() {
+    if (!abbrHeaders || !abbrRows || !rowSpecimens) return;
+
+    // remember current manual selection before tearing down DOM
+    syncSelectedItemsFromDOM();
+
+    const sel = getSelectedSpecimensSet(); // Set of specimen strings
+    const filteredRows = [];
+    const filteredRowSpecs = [];
+    const origIndices = [];
+
+    for (let i = 0; i < abbrRows.length; i++) {
+      const sp = rowSpecimens[i] || "(空)";
+      if (!sel.size || sel.has(sp)) {
+        filteredRows.push(abbrRows[i]);
+        filteredRowSpecs.push(sp);
+        origIndices.push(i);
+      }
+    }
+
+    buildItemCheckboxes(abbrHeaders, filteredRows, filteredRowSpecs, origIndices);
+
+    // re-check user's previous selection for items that still exist in this filtered view
+    applySavedItemSelectionToDOM();
   }
 
   // -----------------------------
@@ -647,7 +830,7 @@ export function init(root) {
     };
   }
 
-  function buildFilteredArray(headers, rows) {
+  function buildFilteredArray(headers, rows, ctx, usedLegendSet) {
     if (!headers || !rows) return null;
 
     const selectedCols = Array.from(box.querySelectorAll('[data-role="dateCb"]:checked'))
@@ -673,7 +856,7 @@ export function init(root) {
       ...selectedRows.map((i) => {
         const sp = rowSpecimens?.[i] || "(空)";
         return selectedCols.map((j, k) => {
-          if (k === 0) return `${rows[i]?.[0] ?? ""}(${sp})`;
+          if (k === 0) return formatLabLabel(rows[i]?.[0] ?? "", sp, ctx, usedLegendSet);
           return rows[i]?.[j] ?? "";
         });
       }),
@@ -747,7 +930,7 @@ export function init(root) {
     outEl.appendChild(pre);
   }
 
-  function buildTPNFixedText(headers, rows) {
+  function buildTPNFixedText(headers, rows, ctx, usedLegendSet) {
     if (!headers || !rows) return "";
 
     // selected cols
@@ -778,7 +961,7 @@ export function init(root) {
       const body = items.map((labName) => {
         const found = rowByLab.get(labName);
         return selectedCols.map((colIndex, idxInSelected) => {
-          if (idxInSelected === 0) return `${labName}(${pickedSpecimen})`;
+          if (idxInSelected === 0) return formatLabLabel(labName, pickedSpecimen, ctx, usedLegendSet);
           return found?.[colIndex] ?? "";
         });
       });
@@ -960,21 +1143,27 @@ export function init(root) {
   function renderOutput() {
     const presetId = getCheckedRadioId("lab_presets_selection");
 
+    // compute specimen context for this render
+    const ctx = computeSpecimenContextForOutput();
+    const usedLegendSet = new Map(); // legendKey -> meta
+
+    let mainText = "";
+
     if (presetId === "lab_preset_tpn_fixed") {
-      const txt = buildTPNFixedText(abbrHeaders, abbrRows);
-      setOutputText(txt);
-      renderTrendChart();
-      return;
+      mainText = buildTPNFixedText(abbrHeaders, abbrRows, ctx, usedLegendSet);
+    } else {
+      const m = buildFilteredArray(abbrHeaders, abbrRows, ctx, usedLegendSet);
+      mainText = m ? toAlignedText(m) : "";
     }
 
-    const m = buildFilteredArray(abbrHeaders, abbrRows);
-    if (!m) {
-      setOutputText("");
-      renderTrendChart();
-      return;
-    }
-    const txt = toAlignedText(m);
-    setOutputText(txt);
+    const lines = [];
+    if (ctx.headerLine) lines.push(ctx.headerLine);
+    if (mainText) lines.push(mainText);
+
+    const legendLine = buildLegendLine(usedLegendSet, ctx);
+    if (legendLine) lines.push(legendLine);
+
+    setOutputText(lines.join("\n"));
     renderTrendChart();
   }
 
@@ -989,6 +1178,9 @@ export function init(root) {
     rowSpecimens = parsed.rowSpecimens;
     specimens = parsed.specimens;
 
+    // reset manual selection on new raw input
+    selectedItemIdxSet = new Set();
+
     if (DEBUG) {
       console.groupCollapsed("[lab] process");
       console.log({ headers: abbrHeaders, rows: abbrRows?.length, specimens });
@@ -997,10 +1189,15 @@ export function init(root) {
 
     buildDateCheckboxes(abbrHeaders);
     buildSpecimenCheckboxes(specimens);
-    buildItemCheckboxes(abbrHeaders, abbrRows, rowSpecimens);
+
+    // initial items: show only selected specimens (default B/BV if present)
+    rebuildItemsForSpecimens();
 
     applyDatePreset(); // default: 近5次
     applyItemPreset();
+
+    // store preset-applied selection as baseline manual selection
+    syncSelectedItemsFromDOM();
 
     renderOutput();
   };
@@ -1029,7 +1226,9 @@ export function init(root) {
       return;
     }
     if (t?.name === "lab_presets_selection") {
+      // preset change overwrites selection by design
       applyItemPreset();
+      syncSelectedItemsFromDOM();
       scheduleOutput();
       return;
     }
@@ -1038,7 +1237,21 @@ export function init(root) {
       return;
     }
 
-    if (t?.matches?.('[data-role="dateCb"],[data-role="itemCb"],[data-role="specimenCb"]')) {
+    // user manual selection update
+    if (t?.matches?.('[data-role="itemCb"]')) {
+      syncSelectedItemsFromDOM();
+      scheduleOutput();
+      return;
+    }
+
+    // rebuild item list when specimen changes (keep manual selection for remaining items)
+    if (t?.matches?.('[data-role="specimenCb"]')) {
+      rebuildItemsForSpecimens();
+      scheduleOutput();
+      return;
+    }
+
+    if (t?.matches?.('[data-role="dateCb"]')) {
       scheduleOutput();
       return;
     }
@@ -1052,6 +1265,7 @@ export function init(root) {
     dateIsoKeys = null;
     rowSpecimens = null;
     specimens = null;
+    selectedItemIdxSet = new Set();
 
     clearToBr(dateSelEl);
     clearToBr(specimenSelEl);
