@@ -833,7 +833,7 @@ export function init(root) {
   function buildFilteredArray(headers, rows, ctx, usedLegendSet) {
     if (!headers || !rows) return null;
 
-    const selectedCols = Array.from(box.querySelectorAll('[data-role="dateCb"]:checked'))
+      const selectedCols = Array.from(box.querySelectorAll('[data-role="dateCb"]:checked'))
       .map((cb) => Number(cb.dataset.index))
       .filter(Number.isFinite);
 
@@ -933,19 +933,18 @@ export function init(root) {
   function buildTPNFixedText(headers, rows, ctx, usedLegendSet) {
     if (!headers || !rows) return "";
 
-    // selected cols
-    const selectedCols = Array.from(box.querySelectorAll('[data-role="dateCb"]:checked'))
+    // selected cols (as chosen by user)
+    const selectedColsAll = Array.from(box.querySelectorAll('[data-role="dateCb"]:checked'))
       .map((cb) => Number(cb.dataset.index))
       .filter(Number.isFinite);
 
-    if (!selectedCols.length) return "";
+    // Need at least [Lab] + 1 date selected at UI level; otherwise no output.
+    if (!selectedColsAll.length) return "";
 
     // TPN fixed: single specimen only
     const pickedSpecimen = pickSingleSpecimenForTPNFixed();
 
-    const headerFiltered = headers.filter((_, i) => selectedCols.includes(i));
-
-    // labName -> row (for picked specimen only)
+    // Build labName -> row for picked specimen only
     const rowByLab = new Map();
     for (let idx = 0; idx < rows.length; idx++) {
       const sp = rowSpecimens?.[idx] || "(空)";
@@ -957,16 +956,57 @@ export function init(root) {
 
     const transpose = (m) => m[0].map((_, i) => m.map((row) => row[i] ?? ""));
 
-    const buildForcedVerticalBlock = (items) => {
-      const body = items.map((labName) => {
+    const classificationEndTexts = ["Plt", "P", "TB"];
+    const markBars = (m) =>
+      m.map((row) =>
+        row.map((cell) => (classificationEndTexts.includes(cell) ? cell + " |" : cell))
+      );
+
+    // Helper: detect if a date column (colIndex) has ANY value among specified labs
+    function makeHasAnyValueInCol(labs) {
+      return (colIndex) => {
+        for (const labName of labs) {
+          const r = rowByLab.get(labName);
+          const v = String(r?.[colIndex] ?? "").trim();
+          if (v !== "") return true;
+        }
+        return false;
+      };
+    }
+
+    // Helper: build a vertical block for a lab list, but
+    // - it filters date columns that are entirely empty within THIS lab list
+    // - returns null if no date columns remain (i.e., only [Lab] remains)
+    function buildForcedVerticalBlock(items) {
+      const labs = (items || []).filter(Boolean);
+
+      // keep [Lab] col (0) always if selected; filter date cols based on emptiness within this block
+      const hasAny = makeHasAnyValueInCol(labs);
+
+      // ensure we keep column 0 if user selected it; but your UI typically includes 0 when using presets
+      const selectedCols = selectedColsAll
+        .filter((colIdx) => colIdx === 0 || hasAny(colIdx));
+
+      // If after filtering, there is no date col left, don't output this block
+      // We treat "date cols" as any selected col other than 0
+      const hasAnyDateCol = selectedCols.some((c) => c !== 0);
+      if (!hasAnyDateCol) return null;
+
+      const headerFiltered = headers.filter((_, i) => selectedCols.includes(i));
+
+      const body = labs.map((labName) => {
         const found = rowByLab.get(labName);
+
         return selectedCols.map((colIndex, idxInSelected) => {
-          if (idxInSelected === 0) return formatLabLabel(labName, pickedSpecimen, ctx, usedLegendSet);
+          if (idxInSelected === 0) {
+            // label cell: apply specimen prefixing rules
+            return formatLabLabel(labName, pickedSpecimen, ctx, usedLegendSet);
+          }
           return found?.[colIndex] ?? "";
         });
       });
 
-      // sort by labOrder (strip specimen suffix)
+      // sort by labOrder (strip specimen suffix if any)
       body.sort((a, b) => {
         const la = String(a[0] ?? "").split("(")[0];
         const lb = String(b[0] ?? "").split("(")[0];
@@ -976,30 +1016,38 @@ export function init(root) {
       });
 
       return [headerFiltered, ...body];
-    };
+    }
 
     const minorItems = presetSelectionsMap["lab_preset_TPN_minor"] || [];
     const majorItems = presetSelectionsMap["lab_preset_TPN_major"] || [];
 
+    // Build blocks independently (each removes its own empty date columns)
     const minorV = buildForcedVerticalBlock(minorItems);
     const majorV = buildForcedVerticalBlock(majorItems);
 
-    // fixed format uses horizontal (transpose)
-    let minorH = transpose(minorV);
-    let majorH = transpose(majorV);
+    // If both blocks are empty after filtering, output nothing
+    if (!minorV && !majorV) return "";
 
-    const classificationEndTexts = ["Plt", "P", "TB"];
-    const markBars = (m) =>
-      m.map((row) => row.map((cell) => (classificationEndTexts.includes(cell) ? cell + " |" : cell)));
+    // Convert each block to fixed-format horizontal (transpose)
+    let t1 = "";
+    if (minorV) {
+      let minorH = transpose(minorV);
+      minorH = markBars(minorH);
+      t1 = toAlignedText(minorH).trimEnd();
+    }
 
-    minorH = markBars(minorH);
-    majorH = markBars(majorH);
+    let t2 = "";
+    if (majorV) {
+      let majorH = transpose(majorV);
+      majorH = markBars(majorH);
+      t2 = toAlignedText(majorH).trimEnd();
+    }
 
-    const t1 = toAlignedText(minorH).trimEnd();
-    const t2 = toAlignedText(majorH).trimEnd();
-
-    // two blank lines between blocks
-    return [t1, "", "", t2].join("\n");
+    // Join blocks:
+    // - if only one exists, return it
+    // - if both exist, keep two blank lines between blocks (as original)
+    if (t1 && t2) return [t1, "", "", t2].join("\n");
+    return (t1 || t2 || "").trimEnd();
   }
 
   // -----------------------------

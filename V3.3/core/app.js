@@ -32,7 +32,6 @@ const GROUPS = [
       { key: "growth", label: "生長測量", module: "../tools/growth.js" },
       { key: "age", label: "年齡計算", module: "../tools/age.js" },
       { key: "umbilical_cath_len", label: "UA/UV 深度", module: "../tools/umbilical_cath_len.js" },
-      
     ],
   },
   {
@@ -48,14 +47,34 @@ const GROUPS = [
 
 const MODULE_CACHE = new Map();
 
-const sidebar  = document.getElementById("neoSidebar");
-const toggleBtn = document.getElementById("sidebarToggleBtn");
+const sidebar   = document.getElementById("neoSidebar");
 const miniMount = document.getElementById("neoSidebarGroupsCollapsed");
 const fullMount = document.getElementById("neoSidebarGroupsExpanded");
 const searchEl  = document.getElementById("neoToolSearch");
+const mainEl    = document.getElementById("neoMain");
+
+const toggleBtnCollapsed = document.getElementById("sidebarToggleBtnCollapsed");
+const toggleBtnExpanded  = document.getElementById("sidebarToggleBtnExpanded");
 
 function isHoverCapable(){
   return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+}
+
+/* -------------------------
+   Sidebar open/close helpers
+------------------------- */
+function openSidebar(){
+  sidebar?.classList.add("is-open");
+  // expanded layer will be visible after transition; focusing immediately is fine
+  searchEl?.focus();
+}
+function closeSidebar(){
+  sidebar?.classList.remove("is-open");
+}
+function toggleSidebar(){
+  if (!sidebar) return;
+  sidebar.classList.toggle("is-open");
+  if (sidebar.classList.contains("is-open")) searchEl?.focus();
 }
 
 /* -------------------------
@@ -105,6 +124,8 @@ async function importModule(path){
 function formatGroupTitle(title){ return title; }
 
 function buildCollapsedGroups(){
+  if (!miniMount) return;
+
   miniMount.innerHTML = `<div class="neo-group-mini"></div>`;
   const wrap = miniMount.querySelector(".neo-group-mini");
 
@@ -115,13 +136,12 @@ function buildCollapsedGroups(){
     a.dataset.group = g.id;
     a.innerHTML = `<div class="neo-mini-title">${formatGroupTitle(g.title)}</div>`;
 
-    a.addEventListener("click", async () => {
+    a.addEventListener("click", async (e) => {
+      e.preventDefault();
       await loadGroup(g.id);
       setHashGroup(g.id);
       setActive();
-
-      if (!isHoverCapable()) sidebar.classList.add("is-open");
-      searchEl?.focus();
+      openSidebar();
     });
 
     wrap.appendChild(a);
@@ -132,6 +152,8 @@ function buildCollapsedGroups(){
    Sidebar: expanded groups+tools
 ------------------------- */
 function buildExpandedGroups(filterText=""){
+  if (!fullMount) return;
+
   const q = filterText.trim().toLowerCase();
   fullMount.innerHTML = "";
 
@@ -148,11 +170,12 @@ function buildExpandedGroups(filterText=""){
     h.textContent = g.title;
 
     // click group header => dashboard
-    h.addEventListener("click", async () => {
+    h.addEventListener("click", async (e) => {
+      e.preventDefault();
       await loadGroup(g.id);
       setHashGroup(g.id);
       setActive();
-      if (!isHoverCapable()) sidebar.classList.remove("is-open");
+      if (!isHoverCapable()) closeSidebar();
     });
 
     const b = document.createElement("div");
@@ -170,7 +193,7 @@ function buildExpandedGroups(filterText=""){
         await loadTool(it.key);
         setHashTool(it.key);
         setActive();
-        if (!isHoverCapable()) sidebar.classList.remove("is-open");
+        if (!isHoverCapable()) closeSidebar();
       });
 
       b.appendChild(link);
@@ -237,8 +260,8 @@ async function loadGroup(groupId){
   `;
 
   const row = main.querySelector("#neoDashRow");
+  if (!row) return;
 
-  // Load all modules in parallel
   const modules = await Promise.all(
     g.items.map(async (it) => {
       const mod = await importModule(it.module);
@@ -248,7 +271,7 @@ async function loadGroup(groupId){
 
   modules.forEach(({ it, mod }) => {
     const col = document.createElement("div");
-    col.className = "col-12"; // ✅ ALWAYS single column
+    col.className = "col-12";
 
     const mount = document.createElement("div");
     mount.className = "neo-tool-host";
@@ -264,18 +287,8 @@ async function loadGroup(groupId){
 }
 
 /* -------------------------
-   UI bindings
+   Router
 ------------------------- */
-toggleBtn?.addEventListener("click", () => {
-  sidebar.classList.toggle("is-open");
-  if (sidebar.classList.contains("is-open")) searchEl?.focus();
-});
-
-searchEl?.addEventListener("input", () => {
-  buildExpandedGroups(searchEl.value);
-});
-
-/* Router */
 async function applyRoute(){
   const route = getRouteFromHash();
   if (route.type === "tool") await loadTool(route.key);
@@ -285,12 +298,44 @@ async function applyRoute(){
 
 window.addEventListener("hashchange", applyRoute);
 
+/* -------------------------
+   UI bindings (final behavior)
+------------------------- */
+function bindToggle(btn){
+  btn?.addEventListener("click", (e) => {
+    e.stopPropagation(); // prevent sidebar click handler
+    toggleSidebar();
+  });
+}
+bindToggle(toggleBtnCollapsed);
+bindToggle(toggleBtnExpanded);
+
+// Click sidebar => OPEN (only), ignore clicks on interactive elements
+sidebar?.addEventListener("click", (e) => {
+  if (e.target.closest("#sidebarToggleBtnCollapsed")) return;
+  if (e.target.closest("#sidebarToggleBtnExpanded")) return;
+  if (e.target.closest(".neo-navlink")) return;
+  if (e.target.closest(".neo-search")) return;
+
+  if (!sidebar.classList.contains("is-open")) openSidebar();
+});
+
+// Click main => CLOSE
+mainEl?.addEventListener("click", () => {
+  closeSidebar();
+});
+
+// Search filter
+searchEl?.addEventListener("input", () => {
+  buildExpandedGroups(searchEl.value);
+});
+
 window.addEventListener("load", async () => {
   buildCollapsedGroups();
   buildExpandedGroups("");
 
   await applyRoute();
 
-  // touch devices: start collapsed
-  if (!isHoverCapable()) sidebar.classList.remove("is-open");
+  // start collapsed
+  closeSidebar();
 });

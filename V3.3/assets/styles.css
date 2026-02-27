@@ -28,34 +28,18 @@ body{
   color: var(--neo-text);
 }
 
-/* Topbar */
-.neo-topbar{
-  background: var(--neo-dark);
-  color: #fff;
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-}
-.neo-topbar-btn{
-  border-color: rgba(255,255,255,.25);
-  color: #fff;
-}
-.neo-topbar-btn:hover{
-  background: rgba(255,255,255,.12);
-}
-
-/* Shell */
+/* Shell (no topbar) */
 .neo-shell{
   display: grid;
   grid-template-columns: auto 1fr;
-  min-height: calc(100vh - 56px);
+  min-height: 100vh;
 }
 
 /* Sidebar */
 .neo-sidebar{
   position: sticky;
-  top: 56px;
-  height: calc(100vh - 56px);
+  top: 0;
+  height: 100vh;
   width: var(--sb-collapsed-w);
   background: var(--sb-bg);
   border-right: 1px solid var(--sb-border);
@@ -71,10 +55,7 @@ body{
 }
 
 /* =========================================================
-   LAYERS (anti-jank in BOTH directions)
-   - two layers are absolute overlays (no layout pushing)
-   - expand: delay expanded fade-in
-   - collapse: delay collapsed fade-in
+   LAYERS (anti-jank)
 ========================================================= */
 .neo-collapsed-only,
 .neo-expanded-only{
@@ -86,7 +67,7 @@ body{
   transition-timing-function: ease, linear;
 }
 
-/* default (collapsed): collapsed visible */
+/* default (collapsed visible) */
 .neo-collapsed-only{
   opacity: 1;
   visibility: visible;
@@ -95,76 +76,67 @@ body{
   transition-delay: 0s, 0s;
 }
 
-/* default: expanded hidden */
+/* default (expanded hidden) */
 .neo-expanded-only{
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  overflow: auto;
+  overflow: auto; /* expanded layer scrolls */
   transition-delay: 0s, 180ms;
 }
 
-/* Desktop: hover expands */
-@media (hover: hover) and (pointer: fine){
-  .neo-sidebar:hover{
-    width: var(--sb-expanded-w);
-  }
+/* ✅ NO HOVER AUTO-EXPAND (intentionally removed) */
 
-  /* expand: show expanded AFTER width grows */
-  .neo-sidebar:hover .neo-expanded-only{
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-    transition-delay: 160ms, 160ms;
-  }
-
-  /* expand: hide collapsed immediately */
-  .neo-sidebar:hover .neo-collapsed-only{
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-    transition-delay: 0s, 180ms;
-  }
-
-  /* collapse: show collapsed AFTER width shrinks */
-  .neo-sidebar:not(:hover) .neo-collapsed-only{
-    transition-delay: 160ms, 160ms;
-  }
-}
-
-/* Touch/manual: toggle expands */
+/* manual open */
 .neo-sidebar.is-open{
   width: var(--sb-expanded-w);
 }
-
-/* expand: show expanded AFTER width grows */
 .neo-sidebar.is-open .neo-expanded-only{
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
   transition-delay: 120ms, 120ms;
 }
-
-/* expand: hide collapsed immediately */
 .neo-sidebar.is-open .neo-collapsed-only{
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
   transition-delay: 0s, 180ms;
 }
-
-/* collapse: show collapsed AFTER width shrinks */
 .neo-sidebar:not(.is-open) .neo-collapsed-only{
   transition-delay: 120ms, 120ms;
 }
 
 /* =========================================================
+   Toggle button (in each layer)
+========================================================= */
+.neo-sb-toggle{
+  padding: 12px 12px 0;
+}
+.neo-sb-toggle-btn{
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--sb-border);
+  background: var(--sb-surface);
+  color: var(--sb-text);
+}
+.neo-sb-toggle-btn:hover{
+  background: var(--sb-hover);
+  color: var(--sb-text);
+}
+
+/* =========================================================
    Collapsed (group-only): equally distribute height
 ========================================================= */
+#neoSidebarGroupsCollapsed{
+  height: calc(100% - 56px); /* leave room for toggle area */
+  padding: 12px 0 0;
+}
+
 .neo-group-mini{
   height: 100%;
   display: grid;
-  grid-auto-rows: 1fr;           /* equal height rows */
+  grid-auto-rows: 1fr;
   gap: 14px;
   padding: 18px 12px;
 }
@@ -199,7 +171,6 @@ body{
   background: var(--sb-accent);
 }
 
-/* group-only title */
 .neo-mini-title{
   font-weight: 800;
   font-size: 20px;
@@ -367,68 +338,45 @@ input[type=number]{ -moz-appearance: textfield; }
   color:#fff;
 }
 
-
-
 /* ===========================
    Fluid Tabs – Minimal Style
    =========================== */
-
 [data-tool="fluid"] .card-header {
   background: #333333;
   padding: 0;
   border-bottom: none;
-
-  /* 圓角跟 card 一致 */
   border-top-left-radius: 0.5rem;
   border-top-right-radius: 0.5rem;
 }
-
-/* 移除 bootstrap 底線 */
 [data-tool="fluid"] .nav-tabs {
   border-bottom: none;
   display: flex;
 }
-
-/* 平分寬度 */
 [data-tool="fluid"] .nav-tabs .nav-item {
   flex: 1;
 }
-
-/* 基本狀態 */
 [data-tool="fluid"] .nav-tabs .nav-link {
   width: 100%;
   border: none;
   border-radius: 0;
   background: transparent;
-
   color: rgba(255,255,255,0.45);
   font-weight: 500;
   padding: 0.8rem 0;
   transition: color 0.2s ease;
 }
-
-/* hover */
 [data-tool="fluid"] .nav-tabs .nav-link:hover {
   color: rgba(255,255,255,0.75);
   background: transparent;
 }
-
-/* active */
 [data-tool="fluid"] .nav-tabs .nav-link.active {
   background: transparent;
   color: #ffffff;
 }
- 
 
 /**********************************************************/
 /* Fluid Tool - 歷史紀錄表格樣式調整 */
 /**********************************************************/
-
-/*--------------------------------------------------------*/
-/* 1️⃣ 第一欄（時間）與最後一欄（按鈕）
-   - 使用 width: 1% 讓欄位縮到最小內容寬度
-   - 搭配 white-space: nowrap 避免換行撐寬 */
-/*--------------------------------------------------------*/
 [data-tool="fluid"] .fluid-history-table th:first-child,
 [data-tool="fluid"] .fluid-history-table td:first-child,
 [data-tool="fluid"] .fluid-history-table th:last-child,
@@ -436,30 +384,14 @@ input[type=number]{ -moz-appearance: textfield; }
   width: 1%;
   white-space: nowrap;
 }
-
-
-/*--------------------------------------------------------*/
-/* 2️⃣ 外側留白（視覺邊距）
-   - 第一欄補左側空間
-   - 最後一欄補右側空間
-   - 讓內容不要貼齊邊界 */
-/*--------------------------------------------------------*/
 [data-tool="fluid"] .fluid-history-table th:first-child,
 [data-tool="fluid"] .fluid-history-table td:first-child {
   padding-left: 1rem;
 }
-
 [data-tool="fluid"] .fluid-history-table th:last-child,
 [data-tool="fluid"] .fluid-history-table td:last-child {
   padding-right: 1rem;
 }
-
-
-/*--------------------------------------------------------*/
-/* 3️⃣ 中間欄位（床號 ~ Lipid）
-   - 排除第一欄與最後一欄
-   - 文字左右置中 */
-/*--------------------------------------------------------*/
 [data-tool="fluid"] .fluid-history-table th:nth-child(n+2):not(:last-child),
 [data-tool="fluid"] .fluid-history-table td:nth-child(n+2):not(:last-child) {
   text-align: center;
