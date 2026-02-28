@@ -4,6 +4,9 @@
 
 import { bindCopyItems } from "./utils.js";
 
+const app_version = "v20260228"; 
+
+
 /**
  * Routing:
  * - #tool=xxx  => single tool view
@@ -390,4 +393,16 @@ window.addEventListener("load", async () => {
   gaEvent("site_open", {
     page_path: location.pathname + location.hash
   });
+
+  // ✅ Legacy button tracking
+  const legacyBtn = document.getElementById("neoLegacyBtn");
+  legacyBtn?.addEventListener("click", () => {
+    gaEvent("open_legacy", {
+      link_url: legacyBtn.href,
+      source: "footer_btn",
+      app_version: app_version
+    });
+  });
+
 });
+
