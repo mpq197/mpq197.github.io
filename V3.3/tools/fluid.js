@@ -1,5 +1,5 @@
 // /tools/fluid.js
-// updated: 2026-02-28
+// updated: 2026-03-01
 
 import {
   createScheduler,
@@ -27,6 +27,71 @@ const fluidTpnAAMap = {
 export function render() {
   // NOTE: no id, everything via data-role/name, scoped under data-tool="fluid"
   return `
+    <style>
+      /* Fluid tool custom styles here */
+      
+      /* ===========================
+        Fluid Tabs – Minimal Style
+        =========================== */
+      [data-tool="${TOOL_KEY}"] .card-header {
+        background: #333333;
+        padding: 0;
+        border-bottom: none;
+        border-top-left-radius: 0.5rem;
+        border-top-right-radius: 0.5rem;
+      }
+      [data-tool="${TOOL_KEY}"] .nav-tabs {
+        border-bottom: none;
+        display: flex;
+      }
+      [data-tool="${TOOL_KEY}"] .nav-tabs .nav-item {
+        flex: 1;
+      }
+      [data-tool="${TOOL_KEY}"] .nav-tabs .nav-link {
+        width: 100%;
+        border: none;
+        border-radius: 0;
+        background: transparent;
+        color: rgba(255,255,255,0.45);
+        font-weight: 500;
+        padding: 0.8rem 0;
+        transition: color 0.2s ease;
+      }
+      [data-tool="${TOOL_KEY}"] .nav-tabs .nav-link:hover {
+        color: rgba(255,255,255,0.75);
+        background: transparent;
+      }
+      [data-tool="${TOOL_KEY}"] .nav-tabs .nav-link.active {
+        background: transparent;
+        color: #ffffff;
+      }
+
+      /**********************************************************/
+      /* Fluid Tool - 歷史紀錄表格樣式調整 */
+      /**********************************************************/
+      [data-tool="${TOOL_KEY}"] .fluid-history-table th:first-child,
+      [data-tool="${TOOL_KEY}"] .fluid-history-table td:first-child,
+      [data-tool="${TOOL_KEY}"] .fluid-history-table th:last-child,
+      [data-tool="${TOOL_KEY}"] .fluid-history-table td:last-child {
+        width: 1%;
+        white-space: nowrap;
+      }
+      [data-tool="${TOOL_KEY}"] .fluid-history-table th:first-child,
+      [data-tool="${TOOL_KEY}"] .fluid-history-table td:first-child {
+        padding-left: 1rem;
+      }
+      [data-tool="${TOOL_KEY}"] .fluid-history-table th:last-child,
+      [data-tool="${TOOL_KEY}"] .fluid-history-table td:last-child {
+        padding-right: 1rem;
+      }
+      [data-tool="${TOOL_KEY}"] .fluid-history-table th:nth-child(n+2):not(:last-child),
+      [data-tool="${TOOL_KEY}"] .fluid-history-table td:nth-child(n+2):not(:last-child) {
+        text-align: center;
+      }
+    </style>
+
+
+    <!-- Main container for the Fluid tool -->
     <div class="container mt-2" data-tool="${TOOL_KEY}">
 
       <div class="card h-100">
