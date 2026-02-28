@@ -1,5 +1,6 @@
-// /tools/icd10.js
-// NeoAssist Tool Module Spec v1 compliant
+// tools/icd10.js
+// updated: 2026-02-28
+
 
 const DEBUG = false;
 const TOOL_KEY = "icd10";

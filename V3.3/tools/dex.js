@@ -1,5 +1,5 @@
 // tools/dex.js
-import { parseExpression } from "../core/utils.js"; // 這個工具其實用不到，但保留一致性可刪
+// updated: 2026-02-28
 
 const DEBUG = false;
 const TOOL_KEY = "dex";

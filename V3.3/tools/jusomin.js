@@ -1,4 +1,7 @@
 // tools/jusomin.js
+// updated: 2026-02-28
+
+
 import { createScheduler, bindMutualDisableBySelector } from "../core/utils.js";
 
 const DEBUG = false;

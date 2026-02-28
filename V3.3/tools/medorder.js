@@ -1,5 +1,6 @@
 // /tools/medorders.js
-// NeoAssist Tool Module Spec v1 compliant (ES module, render()+init(), scoped by data-tool)
+// updated: 2026-02-28
+
 //
 // =================================================================================================
 // 藥囑整理工具：instance-based 解析（新版穩定版）
@@ -1345,14 +1346,10 @@ export function render() {
       <div class="card-header text-center">藥囑整理（instance-based）</div>
 
       <div class="card-body">
-        <div class="small neo-muted mb-2">
-          解析：狀態機進出藥品表格 → ORDER_TYPES 切 instance → 主列最多合併 3 行 → 主列右到左剝離；其餘行全部 note。
-        </div>
-
         <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
           <div class="input-group">
             <span class="input-group-text" style="width: 90px; justify-content:center;">搜尋</span>
-            <input class="form-control text-center" data-role="q" placeholder="輸入藥名（例如 metoclopramide）" />
+            <input class="form-control text-center" data-role="q" placeholder="輸入藥名" />
             <button class="btn neo-btn-outline" type="button" data-role="clear_q" title="清除">✕</button>
           </div>
 
@@ -1367,7 +1364,7 @@ export function render() {
         <div class="d-flex justify-content-between align-items-center mt-2">
           <div class="small neo-muted" data-role="parse_meta"></div>
           <div class="d-flex gap-2">
-            <button type="button" class="btn neo-btn-outline btn-sm" data-role="clear_all">清空</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-role="clear_all">Reset</button>
           </div>
         </div>
 
@@ -1376,10 +1373,6 @@ export function render() {
         <div class="mt-3">
           <div class="list-group" data-role="result_list"></div>
         </div>
-      </div>
-
-      <div class="card-footer small neo-muted text-center">
-        同分鐘：STOP → RENEW → START｜RENEW：banner 區塊內列印時間觸發全域隱性停止｜ONGOING：以最後列印時間判定
       </div>
     </div>
   </div>

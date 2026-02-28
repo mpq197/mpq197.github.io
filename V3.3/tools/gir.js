@@ -1,4 +1,7 @@
-import { parseExpression } from "../core/utils.js";
+// tools/gir.js
+// updated: 2026-02-28
+
+import { safeEvalNumber } from "../core/utils.js";
 
 const DEBUG = false;
 const TOOL_KEY = "gir";
@@ -97,6 +100,15 @@ export function init(root){
     });
   };
 
+  // expression evaluator: "" -> 0, invalid -> 0 (keep legacy behavior)
+  const evalExpr = (s) => {
+    const raw = String(s ?? "").trim();
+    if (!raw) return 0;
+    const v = safeEvalNumber(raw, { trimTrailingOperators: true });
+    return Number.isFinite(v) ? v : 0;
+    // 例： "0.2+0.5" -> 0.7, "1+" -> 1 (容錯), "abc" -> 0
+  };
+
   const calc = () => {
 
     const out = getOut();
@@ -113,15 +125,7 @@ export function init(root){
 
     for (let i = 0; i < n; i++){
       const d = parseFloat(dexList[i].value) || 0;
-
-      let parsedRate = 0;
-      try {
-        parsedRate = parseExpression(rateList[i].value);
-      } catch {
-        parsedRate = 0;
-      }
-
-      const r = parseFloat(parsedRate) || 0;
+      const r = evalExpr(rateList[i]?.value); // ml/hr (supports expression)
       total += d * r;
 
       if (DEBUG){

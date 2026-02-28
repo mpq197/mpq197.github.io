@@ -1,4 +1,7 @@
 // tools/growth.js
+// updated: 2026-02-28
+
+
 const TOOL_KEY = "growth";
 const DEBUG = false;
 

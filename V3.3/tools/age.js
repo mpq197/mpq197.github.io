@@ -1,4 +1,6 @@
 // tools/age.js
+// updated: 2026-02-28
+
 const TOOL_KEY = "age";
 const DEBUG = false;
 

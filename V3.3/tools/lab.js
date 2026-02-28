@@ -1,4 +1,6 @@
 // tools/lab.js
+// updated: 2026-02-28
+
 import { createScheduler } from "../core/utils.js";
 
 const TOOL_KEY = "lab";
@@ -1354,9 +1356,9 @@ True\t72B001\tPlt\tB\t\t325\t80\tmillion/uL\t3.99~4.98(>1d-8d)
 
     const steps = [
       { element: `[data-tool="${TOOL_KEY}"] [data-role="rawArea"]`, intro: `<p>(1) 請開啟His 4.0 新版檢驗</p>` },
-      { element: `[data-tool="${TOOL_KEY}"] [data-role="rawArea"]`, intro: `<p>(2) 點選 "全部彙總"</p><img src="img/intro_lab_step_0_全部彙總.png" style="width:100%;height:auto;">` },
-      { element: `[data-tool="${TOOL_KEY}"] [data-role="rawArea"]`, intro: `<p>(3) 點選 "任一項檢驗項目"</p><img src="img/intro_lab_step_1_點選任一檢驗項目.png" style="width:100%;height:auto;">` },
-      { element: `[data-tool="${TOOL_KEY}"] [data-role="rawArea"]`, intro: `<p>(4-1) Ctrl + A 全選</p><img src="img/intro_lab_step_2_全選複製.png" style="width:100%;height:auto;"><p>(4-2) 再 Ctrl + C 複製</p>` },
+      { element: `[data-tool="${TOOL_KEY}"] [data-role="rawArea"]`, intro: `<p>(2) 點選 "全部彙總"</p><img src="./img/intro_lab_step_0_全部彙總.png" style="width:100%;height:auto;">` },
+      { element: `[data-tool="${TOOL_KEY}"] [data-role="rawArea"]`, intro: `<p>(3) 點選 "任一項檢驗項目"</p><img src="./img/intro_lab_step_1_點選任一檢驗項目.png" style="width:100%;height:auto;">` },
+      { element: `[data-tool="${TOOL_KEY}"] [data-role="rawArea"]`, intro: `<p>(4-1) Ctrl + A 全選</p><img src="./img/intro_lab_step_2_全選複製.png" style="width:100%;height:auto;"><p>(4-2) 再 Ctrl + C 複製</p>` },
       { element: `[data-tool="${TOOL_KEY}"] [data-role="rawArea"]`, intro: `(5) 貼上複製的資料` },
       { element: `[data-tool="${TOOL_KEY}"] [data-role="presetArea"]`, intro: `(6) 點選顯示方式(直式/橫式)` },
       { element: `[data-tool="${TOOL_KEY}"] [data-role="dateArea"]`, intro: `(7) 點選想要的日期` },

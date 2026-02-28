@@ -1,3 +1,7 @@
+// core/app.js
+// updated: 2026-03-01
+// GA4 tracking added: site_open, tool_click, group_click, sidebar_toggle
+
 import { bindCopyItems } from "./utils.js";
 
 /**
@@ -41,6 +45,7 @@ const GROUPS = [
       { key: "icd10", label: "常用診斷碼", module: "../tools/icd10.js" },
       { key: "lab", label: "Lab整理", module: "../tools/lab.js" },
       { key: "med", label: "藥囑整理", module: "../tools/medorder.js" },
+      { key: "docs", label: "常用文件", module: "../tools/files.js" },
     ],
   },
 ];
@@ -55,6 +60,16 @@ const mainEl    = document.getElementById("neoMain");
 
 const toggleBtnCollapsed = document.getElementById("sidebarToggleBtnCollapsed");
 const toggleBtnExpanded  = document.getElementById("sidebarToggleBtnExpanded");
+
+/* -------------------------
+   GA helpers
+------------------------- */
+function gaEvent(name, params = {}) {
+  // Do not let analytics break UI
+  try {
+    window.gtag?.("event", name, params);
+  } catch (_) {}
+}
 
 function isHoverCapable(){
   return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
@@ -102,7 +117,7 @@ function setHashGroup(groupId){
 function findToolByKey(key){
   for (const g of GROUPS){
     const it = g.items.find(x => x.key === key);
-    if (it) return { groupId: g.id, ...it };
+    if (it) return { groupId: g.id, groupTitle: g.title, ...it };
   }
   return null;
 }
@@ -138,13 +153,21 @@ function buildCollapsedGroups(){
 
     a.addEventListener("click", async (e) => {
       e.preventDefault();
+
+      // ✅ GA: group click (mini)
+      gaEvent("group_click", {
+        group_id: g.id,
+        group_name: g.title,
+        source: "mini"
+      });
+
       await loadGroup(g.id);
       setHashGroup(g.id);
       setActive();
-      openSidebar();
+      // openSidebar(); // 點擊 mini group 時不強制打開 sidebar
     });
 
-    wrap.appendChild(a);
+    wrap?.appendChild(a);
   });
 }
 
@@ -172,6 +195,14 @@ function buildExpandedGroups(filterText=""){
     // click group header => dashboard
     h.addEventListener("click", async (e) => {
       e.preventDefault();
+
+      // ✅ GA: group click (header)
+      gaEvent("group_click", {
+        group_id: g.id,
+        group_name: g.title,
+        source: "header"
+      });
+
       await loadGroup(g.id);
       setHashGroup(g.id);
       setActive();
@@ -190,6 +221,15 @@ function buildExpandedGroups(filterText=""){
 
       link.addEventListener("click", async (e) => {
         e.preventDefault();
+
+        // ✅ GA: tool click
+        gaEvent("tool_click", {
+          tool_id: it.key,
+          tool_name: it.label,
+          group_id: g.id,
+          group_name: g.title
+        });
+
         await loadTool(it.key);
         setHashTool(it.key);
         setActive();
@@ -242,6 +282,9 @@ async function loadTool(toolKey){
 
   if (typeof mod.init === "function") mod.init(main);
   bindCopyItems(main);
+
+  // (Optional) GA virtual pageview for SPA tool view
+  gaEvent("page_view", { page_path: `/tool/${meta.key}` });
 }
 
 /* -------------------------
@@ -284,6 +327,9 @@ async function loadGroup(groupId){
     if (typeof mod.init === "function") mod.init(mount);
     bindCopyItems(mount);
   });
+
+  // (Optional) GA virtual pageview for SPA group dashboard
+  gaEvent("page_view", { page_path: `/group/${g.id}` });
 }
 
 /* -------------------------
@@ -301,24 +347,20 @@ window.addEventListener("hashchange", applyRoute);
 /* -------------------------
    UI bindings (final behavior)
 ------------------------- */
-function bindToggle(btn){
+function bindToggle(btn, which){
   btn?.addEventListener("click", (e) => {
     e.stopPropagation(); // prevent sidebar click handler
+
+    gaEvent("sidebar_toggle", {
+      which, // "collapsed" or "expanded"
+      to_open: !(sidebar?.classList.contains("is-open"))
+    });
+
     toggleSidebar();
   });
 }
-bindToggle(toggleBtnCollapsed);
-bindToggle(toggleBtnExpanded);
-
-// Click sidebar => OPEN (only), ignore clicks on interactive elements
-sidebar?.addEventListener("click", (e) => {
-  if (e.target.closest("#sidebarToggleBtnCollapsed")) return;
-  if (e.target.closest("#sidebarToggleBtnExpanded")) return;
-  if (e.target.closest(".neo-navlink")) return;
-  if (e.target.closest(".neo-search")) return;
-
-  if (!sidebar.classList.contains("is-open")) openSidebar();
-});
+bindToggle(toggleBtnCollapsed, "collapsed");
+bindToggle(toggleBtnExpanded, "expanded");
 
 // Click main => CLOSE
 mainEl?.addEventListener("click", () => {
@@ -328,6 +370,11 @@ mainEl?.addEventListener("click", () => {
 // Search filter
 searchEl?.addEventListener("input", () => {
   buildExpandedGroups(searchEl.value);
+
+  // Optional: track search usage (does not include medical data)
+  gaEvent("tool_search", {
+    keyword_len: (searchEl.value || "").length
+  });
 });
 
 window.addEventListener("load", async () => {
@@ -338,4 +385,9 @@ window.addEventListener("load", async () => {
 
   // start collapsed
   closeSidebar();
+
+  // ✅ GA: site open (optional; GA sessions already exist)
+  gaEvent("site_open", {
+    page_path: location.pathname + location.hash
+  });
 });

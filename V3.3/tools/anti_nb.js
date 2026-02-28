@@ -1,26 +1,95 @@
 // tools/anti_nb.js
+// updated: 2026-02-28
+
 const TOOL_KEY = "anti_nb";
 const DEBUG = false;
 
+import { safeEvalNumber } from "../core/utils.js";
+
 // NOTE:
-// - This tool is self-contained (no external imports).
+// - This tool is self-contained (no external imports besides safeEvalNumber).
 // - Uses delegated input/change listeners on the tool root.
 // - Birthday defaults to today (local).
 // - Remark will NEVER carry over between drugs (cleared every calc).
+// - UI changes in this version:
+//   (1) Reset 改回單一按鈕（保留原本行為：清 BW/GA/Birthday=今天/Calc，Drug 不變）
+//   (2) Standard / Meningitis 改成「各自一個標題列」：左標題 + 右側 Copy，同列；下一行顯示 dose；再下一行顯示 desc
 
 export function render() {
   return `
+    <style>
+      [data-tool="${TOOL_KEY}"] .dose-card{
+        border: 1px solid rgba(0,0,0,.12);
+        border-radius: .5rem;
+        padding: .75rem;
+        background: #fff;
+        margin-top: .5rem;
+      }
+      [data-tool="${TOOL_KEY}"] .dose-card .title-row{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: .5rem;
+        margin-bottom: .25rem;
+      }
+      [data-tool="${TOOL_KEY}"] .dose-card .title{
+        font-size: 1rem;
+        font-weight: 600;
+        color: #495057;
+      }
+      [data-tool="${TOOL_KEY}"] .dose-card .dose{
+        font-size: 1rem;
+        font-weight: 600;
+        line-height: 1.1;
+      }
+      [data-tool="${TOOL_KEY}"] .dose-card .desc{
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-size: .95rem;
+        line-height: 1.3;
+        margin-top: .35rem;
+      }
+      [data-tool="${TOOL_KEY}"] .summary-line{
+        font-size: .85rem;
+        color: #6c757d;
+        margin-top: .5rem;
+      }
+      [data-tool="${TOOL_KEY}"] .is-invalid{
+        border-color: #dc3545 !important;
+      }
+      [data-tool="${TOOL_KEY}"] .calc-out{
+        width: 15%;
+        justify-content: center;
+      }
+      [data-tool="${TOOL_KEY}"] .btn-col{
+        padding-left: 0%;
+      }
+      [data-tool="${TOOL_KEY}"] .remark-line{
+        font-size: .9rem;
+        color: #b45309; /* amber-ish */
+        white-space: pre-wrap;
+      }
+      [data-tool="${TOOL_KEY}"] .dose-card{
+        cursor: pointer;
+      }
+      [data-tool="${TOOL_KEY}"] .dose-card:active{
+        transform: scale(0.995);
+      }
+    </style>
+
     <div class="container mt-2" data-tool="${TOOL_KEY}">
       <div class="card h-100" id="anti_NB_content">
         <div class="card-header text-center">NB常用抗生素泡法 (測試版，請參考手冊驗算)</div>
 
         <div class="card-body pb-0">
+          <!-- BW -->
           <div class="input-group">
             <span class="input-group-text justify-content-center" style="width: 15%;">BW</span>
-            <input type="number" inputmode="numeric" data-role="bw" class="form-control text-center" />
+            <input type="number" inputmode="numeric" min="1" step="1" data-role="bw" class="form-control text-center" placeholder="g" />
             <span class="input-group-text justify-content-center" style="width: 15%;">g</span>
           </div>
 
+          <!-- Drug -->
           <div class="input-group">
             <span class="input-group-text justify-content-center" style="width: 15%;">Drug</span>
             <select data-role="drug" class="form-select text-center">
@@ -40,52 +109,62 @@ export function render() {
             <span class="input-group-text justify-content-center" style="width: 15%;"> </span>
           </div>
 
+          <!-- GA -->
           <div class="input-group">
             <span class="input-group-text justify-content-center" style="width: 15%;">GA</span>
-            <input type="number" inputmode="numeric" data-role="gaW" class="form-control text-center" />
+            <input type="number" inputmode="numeric" min="1" step="1" data-role="gaW" class="form-control text-center" placeholder="week" />
             <span class="input-group-text justify-content-center">week</span>
-            <input type="number" inputmode="numeric" data-role="gaD" class="form-control text-center" />
+            <input type="number" inputmode="numeric" min="0" max="6" step="1" data-role="gaD" class="form-control text-center" placeholder="day" />
             <span class="input-group-text justify-content-center" style="width: 15%;">day</span>
           </div>
 
+          <!-- Birthday -->
           <div class="input-group">
             <span class="input-group-text justify-content-center" style="width: 15%;">Birthday</span>
             <input type="date" data-role="birthday" class="form-control text-center" />
             <span class="input-group-text justify-content-center" style="width: 15%;"> </span>
           </div>
 
+          <!-- Calculator -->
           <div class="input-group">
             <span class="input-group-text justify-content-center" style="width: 15%;">計算機</span>
-            <input type="text" data-role="calc" class="form-control text-center" />
+            <input type="text" data-role="calc" class="form-control text-center" placeholder="" />
             <span class="input-group-text justify-content-center">=</span>
-            <span class="input-group-text justify-content-center" data-role="calcOut" style="width: 15%;"></span>
+            <span class="input-group-text calc-out" data-role="calcOut"></span>
           </div>
+
+          <!-- Summary -->
+          <div class="summary-line" data-role="summary"></div>
         </div>
 
         <div class="card-footer">
           <div class="row">
             <div class="col-10">
-              <div class="input-group flex-nowrap">
-                <span class="input-group-text justify-content-center" style="min-width: 15%;">Standard</span>
-                <span class="input-group-text justify-content-center text-truncate" style="width: 20%;" data-role="stdDose"></span>
-                <span class="input-group-text text-truncate copy-item" style="width: 65%;" data-role="stdDesc"></span>
+              <!-- Standard -->
+              <div class="dose-card" data-role="cardStd">
+                <div class="title-row">
+                  <div class="title">Standard</div>
+                </div>
+                <div class="dose" data-role="stdDose"></div>
+                <div class="desc" data-role="stdDesc"></div>
               </div>
 
-              <div class="input-group flex-nowrap">
-                <span class="input-group-text justify-content-center" style="min-width: 15%;">Meningitis</span>
-                <span class="input-group-text justify-content-center text-truncate" style="width: 20%;" data-role="menDose"></span>
-                <span class="input-group-text text-truncate copy-item" style="width: 65%;" data-role="menDesc"></span>
+              <!-- Meningitis -->
+              <div class="dose-card" data-role="cardMen">
+                <div class="title-row">
+                  <div class="title">Meningitis</div>
+                </div>
+                <div class="dose" data-role="menDose"></div>
+                <div class="desc" data-role="menDesc"></div>
               </div>
 
-              <div class="input-group">
-                <span class="input-group-text justify-content-center" style="width: 15%;">Remark</span>
-                <span class="input-group-text flex-fill text-truncate" data-role="remark"></span>
-              </div>
+              <!-- Remark -->
+              <div class="mt-2 remark-line" data-role="remark"></div>
             </div>
 
-            <div class="col-2" style="padding-left: 0%;">
+            <div class="col-2 btn-col">
               <div class="d-flex justify-content-center align-items-center h-100">
-                <button type="button" class="btn btn-secondary" data-role="reset">Reset</button>
+                <button type="button" class="btn btn-secondary w-100" data-role="reset">Reset</button>
               </div>
             </div>
           </div>
@@ -110,12 +189,16 @@ export function init(root) {
   const elBirthday = box.querySelector(`[data-role="birthday"]`);
   const elCalc = box.querySelector(`[data-role="calc"]`);
   const elCalcOut = box.querySelector(`[data-role="calcOut"]`);
+  const outSummary = box.querySelector(`[data-role="summary"]`);
 
   const outStdDose = box.querySelector(`[data-role="stdDose"]`);
   const outStdDesc = box.querySelector(`[data-role="stdDesc"]`);
   const outMenDose = box.querySelector(`[data-role="menDose"]`);
   const outMenDesc = box.querySelector(`[data-role="menDesc"]`);
   const outRemark = box.querySelector(`[data-role="remark"]`);
+
+  const cardStd = box.querySelector(`[data-role="cardStd"]`);
+  const cardMen = box.querySelector(`[data-role="cardMen"]`);
   const resetBtn = box.querySelector(`[data-role="reset"]`);
 
   const log = (...args) => { if (DEBUG) console.log(`[${TOOL_KEY}]`, ...args); };
@@ -136,8 +219,18 @@ export function init(root) {
     outMenDose.textContent = "";
     outMenDesc.textContent = "";
     outRemark.textContent = "";
+    if (outSummary) outSummary.textContent = "";
   }
 
+  function clearErrors() {
+    [elBW, elDrug, elGaW, elGaD, elBirthday].forEach(el => {
+      if (el) el.classList.remove("is-invalid");
+    });
+  }
+
+  function setFieldError(el) {
+    if (el) el.classList.add("is-invalid");
+  }
   // -----------------------------
   // Drug specs
   // -----------------------------
@@ -326,7 +419,6 @@ export function init(root) {
 
   function parseDateInput(value) {
     if (!value) return null;
-    // "YYYY-MM-DD"
     const parts = value.split("-").map(n => parseInt(n, 10));
     if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return null;
     const d = new Date(parts[0], parts[1] - 1, parts[2]);
@@ -344,32 +436,41 @@ export function init(root) {
     return Math.floor((e - s) / ms);
   }
 
-  function safeEval(expr) {
-    if (!expr) return "";
-    // very small "calculator": allow digits, whitespace, + - * / . ( ) only
-    const ok = /^[0-9+\-*/().\s]+$/.test(expr);
-    if (!ok) return "ERR";
-    try {
-      // eslint-disable-next-line no-new-func
-      const v = Function(`"use strict"; return (${expr});`)();
-      return Number.isFinite(v) ? String(v) : "ERR";
-    } catch {
-      return "ERR";
-    }
-  }
-
   function buildDoseText(spec, BW_g) {
     const amt = (spec.dose * (BW_g / 1000)).toFixed(2);
     const unitLeft = (spec.unit || "").split("/")[0] || "";
     return `${amt} ${unitLeft} ${spec.frequency || ""}`.trim();
   }
 
+  function formatKg(BW_g) {
+    const s = (BW_g / 1000).toFixed(3);
+    return s.replace(/0+$/,"").replace(/\.$/,"");
+  }
+
+  async function copyToClipboard(text) {
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "absolute";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+  }
+
+
   // -----------------------------
   // Core
   // -----------------------------
   function calc() {
-    // ✅ clear first, always (prevents remark carry-over)
     clearOutputs();
+    clearErrors();
 
     const drugName = (elDrug.value || "").trim();
     const BW_g = num(elBW.value);
@@ -379,25 +480,64 @@ export function init(root) {
 
     // calculator
     if (elCalc && elCalcOut) {
-      elCalcOut.textContent = safeEval((elCalc.value || "").trim());
+      const v = safeEvalNumber(elCalc.value, { trimTrailingOperators: true });
+      elCalcOut.textContent = Number.isFinite(v)
+        ? (Math.abs(v - Math.round(v)) < 1e-12 ? String(Math.round(v)) : String(v.toFixed(6)))
+        : (elCalc.value?.trim() ? "ERR" : "");
     }
 
-    // validate
-    if (!drugName) return;
-    if (!Number.isFinite(BW_g) || BW_g <= 0) return;
-    if (!Number.isFinite(GA_w) || GA_w <= 0) return;
-    if (!Number.isFinite(GA_d) || GA_d < 0 || GA_d >= 7) return;
-    if (!birthday) return;
+    // Validate
+    let ok = true;
+
+    // Only validate if any input has been started (not just drug, but also GA or BW)
+    const hasStarted =
+      elBW.value ||
+      elGaW.value ||
+      elGaD.value ;
+
+    if (!hasStarted) {
+      clearErrors();
+      return;
+    }
+
+    if (!drugName) { ok = false; setFieldError(elDrug); }
+
+    if (!Number.isFinite(BW_g) || BW_g <= 0) {
+      ok = false;
+      setFieldError(elBW);
+    }
+
+    if (!Number.isFinite(GA_w) || GA_w <= 0) {
+      ok = false;
+      setFieldError(elGaW);
+    }
+    if (!Number.isFinite(GA_d) || GA_d < 0 || GA_d >= 7) {
+      ok = false;
+      setFieldError(elGaD);
+    }
+
+    if (!birthday) {
+      ok = false;
+      setFieldError(elBirthday);
+    }
+
+    if (!ok) return;
 
     const today = new Date();
     const PNA_d = diffInDaysLocal(birthday, today);
     if (PNA_d < 0) {
-      outStdDesc.textContent = "Birthday 不可晚於今天";
-      outMenDesc.textContent = "Birthday 不可晚於今天";
+      setFieldError(elBirthday);
       return;
     }
 
     const PMA_w = GA_w + Math.floor((PNA_d + GA_d) / 7);
+    const PMA_d = (GA_d + PNA_d) % 7;
+
+    // Summary
+    if (outSummary) {
+      outSummary.textContent =
+        `BW: ${BW_g} g (${formatKg(BW_g)} kg) | GA: ${GA_w}w${GA_d}d | PNA: ${PNA_d} d | PMA: ${PMA_w}w${PMA_d}d`;
+    }
 
     const std = findAntiNBDrugSpec(drugName, "standard", BW_g, GA_w, PNA_d, PMA_w);
     const men = findAntiNBDrugSpec(drugName, "meningitis", BW_g, GA_w, PNA_d, PMA_w);
@@ -431,7 +571,19 @@ export function init(root) {
   box.addEventListener("input", scheduleCalc);
   box.addEventListener("change", scheduleCalc);
 
-  resetBtn.addEventListener("click", () => {
+  // copy outputs
+  function copyDescOnly(kind) {
+    const descEl = kind === "std" ? outStdDesc : outMenDesc;
+    const desc = (descEl.textContent || "").trim();
+    if (!desc || desc === "No standard dose suggestion found." || desc === "No meningitis dose suggestion found.") return;
+    copyToClipboard(desc);
+  }
+
+  cardStd?.addEventListener("click", () => copyDescOnly("std"));
+  cardMen?.addEventListener("click", () => copyDescOnly("men"));
+
+  // Reset (original-style single button; keep drug)
+  resetBtn?.addEventListener("click", () => {
     elBW.value = "";
     // keep drug selection
     elGaW.value = "";
@@ -440,11 +592,19 @@ export function init(root) {
     if (elCalc) elCalc.value = "";
     if (elCalcOut) elCalcOut.textContent = "";
     clearOutputs();
+    clearErrors();
     scheduleCalc();
   });
 
   // init defaults
   clearOutputs();
-  if (!elBirthday.value) elBirthday.value = toISODateLocal(new Date());
+  clearErrors();
+
+  const todayISO = toISODateLocal(new Date());
+  if (elBirthday) {
+    elBirthday.max = todayISO;
+    if (!elBirthday.value) elBirthday.value = todayISO;
+  }
+
   calc();
 }

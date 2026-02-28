@@ -1,10 +1,10 @@
 // /tools/fluid.js
-// NeoAssist Tool Module Spec v1 compliant (no ctx, ES module, no id, data-role scoped)
+// updated: 2026-02-28
 
 import {
-  parseExpression,
   createScheduler,
   bindMutualDisableBySelector,
+  safeEvalNumber,
 } from "../core/utils.js";
 
 const DEBUG = true;
@@ -294,6 +294,42 @@ export function init(root) {
   // ---- helpers ----
   const $ = (sel) => box.querySelector(sel);
   const $$ = (sel) => Array.from(box.querySelectorAll(sel));
+
+  // ---- invalid UI helpers (Bootstrap friendly) ----
+  const setInvalid = (el, on, msg = "") => {
+    if (!el) return;
+    el.classList.toggle("is-invalid", !!on);
+    if (on && msg) el.setAttribute("title", msg);
+    else el.removeAttribute("title");
+  };
+
+  // expression evaluator with validity info:
+  // - empty => { value: 0, valid: true, empty: true }  (不標紅)
+  // - invalid expr => { value: 0, valid: false, empty: false } (標紅，但計算仍以 0)
+  const evalExprWithStatus = (elOrString, { trimTrailingOperators = true } = {}) => {
+    const raw =
+      typeof elOrString === "string"
+        ? String(elOrString ?? "")
+        : String(elOrString?.value ?? "");
+
+    const s = raw.trim();
+    if (!s) return { raw: "", value: 0, valid: true, empty: true };
+
+    const v = safeEvalNumber(s, { trimTrailingOperators });
+    const valid = Number.isFinite(v);
+    return { raw: s, value: valid ? v : 0, valid, empty: false };
+  };
+
+  // number parser with range check:
+  // - empty => valid (no red)
+  // - non-empty but NaN / out-of-range => invalid (red) and value=0 for legacy math
+  const parseNumberWithStatus = (el, { min = -Infinity, max = Infinity } = {}) => {
+    const raw = String(el?.value ?? "").trim();
+    if (!raw) return { raw: "", value: 0, valid: true, empty: true };
+    const n = Number(raw);
+    const valid = Number.isFinite(n) && n >= min && n <= max;
+    return { raw, value: valid ? n : 0, valid, empty: false };
+  };
 
   const els = {
     tabBasic: $('[data-role="tab_basic"]'),
@@ -606,6 +642,10 @@ export function init(root) {
 
       if (el.type === "checkbox" || el.type === "radio") el.checked = !!v;
       else el.value = v;
+
+      // 回復時先清除 invalid 標記（下一次 calc() 會重新判斷）
+      el.classList.remove("is-invalid");
+      el.removeAttribute("title");
     }
 
     if (els.otherIoRows) {
@@ -765,6 +805,14 @@ export function init(root) {
     }
   }
 
+  // legacy expression evaluator: "" -> 0, invalid -> 0 (keep legacy behavior)
+  const evalExpr = (s) => {
+    const raw = String(s ?? "").trim();
+    if (!raw) return 0;
+    const v = safeEvalNumber(raw, { trimTrailingOperators: true });
+    return Number.isFinite(v) ? v : 0;
+  };
+
   // ---- calc ----
   function calc() {
     ensureBaseRows();
@@ -773,15 +821,33 @@ export function init(root) {
     if (els.calcInput && els.calcResult) {
       const expr = String(els.calcInput.value ?? "").trim();
       if (!expr) {
+        setInvalid(els.calcInput, false);
         els.calcResult.textContent = "";
       } else {
-        const v = parseExpression(expr);
-        els.calcResult.textContent = Number.isFinite(v) ? Number(v).toFixed(3) : "";
+        const r = evalExprWithStatus(els.calcInput, { trimTrailingOperators: true });
+        setInvalid(els.calcInput, !r.valid, "算式格式不正確");
+
+        if (!r.valid) {
+          els.calcResult.textContent = "";
+        } else {
+          const v = r.value;
+          // 整數顯示整數，否則顯示六位小數
+          els.calcResult.textContent =
+            Math.abs(v - Math.round(v)) < 1e-12
+              ? String(Math.round(v))
+              : v.toFixed(6);
+        }
       }
     }
 
-    const BW = Number(els.bw?.value) || 0; // g
-    const TDF = Number(els.tdf?.value) || 0; // ml/kg/day
+    // BW/TDF: empty => allow (no red), non-empty invalid/<=0 => red but value treated as 0
+    const bwR = parseNumberWithStatus(els.bw, { min: 1 }); // g
+    setInvalid(els.bw, !bwR.valid, "BW 需為正數（g）");
+    const BW = bwR.value;
+
+    const tdfR = parseNumberWithStatus(els.tdf, { min: 1 }); // ml/kg/day
+    setInvalid(els.tdf, !tdfR.valid, "TDF 需為正數（ml/kg/day）");
+    const TDF = tdfR.value;
 
     const outputLines = [
       BW ? `BW: ${BW} g` : "BW:",
@@ -826,12 +892,18 @@ export function init(root) {
     const POraw = String(els.po?.value ?? "").trim();
     const POHM = String(els.poHM?.value ?? "");
     const POFormula = String(els.poFormula?.value ?? "");
-    const totalPO = POraw === "" ? 0 : Number(parseExpression(POraw)) || 0;
+    const poEval = evalExprWithStatus(els.po);
+    setInvalid(els.po, !poEval.valid, "PO 請輸入數字或算式（例如 5*2+10*4）");
+    const totalPO = POraw === "" ? 0 : poEval.value;
 
     // TPN inputs
     const tpnAA = String(els.tpnAA?.value ?? "0.025");
     const tpnAAf = Number(tpnAA) || 0.025;
-    const tpnHours = Math.max(0, Math.min(24, Number(els.tpnHours?.value) || 24));
+
+    const tpnHoursR = parseNumberWithStatus(els.tpnHours, { min: 0, max: 24 });
+    setInvalid(els.tpnHours, !tpnHoursR.valid, "TPN hours 需介於 0~24（可留白）");
+    const tpnHours = tpnHoursR.empty ? 24 : tpnHoursR.value;
+
     const tpnGramsRaw = String(els.tpnGrams?.value ?? "").trim();
     const hasTPNGrams = tpnGramsRaw !== "";
     const tpnGramsInput = Number(tpnGramsRaw) || 0;
@@ -840,8 +912,9 @@ export function init(root) {
     const lipidType = String(els.lipidType?.value ?? "SMOF");
     const lipidGrams = Number(els.lipidGrams?.value) || 0;
     // IMPORTANT: empty input should behave like old version => default 20
-    const lipidHoursRaw = String(els.lipidHours?.value ?? "").trim();
-    const lipidHoursInput = lipidHoursRaw === "" ? NaN : Number(lipidHoursRaw);
+    const lipidHoursR = parseNumberWithStatus(els.lipidHours, { min: 16, max: 24 });
+    setInvalid(els.lipidHours, !lipidHoursR.valid, "Lipid hours 建議 16~24（可留白）");
+    const lipidHoursInput = lipidHoursR.empty ? NaN : lipidHoursR.value;
     const lipidHoursValid = Number.isFinite(lipidHoursInput) ? lipidHoursInput : 20;
 
     const lipidSpec = fluidLipidSpec[lipidType] || fluidLipidSpec.SMOF;
@@ -857,6 +930,12 @@ export function init(root) {
     const regularIVRateRaw = String(els.regularIVRate?.value ?? "").trim();
     const hasRegularIVRate = regularIVRateRaw !== "";
     const regularIVRateInput = Number(regularIVRateRaw) || 0;
+
+    // Regular IV rate: 可留白；有填但非數字則標紅（value 仍當 0）
+    if (els.regularIVRate) {
+      const r = parseNumberWithStatus(els.regularIVRate, { min: 0 });
+      setInvalid(els.regularIVRate, !r.valid, "普通IV 速率需為數字（ml/hr，可留白）");
+    }
 
     // ---- advanced composition defaults ----
     let tpnDex = 10,
@@ -930,7 +1009,11 @@ export function init(root) {
     // ---- other IO total + composition (advanced) ----
     let otherIOTotal = 0;
     for (let i = 0; i < otherIOValues.length; i++) {
-      const v = Number(parseExpression(otherIOValues[i]?.value)) || 0;
+      const el = otherIOValues[i];
+      const r = evalExprWithStatus(el);
+      setInvalid(el, !r.valid, "請輸入數字或算式（例如 2*3+5）");
+
+      const v = r.value;
       otherIOTotal += v;
 
       if (version === "advanced") {
@@ -944,7 +1027,11 @@ export function init(root) {
     // ---- other solution total + composition (advanced) ----
     let otherSolTotal = 0; // ml/day
     for (let i = 0; i < otherSolRates.length; i++) {
-      const rate = Number(parseExpression(otherSolRates[i]?.value)) || 0; // ml/hr
+      const el = otherSolRates[i];
+      const r = evalExprWithStatus(el);
+      setInvalid(el, !r.valid, "請輸入數字或算式（例如 0.2+0.5）");
+
+      const rate = r.value; // ml/hr
       otherSolTotal += rate * 24;
 
       if (version === "advanced") {
@@ -1219,6 +1306,12 @@ export function init(root) {
     if (els.regularIVRate) els.regularIVRate.value = "";
     if (els.calcInput) els.calcInput.value = "";
     if (els.calcResult) els.calcResult.textContent = "";
+
+    // clear invalid markers
+    $$("input, select, textarea").forEach((el) => {
+      el.classList.remove("is-invalid");
+      el.removeAttribute("title");
+    });
 
     // reset selects
     if (els.poHM) els.poHM.value = "HM";

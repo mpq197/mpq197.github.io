@@ -1,8 +1,10 @@
 // tools/drug.js
+// updated: 2026-02-28
+
 const TOOL_KEY = "drug";
 const DEBUG = false;
 
-import { bindMutualDisableBySelector } from "../core/utils.js"; 
+import { bindMutualDisableBySelector, safeEvalNumber } from "../core/utils.js"; 
 
 export function render() {
   return `
@@ -228,135 +230,23 @@ export function init(root) {
   function fmt(n, digits) {
     if (!Number.isFinite(n)) return "";
     const s = n.toFixed(digits);
-    return s.replace(/\.?0+$/, "");
+
+    // 整數（沒有小數點）不要做去 0，避免 "107610" -> "10761"
+    if (!s.includes(".")) return s;
+
+    // 只有小數才去掉尾端 0（以及可能殘留的小數點）
+    return s.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
   }
 
   // ---- safe mini calculator (no eval) ----
-  function safeEvalNumber(expr) {
-    const raw = (expr ?? "").toString().trim();
-    if (!raw) return NaN;
-    if (!/^[0-9+\-*/().\s]+$/.test(raw)) return NaN;
-
-    try {
-      const tokens = tokenize(raw);
-      const rpn = toRPN(tokens);
-      return evalRPN(rpn);
-    } catch {
-      return NaN;
-    }
-
-    function tokenize(s0) {
-      const s = s0.replace(/\s+/g, "");
-      const out = [];
-      let i = 0;
-
-      const isDigit = c => c >= "0" && c <= "9";
-      const isOp = c => c === "+" || c === "-" || c === "*" || c === "/";
-
-      while (i < s.length) {
-        const c = s[i];
-
-        if (isDigit(c) || c === ".") {
-          let j = i + 1;
-          while (j < s.length && (isDigit(s[j]) || s[j] === ".")) j++;
-          const numStr = s.slice(i, j);
-          if (numStr === "." || numStr.split(".").length > 2) throw new Error("bad number");
-          const num = Number(numStr);
-          if (!Number.isFinite(num)) throw new Error("bad number");
-          out.push({ type: "num", value: num });
-          i = j;
-          continue;
-        }
-
-        if (c === "(" || c === ")") {
-          out.push({ type: "par", value: c });
-          i++;
-          continue;
-        }
-
-        if (isOp(c)) {
-          const prev = out[out.length - 1];
-          const unaryMinus =
-            c === "-" &&
-            (!prev || prev.type === "op" || (prev.type === "par" && prev.value === "("));
-          out.push({ type: "op", value: unaryMinus ? "u-" : c });
-          i++;
-          continue;
-        }
-
-        throw new Error("invalid char");
-      }
-      return out;
-    }
-
-    function toRPN(tokens) {
-      const out = [];
-      const ops = [];
-      const prec = op => (op === "u-" ? 3 : (op === "*" || op === "/") ? 2 : 1);
-      const rightAssoc = op => op === "u-";
-
-      for (const t of tokens) {
-        if (t.type === "num") out.push(t);
-        else if (t.type === "op") {
-          while (ops.length) {
-            const top = ops[ops.length - 1];
-            if (top.type !== "op") break;
-            const p1 = prec(t.value);
-            const p2 = prec(top.value);
-            if ((rightAssoc(t.value) && p1 < p2) || (!rightAssoc(t.value) && p1 <= p2)) out.push(ops.pop());
-            else break;
-          }
-          ops.push(t);
-        } else if (t.type === "par" && t.value === "(") ops.push(t);
-        else if (t.type === "par" && t.value === ")") {
-          while (ops.length && !(ops[ops.length - 1].type === "par" && ops[ops.length - 1].value === "(")) {
-            out.push(ops.pop());
-          }
-          if (!ops.length) throw new Error("mismatch");
-          ops.pop();
-        }
-      }
-      while (ops.length) {
-        const t = ops.pop();
-        if (t.type === "par") throw new Error("mismatch");
-        out.push(t);
-      }
-      return out;
-    }
-
-    function evalRPN(rpn) {
-      const st = [];
-      for (const t of rpn) {
-        if (t.type === "num") st.push(t.value);
-        else {
-          if (t.value === "u-") {
-            if (st.length < 1) throw new Error("stack");
-            st.push(-st.pop());
-          } else {
-            if (st.length < 2) throw new Error("stack");
-            const b = st.pop();
-            const a = st.pop();
-            if (t.value === "+") st.push(a + b);
-            else if (t.value === "-") st.push(a - b);
-            else if (t.value === "*") st.push(a * b);
-            else if (t.value === "/") st.push(a / b);
-            else throw new Error("op");
-          }
-        }
-      }
-      if (st.length !== 1) throw new Error("stack");
-      return st[0];
-    }
-  }
-
   function simpleCalc() {
     const raw = (elCalcIn?.value ?? "").toString().trim();
     if (!raw) { elCalcOut.textContent = ""; return; }
-    const v = safeEvalNumber(raw);
+    const v = safeEvalNumber(raw, { trimTrailingOperators: true });
     if (!Number.isFinite(v)) { elCalcOut.textContent = ""; return; }
     elCalcOut.textContent = (Math.abs(v - Math.round(v)) < 1e-12)
       ? String(Math.round(v))
-      : fmt(v, 6);
+      : String(v.toFixed(6));
   }
 
   function calc() {
