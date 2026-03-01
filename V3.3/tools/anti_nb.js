@@ -1,5 +1,5 @@
 // tools/anti_nb.js
-// updated: 2026-02-28
+// updated: 2026-03-01
 
 const TOOL_KEY = "anti_nb";
 const DEBUG = false;
@@ -64,16 +64,17 @@ export function render() {
       [data-tool="${TOOL_KEY}"] .btn-col{
         padding-left: 0%;
       }
-      [data-tool="${TOOL_KEY}"] .remark-line{
-        font-size: .9rem;
-        color: #b45309; /* amber-ish */
-        white-space: pre-wrap;
-      }
       [data-tool="${TOOL_KEY}"] .dose-card{
         cursor: pointer;
       }
       [data-tool="${TOOL_KEY}"] .dose-card:active{
         transform: scale(0.995);
+      }
+      [data-tool="${TOOL_KEY}"] .card-remark{
+        font-size: .9rem;
+        color: #b45309; /* amber-ish */
+        white-space: pre-wrap;
+        margin-top: .35rem;
       }
     </style>
 
@@ -147,6 +148,7 @@ export function render() {
                 </div>
                 <div class="dose" data-role="stdDose"></div>
                 <div class="desc" data-role="stdDesc"></div>
+                <div class="card-remark" data-role="stdRemark"></div>
               </div>
 
               <!-- Meningitis -->
@@ -156,10 +158,8 @@ export function render() {
                 </div>
                 <div class="dose" data-role="menDose"></div>
                 <div class="desc" data-role="menDesc"></div>
+                <div class="card-remark" data-role="menRemark"></div>
               </div>
-
-              <!-- Remark -->
-              <div class="mt-2 remark-line" data-role="remark"></div>
             </div>
 
             <div class="col-2 btn-col">
@@ -195,7 +195,8 @@ export function init(root) {
   const outStdDesc = box.querySelector(`[data-role="stdDesc"]`);
   const outMenDose = box.querySelector(`[data-role="menDose"]`);
   const outMenDesc = box.querySelector(`[data-role="menDesc"]`);
-  const outRemark = box.querySelector(`[data-role="remark"]`);
+  const outStdRemark = box.querySelector(`[data-role="stdRemark"]`);
+  const outMenRemark = box.querySelector(`[data-role="menRemark"]`);
 
   const cardStd = box.querySelector(`[data-role="cardStd"]`);
   const cardMen = box.querySelector(`[data-role="cardMen"]`);
@@ -218,7 +219,8 @@ export function init(root) {
     outStdDesc.textContent = "";
     outMenDose.textContent = "";
     outMenDesc.textContent = "";
-    outRemark.textContent = "";
+    outStdRemark.textContent = "";
+    outMenRemark.textContent = "";
     if (outSummary) outSummary.textContent = "";
   }
 
@@ -337,13 +339,13 @@ export function init(root) {
 
     Cefazolin: {
       standard: [
-        { GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 28, PMA_min: 0, PMA_max: 29, BW_min: 0, BW_max: Infinity, frequency: "Q12H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q12H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins" },
-        { GA_min: 0, GA_max: Infinity, PNA_min: 29, PNA_max: Infinity, PMA_min: 0, PMA_max: 29, BW_min: 0, BW_max: Infinity, frequency: "Q8H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q8H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins" },
-        { GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 14, PMA_min: 30, PMA_max: 36, BW_min: 0, BW_max: Infinity, frequency: "Q12H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q12H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins" },
-        { GA_min: 0, GA_max: Infinity, PNA_min: 15, PNA_max: Infinity, PMA_min: 30, PMA_max: 36, BW_min: 0, BW_max: Infinity, frequency: "Q8H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q8H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins" },
-        { GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 7,  PMA_min: 37, PMA_max: 44, BW_min: 0, BW_max: Infinity, frequency: "Q12H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q12H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins" },
-        { GA_min: 0, GA_max: Infinity, PNA_min: 8, PNA_max: Infinity, PMA_min: 37, PMA_max: 44, BW_min: 0, BW_max: Infinity, frequency: "Q8H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q8H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins" },
-        { GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, PMA_min: 45, PMA_max: Infinity, BW_min: 0, BW_max: Infinity, frequency: "Q6H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q6H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins" }
+        { GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 28, PMA_min: 0, PMA_max: 29, BW_min: 0, BW_max: Infinity, frequency: "Q12H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q12H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose\n(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins" },
+        { GA_min: 0, GA_max: Infinity, PNA_min: 29, PNA_max: Infinity, PMA_min: 0, PMA_max: 29, BW_min: 0, BW_max: Infinity, frequency: "Q8H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q8H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose\n(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins" },
+        { GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 14, PMA_min: 30, PMA_max: 36, BW_min: 0, BW_max: Infinity, frequency: "Q12H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q12H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose\n(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins" },
+        { GA_min: 0, GA_max: Infinity, PNA_min: 15, PNA_max: Infinity, PMA_min: 30, PMA_max: 36, BW_min: 0, BW_max: Infinity, frequency: "Q8H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q8H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose\n(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins" },
+        { GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 7,  PMA_min: 37, PMA_max: 44, BW_min: 0, BW_max: Infinity, frequency: "Q12H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q12H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose\n(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins" },
+        { GA_min: 0, GA_max: Infinity, PNA_min: 8, PNA_max: Infinity, PMA_min: 37, PMA_max: 44, BW_min: 0, BW_max: Infinity, frequency: "Q8H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q8H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose\n(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins" },
+        { GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: Infinity, PMA_min: 45, PMA_max: Infinity, BW_min: 0, BW_max: Infinity, frequency: "Q6H", dose: 25, unit: "mg/kg/dose", description: "25mg/kg/dose, Q6H, 泡成100mg/ml, diluted with N/S to 2ml run 30 mins", remark: "(1)20~25mg/kg/dose\n(2)若是信華注射劑，改以7ml D/W泡成 142MG/mL, 所需量 DILUTE WITH N/S TO 2ML, run 30 mins" }
       ]
     },
 
@@ -382,7 +384,7 @@ export function init(root) {
 
     Augmentin: {
       standard: [
-        { GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 84, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity, frequency: "Q8H", dose: 30, unit: "mg/kg/dose", description: "以Amoxicillin計25mg/kg/dose, Q8H, 使用19.1 ml D/W 泡成60mg/ml複方濃度, 所需量dilute with D/W to 2ml run 30m min", remark: "(1)此為1000mg Amoxicillin + 200mg Clavulanic acid，不同比例的劑量可能不同，請再次確認(2)口服水劑以Amoxicillin計15mg/kg/dose Q12H" }
+        { GA_min: 0, GA_max: Infinity, PNA_min: 0, PNA_max: 84, PMA_min: 0, PMA_max: Infinity, BW_min: 0, BW_max: Infinity, frequency: "Q8H", dose: 30, unit: "mg/kg/dose", description: "以Amoxicillin計25mg/kg/dose, Q8H, 使用19.1 ml D/W 泡成60mg/ml複方濃度, 所需量dilute with D/W to 2ml run 30m min", remark: "(1)此為1000mg Amoxicillin + 200mg Clavulanic acid，不同比例的劑量可能不同，請再次確認\n(2)口服水劑以Amoxicillin計15mg/kg/dose Q12H" }
       ]
     }
   };
@@ -547,24 +549,24 @@ export function init(root) {
     if (std) {
       outStdDose.textContent = buildDoseText(std, BW_g);
       outStdDesc.textContent = std.description || "";
-      if (std.remark) remarks.push(std.remark);
+      if (outStdRemark) outStdRemark.textContent = std.remark || "";
     } else {
       outStdDose.textContent = "-";
       outStdDesc.textContent = "No standard dose suggestion found.";
+      if (outStdRemark) outStdRemark.textContent = "";
     }
 
     if (men) {
       outMenDose.textContent = buildDoseText(men, BW_g);
       outMenDesc.textContent = men.description || "";
-      if (men.remark) remarks.push(men.remark);
+      if (outMenRemark) outMenRemark.textContent = men.remark || "";
     } else {
       outMenDose.textContent = "-";
       outMenDesc.textContent = "No meningitis dose suggestion found.";
+      if (outMenRemark) outMenRemark.textContent = "";
     }
 
-    outRemark.textContent = remarks.join(" ");
-
-    log({ drugName, BW_g, GA_w, GA_d, PNA_d, PMA_w, std, men });
+    log({ drugName, BW_g, GA_w, GA_d, PNA_d, PMA_w, std, men, remarks});
   }
 
   // delegated events
