@@ -1,0 +1,1558 @@
+// /tools/fluid.js
+// updated: 2026-03-01
+
+import {
+  createScheduler,
+  bindMutualDisableBySelector,
+  safeEvalNumber,
+} from "../core/utils.js";
+
+const DEBUG = true;
+const TOOL_KEY = "fluid";
+
+const fluidLipidSpec = {
+  SMOF: { density: 1 / 5, unit: "g/ml" },
+  Omegaven: { density: 1 / 10, unit: "g/ml" },
+};
+
+const fluidTpnAAMap = {
+  "0.025": "TPN",
+  "0.030": "TPN [AA 3.0]",
+  "0.033": "TPN [AA 3.3]",
+  "0.035": "TPN [AA 3.5]",
+  "0.040": "TPN [AA 4.0]",
+  "0.050": "TPN [N0]",
+};
+
+export function render() {
+  // NOTE: no id, everything via data-role/name, scoped under data-tool="fluid"
+  return `
+    <style>
+      /* Fluid tool custom styles here */
+      
+      /* ===========================
+        Fluid Tabs – Minimal Style
+        =========================== */
+      [data-tool="${TOOL_KEY}"] .card-header {
+        background: #333333;
+        padding: 0;
+        border-bottom: none;
+        border-top-left-radius: 0.5rem;
+        border-top-right-radius: 0.5rem;
+      }
+      [data-tool="${TOOL_KEY}"] .nav-tabs {
+        border-bottom: none;
+        display: flex;
+      }
+      [data-tool="${TOOL_KEY}"] .nav-tabs .nav-item {
+        flex: 1;
+      }
+      [data-tool="${TOOL_KEY}"] .nav-tabs .nav-link {
+        width: 100%;
+        border: none;
+        border-radius: 0;
+        background: transparent;
+        color: rgba(255,255,255,0.45);
+        font-weight: 500;
+        padding: 0.8rem 0;
+        transition: color 0.2s ease;
+      }
+      [data-tool="${TOOL_KEY}"] .nav-tabs .nav-link:hover {
+        color: rgba(255,255,255,0.75);
+        background: transparent;
+      }
+      [data-tool="${TOOL_KEY}"] .nav-tabs .nav-link.active {
+        background: transparent;
+        color: #ffffff;
+      }
+
+      /**********************************************************/
+      /* Fluid Tool - 歷史紀錄表格樣式調整 */
+      /**********************************************************/
+      [data-tool="${TOOL_KEY}"] .fluid-history-table th:first-child,
+      [data-tool="${TOOL_KEY}"] .fluid-history-table td:first-child,
+      [data-tool="${TOOL_KEY}"] .fluid-history-table th:last-child,
+      [data-tool="${TOOL_KEY}"] .fluid-history-table td:last-child {
+        width: 1%;
+        white-space: nowrap;
+      }
+      [data-tool="${TOOL_KEY}"] .fluid-history-table th:first-child,
+      [data-tool="${TOOL_KEY}"] .fluid-history-table td:first-child {
+        padding-left: 1rem;
+      }
+      [data-tool="${TOOL_KEY}"] .fluid-history-table th:last-child,
+      [data-tool="${TOOL_KEY}"] .fluid-history-table td:last-child {
+        padding-right: 1rem;
+      }
+      [data-tool="${TOOL_KEY}"] .fluid-history-table th:nth-child(n+2):not(:last-child),
+      [data-tool="${TOOL_KEY}"] .fluid-history-table td:nth-child(n+2):not(:last-child) {
+        text-align: center;
+      }
+    </style>
+
+
+    <!-- Main container for the Fluid tool -->
+    <div class="container mt-2" data-tool="${TOOL_KEY}">
+
+      <div class="card h-100">
+        <div class="card-header text-center pt-0 pb-0">
+          <ul class="nav nav-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" type="button" role="tab"
+                data-role="tab_basic" aria-selected="true">
+                水分計算簡易版
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" type="button" role="tab"
+                data-role="tab_advanced" aria-selected="false">
+                水分計算進階版
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <div class="card-body pb-0">
+
+          <!-- Bed number row (above BW) -->
+          <div class="input-group" data-role="bed_area">
+            <span class="input-group-text justify-content-center" style="width:15%;">床號</span>
+            <input type="text" class="form-control text-center" data-role="bed" placeholder="(可留白)" />
+            <span class="input-group-text justify-content-center" style="width:15%;"> </span>
+          </div>
+
+          <div class="input-group" data-role="bw_area">
+            <span class="input-group-text justify-content-center" style="width:15%;">BW</span>
+            <input type="number" class="form-control text-center" data-role="bw" />
+            <span class="input-group-text justify-content-center" style="width:15%;">g</span>
+          </div>
+
+          <div class="input-group" data-role="tdf_area">
+            <span class="input-group-text justify-content-center" style="width:15%;">TDF</span>
+            <input type="number" class="form-control text-center" data-role="tdf" />
+            <span class="input-group-text justify-content-center" style="width:15%;">ml/kg/day</span>
+          </div>
+
+          <div class="input-group" data-role="po_area">
+            <span class="input-group-text justify-content-center" style="width:15%;">PO</span>
+            <select class="form-select text-center" data-role="po_hm">
+              <option value="HM">HM</option>
+              <option value=""></option>
+            </select>
+            <span class="input-group-text" style="background-color:#ffffff;">/</span>
+            <select class="form-select text-center" data-role="po_formula">
+              <option value="16%PF">16%PF</option>
+              <option value="15%PDF">15%PDF</option>
+              <option value="14%RF">14%RF</option>
+              <option value=""></option>
+            </select>
+            <input type="text" class="form-control text-center" data-role="po" />
+            <span class="input-group-text justify-content-center" style="width:15%;">ml/day</span>
+          </div>
+
+          <div class="input-group" data-role="tpn_area">
+            <span class="input-group-text justify-content-center" style="width:15%;">TPN</span>
+            <select class="form-select text-center" data-role="tpn_aa">
+              <option value="0.025">AA 2.5</option>
+              <option value="0.030">AA 3.0</option>
+              <option value="0.033">AA 3.3</option>
+              <option value="0.035">AA 3.5</option>
+              <option value="0.040">AA 4.0</option>
+              <option value="0.050">AA 5.0</option>
+            </select>
+            <input type="number" class="form-control text-center" data-role="tpn_grams" />
+            <span class="input-group-text">g/kg/day</span>
+            <input type="number" min="0" max="24" class="form-control text-center" placeholder="-" data-role="tpn_hours" />
+            <span class="input-group-text justify-content-center" style="width:15%;">hrs</span>
+          </div>
+
+          <div class="input-group advanced-version-only" data-role="tpn_content_area">
+            <span class="input-group-text justify-content-center" style="width:15%;"></span>
+            <select class="form-select text-center" data-role="tpn_dex">
+              <option value="2.5">Dex 2.5</option>
+              <option value="5">Dex 5.0</option>
+              <option value="7.5">Dex 7.5</option>
+              <option value="10" selected>Dex 10.0</option>
+              <option value="12.5">Dex 12.5</option>
+              <option value="15">Dex 15.0</option>
+              <option value="17.5">Dex 17.5</option>
+              <option value="20">Dex 20.0</option>
+              <option value="22.5">Dex 22.5</option>
+              <option value="25">Dex 25.0</option>
+            </select>
+            <select class="form-select text-center" data-role="tpn_na">
+              <option value="0">Na  0</option>
+              <option value="10">Na 10</option>
+              <option value="20">Na 20</option>
+              <option value="30">Na 30</option>
+              <option value="40" selected>Na 40</option>
+              <option value="50">Na 50</option>
+              <option value="60">Na 60</option>
+              <option value="70">Na 70</option>
+              <option value="80">Na 80</option>
+            </select>
+            <select class="form-select text-center" data-role="tpn_k">
+              <option value="0">K  0</option>
+              <option value="10">K 10</option>
+              <option value="20" selected>K 20</option>
+              <option value="30">K 30</option>
+              <option value="40">K 40</option>
+              <option value="50">K 50</option>
+              <option value="60">K 60</option>
+              <option value="70">K 70</option>
+              <option value="80">K 80</option>
+            </select>
+            <select class="form-select text-center" data-role="tpn_ca">
+              <option value="20" selected>Ca 20</option>
+              <option value="30">Ca 30</option>
+              <option value="40">Ca 40</option>
+            </select>
+            <select class="form-select text-center" data-role="tpn_p">
+              <option value="0">P 0</option>
+              <option value="6">P 6</option>
+              <option value="9" selected>P 9</option>
+              <option value="10">P 10</option>
+              <option value="13.5">P 13.5</option>
+              <option value="15">P 15</option>
+              <option value="20">P 20</option>
+            </select>
+            <select class="form-select text-center" data-role="tpn_mg">
+              <option value="0">Mg 0</option>
+              <option value="2">Mg 2</option>
+              <option value="4" selected>Mg 4</option>
+            </select>
+            <span class="input-group-text justify-content-center" style="width:15%;"></span>
+          </div>
+
+          <div class="input-group" data-role="lipid_area">
+            <span class="input-group-text justify-content-center" style="width:15%;">Lipid</span>
+            <select class="form-select text-center" data-role="lipid_type">
+              <option value="SMOF">SMOF</option>
+              <option value="Omegaven">Omegaven</option>
+            </select>
+            <input type="number" class="form-control text-center" data-role="lipid_grams" />
+            <span class="input-group-text">g/kg/day</span>
+            <input type="number" min="16" max="24" class="form-control text-center" placeholder="-" data-role="lipid_hours" />
+            <span class="input-group-text justify-content-center" style="width:15%;">hrs</span>
+          </div>
+
+          <!-- Other in I/O rows -->
+          <div class="d-flex flex-column" data-role="other_io_rows"></div>
+
+          <!-- Other solution rows -->
+          <div class="d-flex flex-column" data-role="other_solution_rows"></div>
+
+          <div class="input-group" data-role="regular_iv_area">
+            <span class="input-group-text justify-content-center" style="width:15%;">普通IV</span>
+            <select class="form-select text-center" data-role="regular_iv_type">
+              <option value=""></option>
+              <option value="D5W(250)">D5W(250)</option>
+              <option value="D10W(500)">D10W(500)</option>
+              <option value="D0.225S(500)">D0.225S(500)</option>
+              <option value="D0.225S(500) + 2PC D50W">D0.225S(500) + 2PC D50W</option>
+              <option value="Dex 2.5% in 0.45 Saline(500)">Dex 2.5% in 0.45 saline(500)</option>
+              <option value="H/S(500)">H/S(500)</option>
+              <option value="N/S(500)">N/S(500)</option>
+              <option value="D5S(500)">D5S(500)</option>
+              <option value="Taita No.1(500)">Taita No.1(500)</option>
+              <option value="Taita No.1(500) + 2PC D50W">Taita No.1(500) + 2PC D50W</option>
+              <option value="Taita No.1(500) + 3PC D50W">Taita No.1(500) + 3PC D50W</option>
+              <option value="Taita No.2(500)">Taita No.2(500)</option>
+              <option value="Taita No.2(500) + 2PC D50W">Taita No.2(500) + 2PC D50W</option>
+              <option value="Taita No.2(500) + 3PC D50W">Taita No.2(500) + 3PC D50W</option>
+            </select>
+            <input type="number" class="form-control text-center" data-role="regular_iv_rate" />
+            <span class="input-group-text justify-content-center" style="width:15%;">ml/hr</span>
+          </div>
+
+          <div class="input-group" data-role="calc_area">
+            <span class="input-group-text justify-content-center" style="width:15%;">計算機</span>
+            <input type="text" class="form-control text-center" data-role="calc_input" />
+            <span class="input-group-text justify-content-center">=</span>
+            <span class="input-group-text justify-content-center" style="width:15%;" data-role="calc_result"></span>
+          </div>
+        </div>
+
+        <div class="card-footer">
+          <div class="input-group d-flex mt-2 mb-2 advanced-version-only" data-role="nutrition_area">
+            <span class="input-group-text flex-fill justify-content-center copy-item" title="mEq/kg/day" data-role="nut_na">Na ___</span>
+            <span class="input-group-text flex-fill justify-content-center copy-item" title="mEq/kg/day" data-role="nut_k">K ___</span>
+            <span class="input-group-text flex-fill justify-content-center copy-item" title="mEq/kg/day" data-role="nut_ca">Ca ___</span>
+            <span class="input-group-text flex-fill justify-content-center copy-item" title="mEq/kg/day" data-role="nut_p">P ___</span>
+            <span class="input-group-text flex-fill justify-content-center copy-item" title="mEq/kg/day" data-role="nut_mg">Mg ___</span>
+            <span class="input-group-text justify-content-center text-truncate" style="width:15%;">mEq/kg/day</span>
+          </div>
+
+          <div class="input-group d-flex mt-2 mb-2 advanced-version-only" data-role="nutrition_total_area">
+            <span class="input-group-text flex-fill justify-content-center copy-item" data-role="nut_total_na">Na ___</span>
+            <span class="input-group-text flex-fill justify-content-center copy-item" data-role="nut_total_k">K ___</span>
+            <span class="input-group-text flex-fill justify-content-center copy-item" data-role="nut_total_ca">Ca ___</span>
+            <span class="input-group-text flex-fill justify-content-center copy-item" data-role="nut_total_p">P ___</span>
+            <span class="input-group-text flex-fill justify-content-center copy-item" data-role="nut_total_mg">Mg ___</span>
+            <span class="input-group-text justify-content-center text-truncate" style="width:15%;">mEq/day</span>
+          </div>
+
+          <div class="row">
+            <div class="col-10">
+              <ul class="list-group mt-2 mb-2" data-role="order_output"></ul>
+            </div>
+            <div class="col-2" style="padding-left:0%;">
+              <div class="d-flex flex-column justify-content-center align-items-center h-100">
+                <button class="btn btn-secondary w-75 mb-2" type="button" data-role="save">儲存</button>
+                <button class="btn btn-secondary w-75 mb-2" type="button" data-role="intro">教學</button>
+                <button class="btn btn-secondary w-75" type="button" data-role="reset">Reset</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- History card -->
+      <div class="card mt-2" data-role="history_card">
+        <div class="card-header py-2">
+          <div class="d-flex align-items-center">
+            <div class="flex-grow-1 text-center">歷史紀錄</div>
+          </div>
+        </div>
+        <div class="card-body pt-2 pb-2">
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0 text-start fluid-history-table">
+              <thead>
+                <tr>
+                  <th style="white-space:nowrap;">時間</th>
+                  <th style="white-space:nowrap;">床號</th>
+                  <th style="white-space:nowrap;">BW</th>
+                  <th style="white-space:nowrap;">PO</th>
+                  <th style="white-space:nowrap;">TDF</th>
+                  <th style="white-space:nowrap;">TPN</th>
+                  <th style="white-space:nowrap;">Lipid</th>
+                  <th class="text-start" style="white-space:nowrap;">
+                    <button class="btn btn-secondary btn-sm" type="button" data-role="delete_all_history">全部刪除</button>
+                  </th>
+                </tr>
+              </thead>
+              <tbody data-role="history_tbody">
+                <tr><td colspan="8" class="text-muted">尚無快照。可按右側「儲存」建立一筆。</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="text-muted small mt-2">
+            註：此處只保存「快照」(手動儲存或點選複製自動存)，最多 200 筆。
+          </div>
+        </div>
+      </div>
+
+    </div>
+  `;
+}
+
+export function init(root) {
+  const box = root.querySelector(`[data-tool="${TOOL_KEY}"]`);
+  if (!box) return;
+
+  if (box.dataset.bound === "1") return;
+  box.dataset.bound = "1";
+
+  // ---- state ----
+  let version = "basic"; // basic | advanced
+
+  // ---- helpers ----
+  const $ = (sel) => box.querySelector(sel);
+  const $$ = (sel) => Array.from(box.querySelectorAll(sel));
+
+  // ---- invalid UI helpers (Bootstrap friendly) ----
+  const setInvalid = (el, on, msg = "") => {
+    if (!el) return;
+    el.classList.toggle("is-invalid", !!on);
+    if (on && msg) el.setAttribute("title", msg);
+    else el.removeAttribute("title");
+  };
+
+  // expression evaluator with validity info:
+  // - empty => { value: 0, valid: true, empty: true }  (不標紅)
+  // - invalid expr => { value: 0, valid: false, empty: false } (標紅，但計算仍以 0)
+  const evalExprWithStatus = (elOrString, { trimTrailingOperators = true } = {}) => {
+    const raw =
+      typeof elOrString === "string"
+        ? String(elOrString ?? "")
+        : String(elOrString?.value ?? "");
+
+    const s = raw.trim();
+    if (!s) return { raw: "", value: 0, valid: true, empty: true };
+
+    const v = safeEvalNumber(s, { trimTrailingOperators });
+    const valid = Number.isFinite(v);
+    return { raw: s, value: valid ? v : 0, valid, empty: false };
+  };
+
+  // number parser with range check:
+  // - empty => valid (no red)
+  // - non-empty but NaN / out-of-range => invalid (red) and value=0 for legacy math
+  const parseNumberWithStatus = (el, { min = -Infinity, max = Infinity } = {}) => {
+    const raw = String(el?.value ?? "").trim();
+    if (!raw) return { raw: "", value: 0, valid: true, empty: true };
+    const n = Number(raw);
+    const valid = Number.isFinite(n) && n >= min && n <= max;
+    return { raw, value: valid ? n : 0, valid, empty: false };
+  };
+
+  const els = {
+    tabBasic: $('[data-role="tab_basic"]'),
+    tabAdv: $('[data-role="tab_advanced"]'),
+
+    bed: $('[data-role="bed"]'),
+
+    bw: $('[data-role="bw"]'),
+    tdf: $('[data-role="tdf"]'),
+    poHM: $('[data-role="po_hm"]'),
+    poFormula: $('[data-role="po_formula"]'),
+    po: $('[data-role="po"]'),
+
+    tpnAA: $('[data-role="tpn_aa"]'),
+    tpnGrams: $('[data-role="tpn_grams"]'),
+    tpnHours: $('[data-role="tpn_hours"]'),
+
+    tpnDex: $('[data-role="tpn_dex"]'),
+    tpnNa: $('[data-role="tpn_na"]'),
+    tpnK: $('[data-role="tpn_k"]'),
+    tpnCa: $('[data-role="tpn_ca"]'),
+    tpnP: $('[data-role="tpn_p"]'),
+    tpnMg: $('[data-role="tpn_mg"]'),
+
+    lipidType: $('[data-role="lipid_type"]'),
+    lipidGrams: $('[data-role="lipid_grams"]'),
+    lipidHours: $('[data-role="lipid_hours"]'),
+
+    regularIVType: $('[data-role="regular_iv_type"]'),
+    regularIVRate: $('[data-role="regular_iv_rate"]'),
+
+    otherIoRows: $('[data-role="other_io_rows"]'),
+    otherSolRows: $('[data-role="other_solution_rows"]'),
+
+    calcInput: $('[data-role="calc_input"]'),
+    calcResult: $('[data-role="calc_result"]'),
+
+    nutNa: $('[data-role="nut_na"]'),
+    nutK: $('[data-role="nut_k"]'),
+    nutCa: $('[data-role="nut_ca"]'),
+    nutP: $('[data-role="nut_p"]'),
+    nutMg: $('[data-role="nut_mg"]'),
+
+    nutTotalNa: $('[data-role="nut_total_na"]'),
+    nutTotalK: $('[data-role="nut_total_k"]'),
+    nutTotalCa: $('[data-role="nut_total_ca"]'),
+    nutTotalP: $('[data-role="nut_total_p"]'),
+    nutTotalMg: $('[data-role="nut_total_mg"]'),
+
+    out: $('[data-role="order_output"]'),
+
+    btnSave: $('[data-role="save"]'),
+    btnReset: $('[data-role="reset"]'),
+    btnIntro: $('[data-role="intro"]'),
+
+    historyCard: $('[data-role="history_card"]'),
+    historyTbody: $('[data-role="history_tbody"]'),
+    btnDeleteAllHistory: $('[data-role="delete_all_history"]'),
+  };
+
+  const setAdvancedVisible = (on) => {
+    version = on ? "advanced" : "basic";
+
+    if (els.tabBasic) {
+      els.tabBasic.classList.toggle("active", !on);
+      els.tabBasic.setAttribute("aria-selected", (!on).toString());
+    }
+    if (els.tabAdv) {
+      els.tabAdv.classList.toggle("active", on);
+      els.tabAdv.setAttribute("aria-selected", on.toString());
+    }
+
+    $$(".advanced-version-only").forEach((node) => {
+      node.classList.toggle("d-none", !on);
+    });
+  };
+
+  const mkOtherIORow = () => {
+    const advClass =
+      "advanced-version-only" + (version === "advanced" ? "" : " d-none");
+
+    const row = document.createElement("div");
+    row.className = "input-group w-100";
+    row.setAttribute("name", "fluid_other_io_row");
+    row.innerHTML = `
+      <span class="input-group-text justify-content-center" style="width:15%;">Other</span>
+
+      <select
+        class="form-select text-center ${advClass}"
+        name="fluid_other_in_IO_base"
+        data-role="other_io_base"
+      >
+        <option value=""></option>
+        <option value="3% NaCl">3% NaCl</option>
+      </select>
+
+      <input
+        type="text"
+        class="form-control text-center"
+        name="fluid_other_in_IO"
+        data-role="other_io_value"
+      />
+
+      <span class="input-group-text justify-content-center" style="width:10%;">ml/day</span>
+
+      <button class="btn btn-light" type="button"
+        style="border-color:#e0e3e7;width:5%;" data-role="add_other_io">+</button>
+    `;
+    return row;
+  };
+
+  const mkOtherSolutionRow = () => {
+    const advClass =
+      "advanced-version-only" + (version === "advanced" ? "" : " d-none");
+
+    const row = document.createElement("div");
+    row.className = "input-group w-100";
+    row.setAttribute("name", "fluid_other_solution_row");
+    row.innerHTML = `
+      <span class="input-group-text justify-content-center" style="width:15%;">Other</span>
+
+      <select
+        class="form-select text-center ${advClass}"
+        name="fluid_other_solution_base"
+        data-role="other_solution_base"
+      >
+        <option value=""></option>
+        <option value="D/W">D/W base</option>
+        <option value="D5W">D5W base</option>
+        <option value="D10W">D10W base</option>
+        <option value="H/S">H/S base</option>
+        <option value="N/S">N/S base</option>
+        <option value="L/R">L/R base</option>
+      </select>
+
+      <input
+        type="text"
+        class="form-control text-center"
+        name="fluid_other_solution_rate"
+        data-role="other_solution_rate"
+      />
+
+      <span class="input-group-text justify-content-center" style="width:10%;">ml/hr</span>
+
+      <button class="btn btn-light" type="button"
+        style="border-color:#e0e3e7;width:5%;" data-role="add_other_solution">+</button>
+    `;
+    return row;
+  };
+
+  const ensureBaseRows = () => {
+    if (els.otherIoRows && els.otherIoRows.childElementCount === 0) {
+      els.otherIoRows.appendChild(mkOtherIORow());
+    }
+    if (els.otherSolRows && els.otherSolRows.childElementCount === 0) {
+      els.otherSolRows.appendChild(mkOtherSolutionRow());
+    }
+  };
+
+  const syncAdvancedRowVisibility = () => {
+    $$(".advanced-version-only").forEach((node) => {
+      node.classList.toggle("d-none", version !== "advanced");
+    });
+  };
+
+  const setNutritionPlaceholders = () => {
+    if (els.nutNa) els.nutNa.textContent = "Na ___";
+    if (els.nutK) els.nutK.textContent = "K ___";
+    if (els.nutCa) els.nutCa.textContent = "Ca ___";
+    if (els.nutP) els.nutP.textContent = "P ___";
+    if (els.nutMg) els.nutMg.textContent = "Mg ___";
+    if (els.nutTotalNa) els.nutTotalNa.textContent = "Na ___";
+    if (els.nutTotalK) els.nutTotalK.textContent = "K ___";
+    if (els.nutTotalCa) els.nutTotalCa.textContent = "Ca ___";
+    if (els.nutTotalP) els.nutTotalP.textContent = "P ___";
+    if (els.nutTotalMg) els.nutTotalMg.textContent = "Mg ___";
+  };
+
+  const setOutputs = (lines) => {
+    if (!els.out) return;
+    els.out.innerHTML = "";
+    for (const line of lines) {
+      if (!line) continue;
+      const li = document.createElement("li");
+      li.className = "list-group-item copy-item";
+      li.setAttribute("name", "fluid_order_outputs");
+      li.textContent = line;
+      els.out.appendChild(li);
+    }
+  };
+
+  // ---- scheduler (spec 4.2) ----
+  const scheduleCalc = createScheduler(calc);
+
+  // ---- mutual disable (TPN grams vs Regular IV rate) ----
+  const mutual = bindMutualDisableBySelector(
+    box,
+    '[data-role="tpn_grams"]',
+    '[data-role="regular_iv_rate"]',
+    { key: "tpn_vs_regulariv" }
+  );
+
+  // ============================================================
+  // History (snapshots only, NO draft)
+  // ============================================================
+  const LS_KEY = "neoassist:fluid:snapshots:v1";
+  const MAX_SNAPSHOTS = 200;
+
+  const safeJsonParse = (s, fallback) => {
+    try {
+      return JSON.parse(s);
+    } catch {
+      return fallback;
+    }
+  };
+
+  const loadSnapshots = () =>
+    safeJsonParse(localStorage.getItem(LS_KEY) || "[]", []).filter(Boolean);
+
+  const saveSnapshots = (list) => {
+    localStorage.setItem(LS_KEY, JSON.stringify(list));
+  };
+
+  const uid = () => `s_${Date.now()}_${Math.random().toString(16).slice(2, 6)}`;
+
+  const stableStringify = (obj) => {
+    const seen = new WeakSet();
+    const helper = (x) => {
+      if (x && typeof x === "object") {
+        if (seen.has(x)) return null;
+        seen.add(x);
+
+        if (Array.isArray(x)) return x.map(helper);
+
+        const out = {};
+        for (const k of Object.keys(x).sort()) out[k] = helper(x[k]);
+        return out;
+      }
+      return x;
+    };
+    return JSON.stringify(helper(obj));
+  };
+
+  const pad2 = (n) => String(n).padStart(2, "0");
+  const fmtTime = (ts) => {
+    const d = new Date(ts);
+    if (Number.isNaN(d.getTime())) return "";
+    const yyyy = d.getFullYear();
+    const mm = pad2(d.getMonth() + 1);
+    const dd = pad2(d.getDate());
+    const HH = pad2(d.getHours());
+    const MM = pad2(d.getMinutes());
+    const SS = pad2(d.getSeconds());
+    return `${mm}/${dd} ${HH}:${MM}:${SS}`;
+  };
+
+  function serializeState() {
+    const state = { version, fields: {}, otherIO: [], otherSol: [] };
+
+    const nodes = Array.from(box.querySelectorAll("input, select, textarea"));
+    for (const el of nodes) {
+      if (
+        el.closest('[name="fluid_other_io_row"]') ||
+        el.closest('[name="fluid_other_solution_row"]')
+      )
+        continue;
+      const key = el.dataset.role || el.getAttribute("name");
+      if (!key) continue;
+
+      if (el.type === "checkbox" || el.type === "radio")
+        state.fields[key] = !!el.checked;
+      else state.fields[key] = el.value;
+    }
+
+    const ioRows = Array.from(box.querySelectorAll('[name="fluid_other_io_row"]'));
+    for (const r of ioRows) {
+      const base = r.querySelector('[data-role="other_io_base"]')?.value ?? "";
+      const value = r.querySelector('[data-role="other_io_value"]')?.value ?? "";
+      if ((base || "").trim() === "" && (value || "").trim() === "") continue;
+      state.otherIO.push({ base, value });
+    }
+
+    const solRows = Array.from(
+      box.querySelectorAll('[name="fluid_other_solution_row"]')
+    );
+    for (const r of solRows) {
+      const base =
+        r.querySelector('[data-role="other_solution_base"]')?.value ?? "";
+      const rate =
+        r.querySelector('[data-role="other_solution_rate"]')?.value ?? "";
+      if ((base || "").trim() === "" && (rate || "").trim() === "") continue;
+      state.otherSol.push({ base, rate });
+    }
+
+    return state;
+  }
+
+  function hydrateState(state) {
+    if (!state) return;
+
+    setAdvancedVisible(state.version === "advanced");
+    syncAdvancedRowVisibility();
+
+    const fields = state.fields || {};
+    for (const [k, v] of Object.entries(fields)) {
+      const el =
+        box.querySelector(`[data-role="${CSS.escape(k)}"]`) ||
+        box.querySelector(`[name="${CSS.escape(k)}"]`);
+      if (!el) continue;
+
+      if (el.type === "checkbox" || el.type === "radio") el.checked = !!v;
+      else el.value = v;
+
+      // 回復時先清除 invalid 標記（下一次 calc() 會重新判斷）
+      el.classList.remove("is-invalid");
+      el.removeAttribute("title");
+    }
+
+    if (els.otherIoRows) {
+      els.otherIoRows.innerHTML = "";
+      const list = Array.isArray(state.otherIO) ? state.otherIO : [];
+      if (list.length === 0) els.otherIoRows.appendChild(mkOtherIORow());
+      else {
+        for (const item of list) {
+          const row = mkOtherIORow();
+          row.querySelector('[data-role="other_io_base"]').value = item.base ?? "";
+          row.querySelector('[data-role="other_io_value"]').value = item.value ?? "";
+          els.otherIoRows.appendChild(row);
+        }
+      }
+    }
+
+    if (els.otherSolRows) {
+      els.otherSolRows.innerHTML = "";
+      const list = Array.isArray(state.otherSol) ? state.otherSol : [];
+      if (list.length === 0) els.otherSolRows.appendChild(mkOtherSolutionRow());
+      else {
+        for (const item of list) {
+          const row = mkOtherSolutionRow();
+          row.querySelector('[data-role="other_solution_base"]').value = item.base ?? "";
+          row.querySelector('[data-role="other_solution_rate"]').value = item.rate ?? "";
+          els.otherSolRows.appendChild(row);
+        }
+      }
+    }
+
+    syncAdvancedRowVisibility();
+    mutual?.update?.();
+    scheduleCalc();
+  }
+
+  const getField = (snap, key) => String(snap?.state?.fields?.[key] ?? "").trim();
+
+  function snapshotSummary(snap) {
+    const st = snap?.state || {};
+    const bed = getField(snap, "bed");
+    const bw = getField(snap, "bw");
+    const po = getField(snap, "po");
+    const tdf = getField(snap, "tdf");
+
+    // TPN [AA] column format: [AA ?.?] ??g (no "TPN")
+    const tpnAA = getField(snap, "tpn_aa"); // e.g. "0.030"
+    const tpnGrams = getField(snap, "tpn_grams");
+    const aaNum = tpnAA ? (Number(tpnAA) * 100).toFixed(1) : "";
+    const tpnStr = aaNum && tpnGrams ? `[AA ${aaNum}] ${tpnGrams}g` : "";
+
+    // Lipid: include g unit
+    const lipidType = getField(snap, "lipid_type") || "";
+    const lipidGrams = getField(snap, "lipid_grams");
+    const lipidStr = lipidType && lipidGrams ? `${lipidType} ${lipidGrams}g` : "";
+
+    return { bed, bw, po, tdf, tpnStr, lipidStr, version: st.version || "" };
+  }
+
+  function addSnapshot(source = "manual") {
+    const list = loadSnapshots();
+    const state = serializeState();
+
+    const last = list[0];
+
+    // 若與上一筆完全相同則不存
+    if (last?.state) {
+      if (stableStringify(last.state) === stableStringify(state)) {
+        return;
+      }
+    }
+
+    const snap = {
+      id: uid(),
+      ts: Date.now(),
+      source,
+      state,
+    };
+
+    list.unshift(snap);
+    saveSnapshots(list.slice(0, MAX_SNAPSHOTS));
+    refreshHistoryTable();
+  }
+
+  function deleteSnapshotById(id) {
+    const list = loadSnapshots().filter((s) => s?.id !== id);
+    saveSnapshots(list);
+    refreshHistoryTable();
+  }
+
+  function deleteAllSnapshots() {
+    saveSnapshots([]);
+    refreshHistoryTable();
+  }
+
+  function refreshHistoryTable() {
+    if (!els.historyTbody) return;
+
+    const snaps = loadSnapshots();
+    els.historyTbody.innerHTML = "";
+
+    if (snaps.length === 0) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td colspan="8" class="text-muted">尚無快照。可按右側「儲存」建立一筆。</td>`;
+      els.historyTbody.appendChild(tr);
+      return;
+    }
+
+    for (let i = 0; i < snaps.length; i++) {
+      const s = snaps[i];
+      const sum = snapshotSummary(s);
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td style="white-space:nowrap;">${fmtTime(s.ts)}</td>
+        <td style="white-space:nowrap;">${sum.bed || ""}</td>
+        <td style="white-space:nowrap;">${sum.bw ? `${sum.bw} g` : ""}</td>
+        <td style="white-space:nowrap;">${sum.po || ""}</td>
+        <td style="white-space:nowrap;">${sum.tdf || ""}</td>
+        <td style="white-space:nowrap;">${sum.tpnStr}</td>
+        <td style="white-space:nowrap;">${sum.lipidStr}</td>
+        <td style="white-space:nowrap;">
+          <div class="d-flex gap-2">
+            <button class="btn btn-secondary btn-sm" type="button"
+              data-role="restore_snapshot" data-id="${s.id}">回復</button>
+            <button class="btn btn-light btn-sm" type="button"
+              style="border-color:#e0e3e7;"
+              data-role="delete_snapshot" data-id="${s.id}">刪除</button>
+          </div>
+        </td>
+      `;
+      els.historyTbody.appendChild(tr);
+    }
+  }
+
+  // ============================================================
+  // Clipboard helper (copy-item click)
+  // ============================================================
+  async function copyTextToClipboard(text) {
+    const s = String(text ?? "").trim();
+    if (!s) return;
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(s);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = s;
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.execCommand("copy");
+        ta.remove();
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // legacy expression evaluator: "" -> 0, invalid -> 0 (keep legacy behavior)
+  const evalExpr = (s) => {
+    const raw = String(s ?? "").trim();
+    if (!raw) return 0;
+    const v = safeEvalNumber(raw, { trimTrailingOperators: true });
+    return Number.isFinite(v) ? v : 0;
+  };
+
+  // ---- calc ----
+  function calc() {
+    ensureBaseRows();
+
+    // calculator (local)
+    if (els.calcInput && els.calcResult) {
+      const expr = String(els.calcInput.value ?? "").trim();
+      if (!expr) {
+        setInvalid(els.calcInput, false);
+        els.calcResult.textContent = "";
+      } else {
+        const r = evalExprWithStatus(els.calcInput, { trimTrailingOperators: true });
+        setInvalid(els.calcInput, !r.valid, "算式格式不正確");
+
+        if (!r.valid) {
+          els.calcResult.textContent = "";
+        } else {
+          const v = r.value;
+          // 整數顯示整數，否則顯示六位小數
+          els.calcResult.textContent =
+            Math.abs(v - Math.round(v)) < 1e-12
+              ? String(Math.round(v))
+              : v.toFixed(6);
+        }
+      }
+    }
+
+    // BW/TDF: empty => allow (no red), non-empty invalid/<=0 => red but value treated as 0
+    const bwR = parseNumberWithStatus(els.bw, { min: 1 }); // g
+    setInvalid(els.bw, !bwR.valid, "BW 需為正數（g）");
+    const BW = bwR.value;
+
+    const tdfR = parseNumberWithStatus(els.tdf, { min: 1 }); // ml/kg/day
+    setInvalid(els.tdf, !tdfR.valid, "TDF 需為正數（ml/kg/day）");
+    const TDF = tdfR.value;
+
+    const outputLines = [
+      BW ? `BW: ${BW} g` : "BW:",
+      TDF
+        ? `Total daily fluid: ${TDF} ml/kg/day = total ${((TDF * BW) / 1000).toFixed(
+            1
+          )} ml/day`
+        : "Total daily fluid:",
+    ];
+
+    // if core inputs missing, stop early
+    if (!BW || !TDF) {
+      setOutputs(outputLines);
+
+      // advanced footer: reset ions only (no GIR here)
+      if (version === "advanced") {
+        if (els.nutNa) els.nutNa.textContent = "Na ___";
+        if (els.nutK) els.nutK.textContent = "K ___";
+        if (els.nutCa) els.nutCa.textContent = "Ca ___";
+        if (els.nutP) els.nutP.textContent = "P ___";
+        if (els.nutMg) els.nutMg.textContent = "Mg ___";
+
+        if (els.nutTotalNa) els.nutTotalNa.textContent = "Na ___";
+        if (els.nutTotalK) els.nutTotalK.textContent = "K ___";
+        if (els.nutTotalCa) els.nutTotalCa.textContent = "Ca ___";
+        if (els.nutTotalP) els.nutTotalP.textContent = "P ___";
+        if (els.nutTotalMg) els.nutTotalMg.textContent = "Mg ___";
+      }
+
+      if (DEBUG) {
+        console.groupCollapsed(`[${TOOL_KEY}] calc (early exit)`);
+        console.log({ BW, TDF, version });
+        console.groupEnd();
+      }
+      return;
+    }
+
+    const totalTDF = (TDF * BW) / 1000; // ml/day
+    const bwKg = BW / 1000;
+
+    // PO
+    const POraw = String(els.po?.value ?? "").trim();
+    const POHM = String(els.poHM?.value ?? "");
+    const POFormula = String(els.poFormula?.value ?? "");
+    const poEval = evalExprWithStatus(els.po);
+    setInvalid(els.po, !poEval.valid, "PO 請輸入數字或算式（例如 5*2+10*4）");
+    const totalPO = POraw === "" ? 0 : poEval.value;
+
+    // TPN inputs
+    const tpnAA = String(els.tpnAA?.value ?? "0.025");
+    const tpnAAf = Number(tpnAA) || 0.025;
+
+    const tpnHoursR = parseNumberWithStatus(els.tpnHours, { min: 0, max: 24 });
+    setInvalid(els.tpnHours, !tpnHoursR.valid, "TPN hours 需介於 0~24（可留白）");
+    const tpnHours = tpnHoursR.empty ? 24 : tpnHoursR.value;
+
+    const tpnGramsRaw = String(els.tpnGrams?.value ?? "").trim();
+    const hasTPNGrams = tpnGramsRaw !== "";
+    const tpnGramsInput = Number(tpnGramsRaw) || 0;
+
+    // lipid
+    const lipidType = String(els.lipidType?.value ?? "SMOF");
+    const lipidGrams = Number(els.lipidGrams?.value) || 0;
+    // IMPORTANT: empty input should behave like old version => default 20
+    const lipidHoursR = parseNumberWithStatus(els.lipidHours, { min: 16, max: 24 });
+    setInvalid(els.lipidHours, !lipidHoursR.valid, "Lipid hours 建議 16~24（可留白）");
+    const lipidHoursInput = lipidHoursR.empty ? NaN : lipidHoursR.value;
+    const lipidHoursValid = Number.isFinite(lipidHoursInput) ? lipidHoursInput : 20;
+
+    const lipidSpec = fluidLipidSpec[lipidType] || fluidLipidSpec.SMOF;
+
+    // other IO / solutions
+    const otherIOValues = $$('[data-role="other_io_value"]');
+    const otherIOBases = $$('[data-role="other_io_base"]');
+    const otherSolRates = $$('[data-role="other_solution_rate"]');
+    const otherSolBases = $$('[data-role="other_solution_base"]');
+
+    // regular IV
+    const regularIVType = String(els.regularIVType?.value ?? "") || "普通IV";
+    const regularIVRateRaw = String(els.regularIVRate?.value ?? "").trim();
+    const hasRegularIVRate = regularIVRateRaw !== "";
+    const regularIVRateInput = Number(regularIVRateRaw) || 0;
+
+    // Regular IV rate: 可留白；有填但非數字則標紅（value 仍當 0）
+    if (els.regularIVRate) {
+      const r = parseNumberWithStatus(els.regularIVRate, { min: 0 });
+      setInvalid(els.regularIVRate, !r.valid, "普通IV 速率需為數字（ml/hr，可留白）");
+    }
+
+    // ---- advanced composition defaults ----
+    let tpnDex = 10,
+      tpnNa = 40,
+      tpnK = 20,
+      tpnCa = 20,
+      tpnP = 9,
+      tpnMg = 4;
+    let totalGIR = 0,
+      totalNa = 0,
+      totalK = 0,
+      totalCa = 0,
+      totalP = 0,
+      totalMg = 0;
+    let girText = ""; // GIR line for order_output (advanced only)
+
+    if (version === "advanced") {
+      tpnDex = Number(els.tpnDex?.value) || 10;
+      tpnNa = Number(els.tpnNa?.value) || 40;
+      tpnK = Number(els.tpnK?.value) || 20;
+      tpnCa = Number(els.tpnCa?.value) || 20;
+      tpnP = Number(els.tpnP?.value) || 9;
+      tpnMg = Number(els.tpnMg?.value) || 4;
+    } else {
+      // keep footer placeholders stable (ions only)
+      if (els.nutNa) els.nutNa.textContent = "Na ___";
+      if (els.nutK) els.nutK.textContent = "K ___";
+      if (els.nutCa) els.nutCa.textContent = "Ca ___";
+      if (els.nutP) els.nutP.textContent = "P ___";
+      if (els.nutMg) els.nutMg.textContent = "Mg ___";
+      if (els.nutTotalNa) els.nutTotalNa.textContent = "Na ___";
+      if (els.nutTotalK) els.nutTotalK.textContent = "K ___";
+      if (els.nutTotalCa) els.nutTotalCa.textContent = "Ca ___";
+      if (els.nutTotalP) els.nutTotalP.textContent = "P ___";
+      if (els.nutTotalMg) els.nutTotalMg.textContent = "Mg ___";
+    }
+
+    // ---- lipid calc (choose best hour 16..23 up to user hour, within 10% accepted) ----
+    let lipidTotalVolumeGoal = 0;
+    let lipidBestHour = 20;
+    let lipidRate = 0;
+    let lipidTotalVolume = 0;
+
+    if (lipidGrams > 0 && lipidSpec?.density) {
+      lipidTotalVolumeGoal = (lipidGrams * BW) / 1000 / lipidSpec.density;
+
+      const h0 = Math.min(
+        23,
+        Math.max(16, Number.isFinite(lipidHoursValid) ? lipidHoursValid : 20)
+      );
+      lipidBestHour = h0;
+
+      const acceptedError = lipidTotalVolumeGoal * 0.1;
+      let bestDiff = Infinity;
+
+      for (let h = 16; h <= 23; h++) {
+        if (h > h0) break;
+        const r = Number((lipidTotalVolumeGoal / h).toFixed(1));
+        const v = r * h;
+        const diff = Math.abs(v - lipidTotalVolumeGoal);
+        if (diff < bestDiff || diff < acceptedError) {
+          bestDiff = diff;
+          lipidBestHour = h;
+        }
+      }
+
+      lipidRate = Number((lipidTotalVolumeGoal / lipidBestHour).toFixed(1));
+      lipidTotalVolume = lipidRate * lipidBestHour;
+    }
+
+    // ---- other IO total + composition (advanced) ----
+    let otherIOTotal = 0;
+    for (let i = 0; i < otherIOValues.length; i++) {
+      const el = otherIOValues[i];
+      const r = evalExprWithStatus(el);
+      setInvalid(el, !r.valid, "請輸入數字或算式（例如 2*3+5）");
+
+      const v = r.value;
+      otherIOTotal += v;
+
+      if (version === "advanced") {
+        const base = String(otherIOBases[i]?.value ?? "");
+        if (base === "3% NaCl") {
+          totalNa += (v * 513) / 1000; // mEq/day
+        }
+      }
+    }
+
+    // ---- other solution total + composition (advanced) ----
+    let otherSolTotal = 0; // ml/day
+    for (let i = 0; i < otherSolRates.length; i++) {
+      const el = otherSolRates[i];
+      const r = evalExprWithStatus(el);
+      setInvalid(el, !r.valid, "請輸入數字或算式（例如 0.2+0.5）");
+
+      const rate = r.value; // ml/hr
+      otherSolTotal += rate * 24;
+
+      if (version === "advanced") {
+        const base = String(otherSolBases[i]?.value ?? "");
+        if (base === "L/R") {
+          totalNa += (rate * 24 / 1000) * 130;
+          totalK += (rate * 24 / 1000) * 4.0;
+          totalCa += (rate * 24 / 1000) * 3.0;
+        } else if (base === "H/S") {
+          totalNa += (rate * 24 / 1000) * 77;
+        } else if (base === "N/S") {
+          totalNa += (rate * 24 / 1000) * 154;
+        } else if (base === "D5W") {
+          totalGIR += rate * 5;
+        } else if (base === "D10W") {
+          totalGIR += rate * 10;
+        }
+      }
+    }
+
+    // ---- TPN + Regular IV balancing ----
+    let tpnRate = 0; // ml/hr
+    let tpnTotalVol = 0; // ml over tpnHours
+    let regularIVRate = 0; // ml/hr
+    let regularIVTotal = 0; // ml/day
+    let tpnGramsComputed = 0;
+    let tpnMakeUp = "";
+
+    const safeTPNHours = tpnHours > 0 ? tpnHours : 24;
+    const safeAA = tpnAAf > 0 ? tpnAAf : 0.025;
+
+    if (hasTPNGrams) {
+      const grams = tpnGramsInput;
+
+      tpnRate = Number(((grams * bwKg) / safeAA / safeTPNHours).toFixed(1));
+      tpnTotalVol = tpnRate * safeTPNHours;
+
+      regularIVRate = Number(
+        (
+          (totalTDF -
+            totalPO -
+            tpnTotalVol -
+            lipidTotalVolume -
+            otherIOTotal -
+            otherSolTotal) /
+          24
+        ).toFixed(1)
+      );
+      if (!Number.isFinite(regularIVRate)) regularIVRate = 0;
+      regularIVTotal = regularIVRate * 24;
+
+      tpnGramsComputed = grams;
+    } else {
+      regularIVRate = hasRegularIVRate ? regularIVRateInput : 0;
+      regularIVTotal = Number((regularIVRate * 24).toFixed(1));
+
+      tpnTotalVol =
+        totalTDF -
+        totalPO -
+        lipidTotalVolume -
+        otherIOTotal -
+        otherSolTotal -
+        regularIVTotal;
+      if (!Number.isFinite(tpnTotalVol) || tpnTotalVol < 0) tpnTotalVol = 0;
+
+      tpnRate = Number((tpnTotalVol / safeTPNHours).toFixed(1));
+      tpnGramsComputed = Number(
+        ((tpnRate * safeTPNHours * safeAA) / bwKg).toFixed(2)
+      );
+      tpnMakeUp = " (補)";
+    }
+
+    // ---- output strings ----
+    let outPO = "";
+    const poPattern = /^(\d+\s*\*\s*\d+)(\s*\+\s*\d+\s*\*\s*\d+)*$/;
+
+    if (POraw === "") {
+      outPO = "";
+    } else if (totalPO === 0) {
+      outPO = "Diet: NPO with OG decompression";
+    } else if (!poPattern.test(POraw)) {
+      outPO = `Diet: ${totalPO} ml/day`;
+    } else {
+      const pairRe = /(\d+)\s*\*\s*(\d+)/g;
+      let m;
+      const pairs = [];
+      while ((m = pairRe.exec(POraw)) !== null) {
+        pairs.push({ base: parseInt(m[1], 10), mul: parseInt(m[2], 10) });
+      }
+      const mulSum = pairs.reduce((s, x) => s + (x.mul || 0), 0);
+
+      if (!mulSum || 24 % mulSum !== 0) {
+        outPO = `Diet: ${totalPO} ml/day`;
+      } else {
+        const parts = pairs.map(({ base, mul }) => `${base} ml * ${mul} meals`);
+        let feed = parts.join(" then ");
+        feed += ` / Q${24 / mulSum}H`;
+
+        const milkType = POHM && POFormula ? `${POHM}/${POFormula}` : POHM || POFormula || "";
+        if (milkType) feed = `${milkType} ${feed}`;
+
+        outPO = `Diet: ${feed} = (total ${totalPO} ml/day)`;
+      }
+    }
+
+    const tpnTitle = fluidTpnAAMap[tpnAA] || "TPN";
+    const tpnHoursText = safeTPNHours === 24 ? "" : `run ${safeTPNHours} hrs`;
+    let outTPN = `${tpnTitle}${tpnMakeUp} ${tpnGramsComputed} g/kg/day = ${tpnRate} ml/hr ${tpnHoursText}`.trim();
+    if (!Number.isFinite(tpnGramsComputed) || tpnGramsComputed === 0) outTPN = "";
+
+    let outLipid = "";
+    if (lipidGrams > 0) {
+      outLipid = `${lipidType} ${lipidGrams} g/kg/day = ${lipidRate} ml/hr run ${lipidBestHour} hrs`;
+    }
+
+    const outOtherIO = otherIOTotal > 0 ? `Other in I/O: ${otherIOTotal} ml/day` : "";
+    const outOtherSol =
+      otherSolTotal > 0
+        ? `Total Other Solution run ${(otherSolTotal / 24).toFixed(1)} ml/hr = ${otherSolTotal.toFixed(
+            1
+          )} ml/day`
+        : "";
+
+    const outRegularIV =
+      Number.isFinite(regularIVRate) && regularIVRate !== 0
+        ? `${regularIVType} run ${regularIVRate} ml/hr`
+        : "";
+
+    outputLines.push(outPO);
+    if (outTPN) outputLines.push(outTPN);
+    if (outLipid) outputLines.push(outLipid);
+    if (outOtherIO) outputLines.push(outOtherIO);
+    if (outOtherSol) outputLines.push(outOtherSol);
+    if (outRegularIV) outputLines.push(outRegularIV);
+
+    // ---- nutrition (advanced only): compute GIR and ions ----
+    if (version === "advanced") {
+      // TPN GIR/ions
+      totalGIR += tpnRate * tpnDex;
+      totalNa += (tpnTotalVol / 1000) * tpnNa;
+      totalK += (tpnTotalVol / 1000) * tpnK;
+      totalCa += (tpnTotalVol / 1000) * tpnCa;
+      totalP += (tpnTotalVol / 1000) * tpnP;
+      totalMg += (tpnTotalVol / 1000) * tpnMg;
+
+      // Regular IV GIR/ions
+      switch (regularIVType) {
+        case "D0.225S(500)":
+          totalNa += (regularIVTotal / 1000) * 38.5;
+          totalGIR += regularIVRate * 5;
+          break;
+        case "D0.225S(500) + 2PC D50W":
+          totalNa += (regularIVTotal / 1000) * 35.6;
+          totalGIR += regularIVRate * 8.33;
+          break;
+        case "Dex 2.5% in 0.45 Saline(500)":
+          totalNa += (regularIVTotal / 1000) * 77;
+          totalGIR += regularIVRate * 2.5;
+          break;
+        case "D5W(250)":
+          totalGIR += regularIVRate * 5;
+          break;
+        case "D10W(500)":
+          totalGIR += regularIVRate * 10;
+          break;
+        case "H/S(500)":
+          totalNa += (regularIVTotal / 1000) * 77;
+          break;
+        case "N/S(500)":
+          totalNa += (regularIVTotal / 1000) * 154;
+          break;
+        case "D5S(500)":
+          totalNa += (regularIVTotal / 1000) * 154;
+          totalGIR += regularIVRate * 5;
+          break;
+        case "Taita No.1(500)":
+          totalNa += (regularIVTotal / 1000) * 25;
+          totalK += (regularIVTotal / 1000) * 18.0;
+          totalP += (regularIVTotal / 1000) * 6.0;
+          totalGIR += regularIVRate * 3.8;
+          break;
+        case "Taita No.1(500) + 2PC D50W":
+          totalNa += (regularIVTotal / 1000) * 23.1;
+          totalK += (regularIVTotal / 1000) * 16.7;
+          totalP += (regularIVTotal / 1000) * 5.6;
+          totalGIR += regularIVRate * 7.22;
+          break;
+        case "Taita No.1(500) + 3PC D50W":
+          totalNa += (regularIVTotal / 1000) * 22.3;
+          totalK += (regularIVTotal / 1000) * 16.1;
+          totalP += (regularIVTotal / 1000) * 5.4;
+          totalGIR += regularIVRate * 8.75;
+          break;
+        case "Taita No.2(500)":
+          totalNa += (regularIVTotal / 1000) * 40;
+          totalK += (regularIVTotal / 1000) * 12.0;
+          totalP += (regularIVTotal / 1000) * 6.0;
+          totalGIR += regularIVRate * 3.3;
+          break;
+        case "Taita No.2(500) + 2PC D50W":
+          totalNa += (regularIVTotal / 1000) * 37;
+          totalK += (regularIVTotal / 1000) * 11.1;
+          totalP += (regularIVTotal / 1000) * 5.6;
+          totalGIR += regularIVRate * 6.76;
+          break;
+        case "Taita No.2(500) + 3PC D50W":
+          totalNa += (regularIVTotal / 1000) * 35.7;
+          totalK += (regularIVTotal / 1000) * 10.7;
+          totalP += (regularIVTotal / 1000) * 5.4;
+          totalGIR += regularIVRate * 8.3;
+          break;
+        default:
+          break;
+      }
+
+      // GIR: mg/kg/min
+      const gir = bwKg > 0 ? (totalGIR / (6 * bwKg)).toFixed(2) : "";
+      if (gir) girText = `GIR: ${gir}`;
+
+      // footer: ions only
+      const perKg = (x) => (bwKg > 0 ? (x / bwKg).toFixed(1) : "___");
+      if (els.nutNa) els.nutNa.textContent = `Na ${perKg(totalNa)}`;
+      if (els.nutK) els.nutK.textContent = `K ${perKg(totalK)}`;
+      if (els.nutCa) els.nutCa.textContent = `Ca ${perKg(totalCa)}`;
+      if (els.nutP) els.nutP.textContent = `P ${perKg(totalP)}`;
+      if (els.nutMg) els.nutMg.textContent = `Mg ${perKg(totalMg)}`;
+
+      if (els.nutTotalNa) els.nutTotalNa.textContent = `Na ${totalNa.toFixed(1)}`;
+      if (els.nutTotalK) els.nutTotalK.textContent = `K ${totalK.toFixed(1)}`;
+      if (els.nutTotalCa) els.nutTotalCa.textContent = `Ca ${totalCa.toFixed(1)}`;
+      if (els.nutTotalP) els.nutTotalP.textContent = `P ${totalP.toFixed(1)}`;
+      if (els.nutTotalMg) els.nutTotalMg.textContent = `Mg ${totalMg.toFixed(1)}`;
+    }
+
+    // GIR goes into order_output (advanced only)
+    if (version === "advanced" && girText) {
+      outputLines.push(girText);
+    }
+
+    setOutputs(outputLines);
+
+    if (DEBUG) {
+      console.groupCollapsed(`[${TOOL_KEY}] calc`);
+      console.log({
+        version,
+        BW,
+        TDF,
+        totalTDF,
+        totalPO,
+        tpnRate,
+        tpnTotalVol,
+        regularIVRate,
+        regularIVTotal,
+        lipidRate,
+        lipidBestHour,
+        lipidTotalVolume,
+      });
+      console.groupEnd();
+    }
+  }
+
+  // ---- reset (spec 5) ----
+  function reset() {
+    if (els.bed) els.bed.value = "";
+    if (els.bw) els.bw.value = "";
+    if (els.tdf) els.tdf.value = "";
+    if (els.po) els.po.value = "";
+    if (els.tpnGrams) els.tpnGrams.value = "";
+    if (els.tpnHours) els.tpnHours.value = "";
+    if (els.lipidGrams) els.lipidGrams.value = "";
+    if (els.lipidHours) els.lipidHours.value = "";
+    if (els.regularIVRate) els.regularIVRate.value = "";
+    if (els.calcInput) els.calcInput.value = "";
+    if (els.calcResult) els.calcResult.textContent = "";
+
+    // clear invalid markers
+    $$("input, select, textarea").forEach((el) => {
+      el.classList.remove("is-invalid");
+      el.removeAttribute("title");
+    });
+
+    // reset selects
+    if (els.poHM) els.poHM.value = "HM";
+    if (els.poFormula) els.poFormula.value = "16%PF";
+    if (els.tpnAA) els.tpnAA.value = "0.025";
+    if (els.lipidType) els.lipidType.value = "SMOF";
+    if (els.regularIVType) els.regularIVType.value = "";
+
+    // advanced defaults
+    if (els.tpnDex) els.tpnDex.value = "10";
+    if (els.tpnNa) els.tpnNa.value = "40";
+    if (els.tpnK) els.tpnK.value = "20";
+    if (els.tpnCa) els.tpnCa.value = "20";
+    if (els.tpnP) els.tpnP.value = "9";
+    if (els.tpnMg) els.tpnMg.value = "4";
+
+    // remove dynamic rows (keep one)
+    if (els.otherIoRows) els.otherIoRows.innerHTML = "";
+    if (els.otherSolRows) els.otherSolRows.innerHTML = "";
+    ensureBaseRows();
+
+    // back to basic
+    setAdvancedVisible(false);
+    syncAdvancedRowVisibility();
+
+    scheduleCalc();
+  }
+
+  // ---- intro (optional; only runs if introJs exists globally) ----
+  function intro() {
+    // prefill example
+    if (els.bw) els.bw.value = 1500;
+    if (els.tdf) els.tdf.value = 150;
+    if (els.po) els.po.value = "5*2+10*4";
+    if (els.tpnHours) els.tpnHours.value = 22.5;
+    if (els.lipidGrams) els.lipidGrams.value = 2;
+
+    // fill first IO row
+    const io0 = box.querySelector('[data-role="other_io_value"]');
+    if (io0) io0.value = "2*3+5";
+
+    const sol0 = box.querySelector('[data-role="other_solution_rate"]');
+    if (sol0) sol0.value = "0.2+0.5";
+
+    scheduleCalc();
+
+    if (typeof window.introJs !== "function") return;
+
+    const steps = [
+      { element: box.querySelector('[data-role="bed_area"]'), intro: "床號：可留白（會存進歷史紀錄）" },
+      { element: box.querySelector('[data-role="bw_area"]'), intro: "輸入體重" },
+      { element: box.querySelector('[data-role="tdf_area"]'), intro: "輸入所需總水分" },
+      { element: box.querySelector('[data-role="po_area"]'), intro: "輸入奶量：可輸入總量或算式" },
+      { element: box.querySelector('[data-role="tpn_area"]'), intro: "<1>若TPN補不足，TPN grams 留空<br><2>hours 可限制輸注時間" },
+      { element: box.querySelector('[data-role="tpn_content_area"]'), intro: "進階版：調整TPN成分計算每日攝取量" },
+      { element: box.querySelector('[data-role="lipid_area"]'), intro: "Lipid：hours 留空會自動找最佳時間 (>=16h)" },
+      { element: box.querySelector('[data-role="other_io_rows"]'), intro: "Other in I/O：每列都有 + 可新增一整列（含單位）" },
+      { element: box.querySelector('[data-role="other_solution_rows"]'), intro: "Other solution：每列都有 + 可新增一整列（含單位）" },
+      { element: box.querySelector('[data-role="nutrition_area"]'), intro: "進階版：顯示 GIR/離子 (TPN+other+IV)" },
+      { element: box.querySelector('[data-role="order_output"]'), intro: "結果：點一下即可複製；也會自動存成快照" },
+      { element: box.querySelector('[data-role="history_card"]'), intro: "下方歷史紀錄：可回復/刪除，右上可全刪" },
+    ].filter((s) => s.element);
+
+    const intro = window.introJs();
+    intro.setOptions({
+      steps,
+      showProgress: true,
+      showBullets: false,
+      disableInteraction: false,
+      exitOnOverlayClick: false,
+      scrollToElement: true,
+    });
+    intro.oncomplete(() => reset());
+    intro.onexit(() => reset());
+    intro.start();
+  }
+
+  // ---- event delegation (spec 4.3) ----
+  box.addEventListener("click", (e) => {
+    const t = e.target;
+
+    if (t === els.tabBasic) {
+      setAdvancedVisible(false);
+      syncAdvancedRowVisibility();
+      scheduleCalc();
+      return;
+    }
+    if (t === els.tabAdv) {
+      setAdvancedVisible(true);
+      syncAdvancedRowVisibility();
+      scheduleCalc();
+      return;
+    }
+
+    // add full rows (button exists in every row)
+    if (t?.closest?.('[data-role="add_other_io"]')) {
+      els.otherIoRows?.appendChild(mkOtherIORow());
+      syncAdvancedRowVisibility();
+      scheduleCalc();
+      return;
+    }
+    if (t?.closest?.('[data-role="add_other_solution"]')) {
+      els.otherSolRows?.appendChild(mkOtherSolutionRow());
+      syncAdvancedRowVisibility();
+      scheduleCalc();
+      return;
+    }
+
+    if (t === els.btnReset) {
+      reset();
+      mutual?.update();
+      return;
+    }
+
+    if (t === els.btnIntro) {
+      setAdvancedVisible(true);
+      syncAdvancedRowVisibility();
+      intro();
+      return;
+    }
+
+    if (t === els.btnSave) {
+      addSnapshot("manual");
+      return;
+    }
+
+    // delete all snapshots: no confirmation
+    if (t === els.btnDeleteAllHistory) {
+      deleteAllSnapshots();
+      return;
+    }
+
+    // restore snapshot: no confirmation
+    const restoreBtn = t?.closest?.('[data-role="restore_snapshot"]');
+    if (restoreBtn) {
+      const id = String(restoreBtn.getAttribute("data-id") || "");
+      if (id) {
+        const snap = loadSnapshots().find((s) => s.id === id);
+        if (snap) hydrateState(snap.state);
+      }
+      return;
+    }
+
+    // delete snapshot: no confirmation
+    const delBtn = t?.closest?.('[data-role="delete_snapshot"]');
+    if (delBtn) {
+      const id = String(delBtn.getAttribute("data-id") || "");
+      if (id) deleteSnapshotById(id);
+      return;
+    }
+  });
+
+  // ✅ 用 pointerdown 取代 click（避免更改輸入值後的 focus/blur 事件干擾）
+  box.addEventListener(
+    "pointerdown",
+    (e) => {
+      const copyNode = e.target?.closest?.(".copy-item");
+      if (!copyNode) return;
+
+      // 防止 focus/blur 後續造成的干擾（可留可不留，但建議留）
+      e.preventDefault();
+
+      copyTextToClipboard(copyNode.textContent || "");
+      addSnapshot("copy");
+    },
+    true // capture：更早攔到事件
+  );
+  box.addEventListener("input", () => scheduleCalc());
+  box.addEventListener("change", () => scheduleCalc());
+
+  // ---- initial ----
+  setAdvancedVisible(false);
+  ensureBaseRows();
+  setNutritionPlaceholders();
+  syncAdvancedRowVisibility();
+  scheduleCalc();
+
+  refreshHistoryTable();
+}

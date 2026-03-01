@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NeoAssist</title>
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="./assets/styles.css" />
+  <!-- intro.js -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intro.js/minified/introjs.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/intro.js/minified/intro.min.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+  <!-- 內網生長參考值 -->
+  <script src="https://lnkwww.cgmh.org.tw/intr/c4a00/bigwig/bulletin/4AC00/growthRefs.js"></script>
+  <script>
+    window.__CGMH_GROWTH__ = { fentonRefs, lubchencoRefs };
+  </script>
+
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-86B7X5XGSJ"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-86B7X5XGSJ', {
+      // 你是 GitHub Pages，通常不需要特別設
+      // send_page_view: true  // 預設就會送 page_view
+    });
+  </script>
+</head>
+
+<body class="d-flex flex-column min-vh-100">
+
+  <!-- Shell -->
+  <div class="neo-shell flex-grow-1">
+    <!-- Sidebar -->
+    <aside class="neo-sidebar" id="neoSidebar" aria-label="Tool navigation">
+      <div class="neo-sidebar-inner">
+
+        <!-- Collapsed layer (groups only) -->
+        <div class="neo-collapsed-only" id="neoSidebarCollapsedLayer">
+          <div class="neo-sb-toggle">
+            <button class="btn btn-sm neo-sb-toggle-btn"
+                    id="sidebarToggleBtnCollapsed"
+                    type="button"
+                    aria-label="Open sidebar">☰</button>
+          </div>
+
+          <div id="neoSidebarGroupsCollapsed"></div>
+        </div>
+
+        <!-- Expanded layer (toggle + search + groups/tools) -->
+        <div class="neo-expanded-only" id="neoSidebarExpandedLayer">
+          <div class="neo-sb-toggle">
+            <button class="btn btn-sm neo-sb-toggle-btn"
+                    id="sidebarToggleBtnExpanded"
+                    type="button"
+                    aria-label="Close sidebar">☰</button>
+          </div>
+
+          <div class="neo-search">
+            <input id="neoToolSearch"
+                   class="form-control form-control-sm text-center"
+                   placeholder="搜尋工具..."
+                   autocomplete="off" />
+          </div>
+
+          <div id="neoSidebarGroupsExpanded"></div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="neo-main">
+      <div id="neoMain"></div>
+    </main>
+  </div>
+
+  <!-- Footer -->
+  <footer class="neo-footer mt-auto position-relative">
+    <div class="container text-center py-3">
+      <p class="mb-1">© 2025 NeoAssist | v20260228 | All Rights Reserved</p>
+      <p class="mb-0">Contact us：<a href="mailto:mpq197@gmail.com" class="text-white">mpq197@gmail.com</a></p>
+    </div>
+    <a href="./legacy/v2/index.html" target="_blank" rel="noopener noreferrer"
+      id="neoLegacyBtn" 
+      class="neo-legacy-footer-btn btn btn-outline-light">
+      舊版
+    </a>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.0.0/math.min.js"></script>
+
+  <script type="module" src="./core/app.js"></script>
+</body>
+</html>
