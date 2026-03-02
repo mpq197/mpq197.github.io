@@ -1,6 +1,6 @@
 // core/app.js
-// updated: 2026-03-01
-// GA4 tracking added: site_open, tool_click, group_click, sidebar_toggle
+// updated: 2026-03-02
+// note: fixing lab.js date and lab not matching
 
 import { bindCopyItems } from "./utils.js";
 
@@ -46,7 +46,7 @@ const GROUPS = [
     title: "其他",
     items: [
       { key: "icd10", label: "常用診斷碼", module: "../tools/icd10.js" },
-      { key: "lab", label: "Lab整理", module: "../tools/fixing.js" },
+      { key: "lab", label: "Lab整理", module: "../tools/lab.js" },
       { key: "med", label: "藥囑整理", module: "../tools/medorder.js" },
       { key: "docs", label: "常用文件", module: "../tools/files.js" },
     ],
@@ -405,5 +405,6 @@ window.addEventListener("load", async () => {
   });
 
 });
+
 
 
