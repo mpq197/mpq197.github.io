@@ -46,7 +46,7 @@ const GROUPS = [
     title: "其他",
     items: [
       { key: "icd10", label: "常用診斷碼", module: "../tools/icd10.js" },
-      { key: "lab", label: "Lab整理", module: "../tools/lab.js" },
+      { key: "lab", label: "Lab整理", module: "../tools/fixing.js" },
       { key: "med", label: "藥囑整理", module: "../tools/medorder.js" },
       { key: "docs", label: "常用文件", module: "../tools/files.js" },
     ],
@@ -405,4 +405,5 @@ window.addEventListener("load", async () => {
   });
 
 });
+
 
