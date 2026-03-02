@@ -1,6 +1,6 @@
 // tools/lab.js
 // updated: 2026-03-02
-// note: FIXING date and lab order not matched
+// note: FIXING last n dates not matching
 
 import { createScheduler } from "../core/utils.js";
 
@@ -478,6 +478,62 @@ export function init(root) {
     if (!rows.length) clearToBr(itemSelEl);
   }
 
+  function getSelectedRowIndicesForCurrentFilters() {
+    const selectedSpecimens = getSelectedSpecimensSet();
+
+    // 目前勾選的檢驗項目（itemCb 的 dataset.index 是 original row index）
+    const selectedRows = Array.from(box.querySelectorAll('[data-role="itemCb"]:checked'))
+      .map((cb) => Number(cb.dataset.index))
+      .filter(Number.isFinite)
+      .filter((rowIdx) => {
+        const sp = rowSpecimens?.[rowIdx] || "(空)";
+        return selectedSpecimens.size ? selectedSpecimens.has(sp) : true;
+      });
+
+    return selectedRows;
+    }
+
+    // 回傳「有任一 selectedRows 在該日期欄位有值」的日期欄位 index（含排序、取最後 n 個）
+    function computeLastNDateColsWithAnyValue(n) {
+    if (!abbrHeaders || !abbrRows || !dateIsoKeys) return [];
+
+    const selectedRows = getSelectedRowIndicesForCurrentFilters();
+
+    // 如果使用者目前沒勾任何 item：你可以選擇
+    // A) 回傳 [] 讓 applyDatePreset fallback 回原本邏輯
+    // B) 視為全部 rows 都納入
+    // 這裡我採 A，避免「沒勾任何項目時」邏輯怪掉
+    if (!selectedRows.length) return [];
+
+    const candidates = [];
+
+    // col 0 是 [Lab]，從 1 開始
+    for (let col = 1; col < abbrHeaders.length; col++) {
+      let hasAny = false;
+
+      for (const rIdx of selectedRows) {
+        const v = String(abbrRows?.[rIdx]?.[col] ?? "").trim();
+        if (v !== "") {
+          hasAny = true;
+          break;
+        }
+      }
+
+      if (hasAny) {
+        candidates.push({
+          col,
+          iso: dateIsoKeys[col] || "", // "YYYY-MM-DDTHH:mm"
+        });
+      }
+    }
+
+    // 依日期排序（old -> new），取最後 n 個
+    candidates.sort((a, b) => String(a.iso).localeCompare(String(b.iso)));
+    const picked = candidates.slice(Math.max(0, candidates.length - n)).map((x) => x.col);
+
+    return picked;
+  }
+
   function applyDatePreset() {
     const presetId = getCheckedRadioId("lab_date_presets_selection");
     const cbs = Array.from(box.querySelectorAll('[data-role="dateCb"]'));
@@ -485,22 +541,41 @@ export function init(root) {
 
     const setChecked = (fn) => cbs.forEach((cb, idx) => (cb.checked = !!fn(idx, len)));
 
+    // ✅ 共用：以「有值日期」決定 last N
+    const applyLastNWithAnyValue = (n) => {
+      const pickedCols = computeLastNDateColsWithAnyValue(n);
+
+      // 如果目前沒有任何「有值日期」（或沒勾任何 item），fallback 回原本的最後 N 欄
+      if (!pickedCols.length) {
+        setChecked((i, L) => i === 0 || i >= L - n);
+        return;
+      }
+
+      const pickedSet = new Set(pickedCols);
+      setChecked((i) => i === 0 || pickedSet.has(i));
+    };
+
     switch (presetId) {
       case "lab_date_preset_all":
         setChecked(() => true);
         break;
+
       case "lab_date_preset_last_15":
-        setChecked((i, L) => i === 0 || i >= L - 15);
+        applyLastNWithAnyValue(15);
         break;
+
       case "lab_date_preset_last_10":
-        setChecked((i, L) => i === 0 || i >= L - 10);
+        applyLastNWithAnyValue(10);
         break;
+
       case "lab_date_preset_last_5":
-        setChecked((i, L) => i === 0 || i >= L - 5);
+        applyLastNWithAnyValue(5);
         break;
+
       case "lab_date_preset_none":
         setChecked(() => false);
         break;
+
       default:
         break;
     }
@@ -538,6 +613,11 @@ export function init(root) {
       .map((cb) => String(cb.dataset.value ?? "").trim())
       .filter(Boolean);
     return new Set(selected);
+  }
+
+  function isAutoLastNPreset() {
+    const id = getCheckedRadioId("lab_date_presets_selection");
+    return id === "lab_date_preset_last_5" || id === "lab_date_preset_last_10" || id === "lab_date_preset_last_15";
   }
 
   function pickSingleSpecimenForTPNFixed() {
@@ -1292,6 +1372,7 @@ export function init(root) {
     // user manual selection update
     if (t?.matches?.('[data-role="itemCb"]')) {
       syncSelectedItemsFromDOM();
+      if (isAutoLastNPreset()) applyDatePreset();
       scheduleOutput();
       return;
     }
@@ -1299,6 +1380,7 @@ export function init(root) {
     // rebuild item list when specimen changes (keep manual selection for remaining items)
     if (t?.matches?.('[data-role="specimenCb"]')) {
       rebuildItemsForSpecimens();
+      if (isAutoLastNPreset()) applyDatePreset();
       scheduleOutput();
       return;
     }
