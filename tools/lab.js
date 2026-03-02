@@ -1,5 +1,6 @@
 // tools/lab.js
-// updated: 2026-02-28
+// updated: 2026-03-02
+// note: FIXING date and lab order not matched
 
 import { createScheduler } from "../core/utils.js";
 
@@ -767,7 +768,7 @@ export function init(root) {
 
       const iso = `${y}-${m}-${d}T${hh}:${mm}`;
       const display = `${m}/${d}`; // display layer only
-      dateMeta.push({ iso, display });
+      dateMeta.push({ iso, display, src: dateMeta.length });
     }
 
     if (!dateMeta.length) {
@@ -779,6 +780,7 @@ export function init(root) {
 
     const headers = ["[Lab]", ...dateMeta.map((x) => x.display)];
     const dateIsoKeysOut = [null, ...dateMeta.map((x) => x.iso)];
+    const valueOrder = dateMeta.map((x) => x.src);
 
     const trimTrailingZeros = (s) => {
       const str = String(s ?? "");
@@ -810,8 +812,8 @@ export function init(root) {
       // values begin at col 4
       const rawValues = cells.slice(4, 4 + dateMeta.length);
 
-      const values = rawValues.map((cell) => {
-        let s = String(cell ?? "")
+      const values = valueOrder.map((k) => {
+        let s = String( rawValues[k] ?? "")
           .replace(/( [H,L])$/, "")
           .replace(/^< /, "<")
           .trim();
