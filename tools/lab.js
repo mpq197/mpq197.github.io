@@ -1325,11 +1325,12 @@ export function init(root) {
     // initial items: show only selected specimens (default B/BV if present)
     rebuildItemsForSpecimens();
 
-    applyDatePreset(); // default: 近5次
     applyItemPreset();
-
+    
     // store preset-applied selection as baseline manual selection
     syncSelectedItemsFromDOM();
+
+    applyDatePreset(); // default: 近5次
 
     renderOutput();
   };
@@ -1361,6 +1362,7 @@ export function init(root) {
       // preset change overwrites selection by design
       applyItemPreset();
       syncSelectedItemsFromDOM();
+      if (isAutoLastNPreset()) applyDatePreset();
       scheduleOutput();
       return;
     }
@@ -1470,3 +1472,4 @@ True\t72B001\tPlt\tB\t\t325\t80\tmillion/uL\t3.99~4.98(>1d-8d)
   // ---- initial
   clearToBr(outEl);
 }
+
