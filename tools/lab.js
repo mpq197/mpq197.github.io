@@ -1,6 +1,6 @@
 // tools/lab.js
 // updated: 2026-03-02
-// note: FIXING last n dates not matching
+// note: FIXING [lab] disappear
 
 import { createScheduler } from "../core/utils.js";
 
@@ -539,7 +539,15 @@ export function init(root) {
     const cbs = Array.from(box.querySelectorAll('[data-role="dateCb"]'));
     const len = cbs.length;
 
-    const setChecked = (fn) => cbs.forEach((cb, idx) => (cb.checked = !!fn(idx, len)));
+    const setChecked = (fn) => {
+     cbs.forEach((cb, idx) => {
+       if (idx === 0) {
+         cb.checked = true;   // ✅ 永遠保留 [Lab] 欄
+       } else {
+         cb.checked = !!fn(idx, len);
+       }
+     });
+    };
 
     // ✅ 共用：以「有值日期」決定 last N
     const applyLastNWithAnyValue = (n) => {
@@ -1472,4 +1480,5 @@ True\t72B001\tPlt\tB\t\t325\t80\tmillion/uL\t3.99~4.98(>1d-8d)
   // ---- initial
   clearToBr(outEl);
 }
+
 
