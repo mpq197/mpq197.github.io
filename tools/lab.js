@@ -1,6 +1,6 @@
 // tools/lab.js
-// updated: 2026-03-02
-// note: FIXING [lab] disappear
+// updated: 2026-03-03
+// note: major revise, bug fixes, and new features added. 
 
 import { createScheduler } from "../core/utils.js";
 
@@ -9,6 +9,57 @@ const DEBUG = false;
 
 export function render() {
   return `
+    <style>
+      /* panel */
+      [data-tool="lab"] .lab-items-panel{
+        margin-top:10px;
+        padding:0px;
+        border:1px solid #6c757d2e;
+        border-radius:10px;
+      }
+
+      /* each category row */
+      [data-tool="lab"] .lab-cat-group{
+        display:grid;
+        grid-template-columns:110px 1fr;
+        gap:10px;
+        align-items:center;
+        padding:10px 0;              /* ✅ 關鍵：讓內容離分隔線有距離 */
+      }
+
+      [data-tool="lab"] .lab-cat-group + .lab-cat-group{
+        border-top:1px solid #6c757d2e;
+      }
+
+      /* left title */
+      [data-tool="lab"] .lab-cat-left{
+        font-weight:700;
+        color:#444;
+        white-space:nowrap;
+        text-align:center;
+      }
+
+      /* right items (no box) */
+      [data-tool="lab"] .lab-cat-items{
+        display:flex;
+        flex-wrap:wrap;
+        gap:6px;
+      }
+
+      /* chips */
+      [data-tool="lab"] .lab-items-panel label.btn{
+        font-size:12px;
+        padding:2px 10px;
+        border-radius:999px;
+        white-space:nowrap;
+      }
+      
+      /* 讓 Date 看起來跟其他分類有分隔線 */
+      [data-tool="lab"] .lab-cat-group.is-date{
+        border-bottom:1px solid #6c757d2e;
+      }
+        
+    </style>
     <div class="container mt-2" data-tool="${TOOL_KEY}">
       <div class="card h-100">
         <div class="card-header text-center">lab整理</div>
@@ -37,6 +88,14 @@ export function render() {
               </div>
             </div>
           </div>
+          
+          <!-- 檢體別 selection -->
+          <div class="row mt-2">
+            <div class="col" data-role="specimenArea">
+              <span>✔ 選取檢體別</span>
+              <div class="mt-1 mb-2 d-flex flex-wrap gap-1" data-role="specimenSelection"><br></div>
+            </div>
+          </div>
 
           <!-- 日期 presets -->
           <div class="row mt-2">
@@ -60,18 +119,12 @@ export function render() {
                     <input type="radio" class="btn-check" name="lab_date_presets_selection" id="lab_date_preset_none" autocomplete="off">
                     <label class="btn btn-outline-secondary" for="lab_date_preset_none">全不選</label>
                   </div>
+                  <div class="btn-group mt-1 mb-2" role="group" aria-label="custom date preset buttons" data-role="datePresetGroupCustom">
+                    <input type="radio" class="btn-check" name="lab_date_presets_selection" id="lab_date_preset_custom" autocomplete="off">
+                    <label class="btn btn-outline-secondary" for="lab_date_preset_custom">自選</label>
+                  </div>
                 </div>
               </div>
-
-              <div class="mt-1 mb-2 d-flex flex-wrap gap-1" data-role="dateSelection"><br></div>
-            </div>
-          </div>
-
-          <!-- 檢體別 selection -->
-          <div class="row mt-2">
-            <div class="col" data-role="specimenArea">
-              <span>✔ 選取檢體別</span>
-              <div class="mt-1 mb-2 d-flex flex-wrap gap-1" data-role="specimenSelection"><br></div>
             </div>
           </div>
 
@@ -116,6 +169,11 @@ export function render() {
                       TPN固定格式
                     </label>
                   </div>
+
+                  <div class="btn-group mt-1 mb-2" role="group" aria-label="custom preset buttons" data-role="labPresetGroupCustom">
+                    <input type="radio" class="btn-check" name="lab_presets_selection" id="lab_preset_custom" autocomplete="off">
+                    <label class="btn btn-outline-secondary" for="lab_preset_custom">自選</label>
+                  </div>
                 </div>
               </div>
             </div>
@@ -124,8 +182,17 @@ export function render() {
           <!-- Lab item selection -->
           <div class="row" data-role="itemArea">
             <div class="col">
-              <div class="row">
-                <div class="mt-1 mb-2 d-flex flex-wrap gap-1" data-role="itemSelection"><br></div>
+              <div class="lab-items-panel">
+                <!-- ✅ Date group -->
+                <div class="lab-cat-group is-date">
+                  <div class="lab-cat-left">Date</div>
+                  <div class="lab-cat-right">
+                    <div class="lab-cat-items" data-role="dateSelection"><br></div>
+                  </div>
+                </div>
+
+                <!-- ✅ Items group (existing) -->
+                <div class="lab-items-panel__body" data-role="itemSelection"><br></div>
               </div>
             </div>
           </div>
@@ -198,8 +265,8 @@ export function init(root) {
     "Monocyte": "Mono",
     "Eosinophil": "Eos",
     "Basophil": "Baso",
-    "Atypical-Lympho": "Atyp Lym",
-    "Meta-Myelocyte": "Meta Mye",
+    "Atypical-Lympho": "Atyp-Lym",
+    "Meta-Myelocyte": "Meta-Mye",
     "Abs Neutro. #": "ANC",
     "Blast cell": "Blast",
     "Nucleated RBC": "nRBC",
@@ -234,6 +301,11 @@ export function init(root) {
     "PO2": "pO2",
     "cHCO3": "HCO3",
     "BEecf": "SBE",
+    "pH(Vein)": "pH",
+    "pCO2(Vein)": "pCO2",
+    "pO2(Vein)": "pO2",
+    "cHCO3(Vein)": "HCO3",
+    "BEecf(Vein)": "SBE",
     "Uric Acid (B)": "Uric acid",
     "Lactate(B)": "Lactate",
   };
@@ -274,7 +346,7 @@ export function init(root) {
   ]);
 
   const labOrder = [
-    "WBC", "Hb", "Hct", "Plt", "Seg", "Band", "Lym", "Mono", "Eos", "Baso", "Atyp Lym", "Meta Mye", "Myelocyte", "Promyelocyte", "Blast", "Megakaryocyte", "ANC", "nRBC",
+    "WBC", "Hb", "Hct", "Plt", "Seg", "Band", "Lym", "Mono", "Eos", "Baso", "Atyp-Lym", "Meta-Mye", "Myelocyte", "Promyelocyte", "Blast", "Megakaryocyte", "ANC", "nRBC",
     "PT", "INR", "aPTT", "aPTT/m",
     "Na", "K", "Cl", "iCa", "Ca", "Mg", "P", "Zn",
     "BUN", "Cr", "AST", "ALT", "DB", "TB",
@@ -338,7 +410,7 @@ export function init(root) {
       if (hide) input.style.display = "none";
 
       const label = document.createElement("label");
-      label.className = "btn btn-outline-secondary btn-check-label mt-1 ml-1";
+      label.className = "btn btn-outline-secondary btn-check-label btn-sm";
       label.htmlFor = input.id;
       label.textContent = String(h);
 
@@ -393,23 +465,47 @@ export function init(root) {
   }
 
   function getLabCategory(lab) {
-    const hema = new Set(["WBC","Hb","Hct","Plt","Seg","Band","Lym","Mono","Eos","Baso","Atyp Lym","Meta Mye","Myelocyte","Promyelocyte","Blast","Megakaryocyte","ANC","nRBC"]);
-    const coag = new Set(["PT","INR","aPTT","aPTT/m","Fibrinogen","D-dimer","FDP"]);
-    const lyte = new Set(["Na","K","Cl","iCa","Ca","Mg","P","Zn"]);
-    const renalLiver = new Set(["BUN","Cr","AST","ALT","DB","TB","ALP","γGT"]);
-    const infl = new Set(["CRP","Pct","Ferritin"]);
-    const nutri = new Set(["TG","Chol","TP","Alb"]);
-    const endocrine = new Set(["iPTH","fT4","TSH"]);
-    const gas = new Set(["pH","pCO2","pO2","HCO3","SBE"]);
+    const CBC = new Set([
+      "WBC","Hb","Hct","Plt", "MCV", 
+      "Seg","Band","Lym","Mono","Eos","Baso",
+      "Atyp-Lym","Meta-Mye","Myelocyte","Promyelocyte","Blast","Megakaryocyte",
+      "ANC","nRBC"
+    ]);
 
-    if (hema.has(lab)) return "Hematology";
-    if (coag.has(lab)) return "Coagulation";
-    if (lyte.has(lab)) return "Electrolytes";
-    if (renalLiver.has(lab)) return "Renal/Liver";
-    if (infl.has(lab)) return "Inflammation";
-    if (nutri.has(lab)) return "Nutrition/Lipid";
-    if (endocrine.has(lab)) return "Endocrine";
-    if (gas.has(lab)) return "Gas";
+    const Coag = new Set([
+      "PT","INR","aPTT","aPTT/m",
+      "Fibrinogen","D-dimer","FDP"
+    ]);
+
+    const Chemistry = new Set([
+      // Electrolytes
+      "Na","K","Cl","iCa","Ca","Mg","P","Zn",
+
+      // Renal/Liver
+      "BUN","Cr","AST","ALT","DB","TB","ALP","γGT",
+
+      // Inflammation
+      "CRP","Pct","Ferritin",
+
+      // Nutrition/Lipid
+      "TG","Chol","TP","Alb",
+
+      // Endocrine
+      "iPTH","fT4","TSH",
+
+      // Sugar
+      "Sugar"
+    ]);
+
+    const Gas = new Set([
+      "pH","pCO2","pO2","HCO3","SBE"
+    ]);
+
+    if (CBC.has(lab)) return "CBC";
+    if (Coag.has(lab)) return "Coag";
+    if (Chemistry.has(lab)) return "Chemistry";
+    if (Gas.has(lab)) return "Gas";
+
     return "Other";
   }
 
@@ -430,22 +526,27 @@ export function init(root) {
       groups.get(cat).push(idx);
     });
 
-    const catOrder = ["Hematology","Coagulation","Electrolytes","Renal/Liver","Inflammation","Nutrition/Lipid","Endocrine","Gas","Other"];
+    const catOrder = ["CBC", "Coag", "Chemistry", "Gas", "Other"];
 
-    catOrder.forEach((cat) => {
+    for (const cat of catOrder) {
       const idxs = groups.get(cat);
-      if (!idxs || !idxs.length) return;
+      if (!idxs || !idxs.length) continue;
 
-      const section = document.createElement("div");
-      section.className = "w-100 mt-1";
+      // group row
+      const groupRow = document.createElement("div");
+      groupRow.className = "lab-cat-group";
 
-      const title = document.createElement("div");
-      title.className = "text-muted small mt-1";
-      title.textContent = `— ${cat} —`;
-      section.appendChild(title);
+      // left title
+      const left = document.createElement("div");
+      left.className = "lab-cat-left";
+      left.textContent = cat;
 
-      const wrap = document.createElement("div");
-      wrap.className = "d-flex flex-wrap gap-1";
+      // right box
+      const right = document.createElement("div");
+      right.className = "lab-cat-right";
+
+      const itemsWrap = document.createElement("div");
+      itemsWrap.className = "lab-cat-items";
 
       idxs.forEach((rowIdx) => {
         const lab = String(rows[rowIdx]?.[0] ?? "").trim() || `Lab${rowIdx + 1}`;
@@ -455,7 +556,7 @@ export function init(root) {
         input.type = "checkbox";
         input.className = "btn-check";
         input.dataset.role = "itemCb";
-        // IMPORTANT: keep dataset.index as ORIGINAL index to keep downstream logic unchanged
+
         const originalIndex = origIndices ? origIndices[rowIdx] : rowIdx;
         input.dataset.index = String(originalIndex);
         input.dataset.lab = lab;
@@ -463,17 +564,19 @@ export function init(root) {
         input.id = `lab_item_${originalIndex}`;
 
         const label = document.createElement("label");
-        label.className = "btn btn-outline-secondary btn-check-label mt-1 ml-1";
+        label.className = "btn btn-outline-secondary btn-check-label btn-sm";
         label.htmlFor = input.id;
-        label.textContent = `${lab} [${sp}]`;
+        label.textContent = sp === "B"? lab : `${lab} (${sp})`;
 
-        wrap.appendChild(input);
-        wrap.appendChild(label);
+        itemsWrap.appendChild(input);
+        itemsWrap.appendChild(label);
       });
 
-      section.appendChild(wrap);
-      itemSelEl.appendChild(section);
-    });
+      right.appendChild(itemsWrap);
+      groupRow.appendChild(left);
+      groupRow.appendChild(right);
+      itemSelEl.appendChild(groupRow);
+    }
 
     if (!rows.length) clearToBr(itemSelEl);
   }
@@ -534,6 +637,58 @@ export function init(root) {
     return picked;
   }
 
+  function setDatePresetRadio(id) {
+    const el = box.querySelector(`#${id}`);
+    if (el) el.checked = true;
+  }
+
+  function getCheckedDateColSet() {
+    return new Set(
+      Array.from(box.querySelectorAll('[data-role="dateCb"]:checked'))
+        .map((cb) => Number(cb.dataset.index))
+        .filter(Number.isFinite)
+    );
+  }
+
+  // 回傳日期 presetId；若不符合任何 preset -> custom
+  function detectDatePresetFromCurrentSelection() {
+    const selected = getCheckedDateColSet();
+
+    // 一律要求 col0 ([Lab]) 必須在
+    if (!selected.has(0)) return "lab_date_preset_custom";
+
+    const allCbs = Array.from(box.querySelectorAll('[data-role="dateCb"]'));
+    const total = allCbs.length;
+
+    // 全選/全不選（注意：你現在 applyDatePreset 會永遠勾 0，所以「全不選」其實是只剩 0）
+    if (selected.size === total && total > 0) return "lab_date_preset_all";
+    if (selected.size === 1 && selected.has(0)) return "lab_date_preset_none";
+
+    // last N：這裡要沿用你既有的「有值日期」算法（避免跟 applyDatePreset 不一致）
+    const isEqual = (a, b) => {
+      if (a.size !== b.size) return false;
+      for (const x of a) if (!b.has(x)) return false;
+      return true;
+    };
+
+    const mkExpected = (n) => {
+      const cols = computeLastNDateColsWithAnyValue(n);
+      if (!cols.length) {
+        // fallback：你目前 applyDatePreset 的 fallback 是「最後 n 欄」
+        const fallback = [];
+        for (let i = Math.max(1, total - n); i < total; i++) fallback.push(i);
+        cols.push(...fallback);
+      }
+      return new Set([0, ...cols]);
+    };
+
+    if (isEqual(selected, mkExpected(5))) return "lab_date_preset_last_5";
+    if (isEqual(selected, mkExpected(10))) return "lab_date_preset_last_10";
+    if (isEqual(selected, mkExpected(15))) return "lab_date_preset_last_15";
+
+    return "lab_date_preset_custom";
+  }
+
   function applyDatePreset() {
     const presetId = getCheckedRadioId("lab_date_presets_selection");
     const cbs = Array.from(box.querySelectorAll('[data-role="dateCb"]'));
@@ -563,6 +718,8 @@ export function init(root) {
       setChecked((i) => i === 0 || pickedSet.has(i));
     };
 
+    if (presetId === "lab_date_preset_custom") return;
+
     switch (presetId) {
       case "lab_date_preset_all":
         setChecked(() => true);
@@ -589,9 +746,66 @@ export function init(root) {
     }
   }
 
+  function getSelectedLabsFromState() {
+    const labs = [];
+    for (const idx of selectedItemIdxSet) {
+      const lab = String(abbrRows?.[idx]?.[0] ?? "").trim();
+      if (lab) labs.push(lab);
+    }
+    return new Set(labs);
+  }
+
+  function setPresetRadio(id) {
+    const el = box.querySelector(`#${id}`);
+    if (el) el.checked = true;
+  }
+
+  // 回傳最符合的 presetId；若不符合任何 preset，回傳 "lab_preset_custom"
+  function detectPresetFromCurrentSelection() {
+    const selected = getSelectedLabsFromState();
+
+    // 特例：全不選 / 全選（如果你希望也能自動回到這兩種）
+    const allCbs = Array.from(box.querySelectorAll('[data-role="itemCb"]'));
+    const total = allCbs.length;
+    const count = selected.size;
+
+    if (count === 0) return "lab_preset_none";
+    if (count === total && total > 0) return "lab_preset_all";
+
+    // 一般套組：用「集合完全相等」判斷
+    const isEqualSet = (a, arr) => {
+      const b = new Set(arr || []);
+      if (a.size !== b.size) return false;
+      for (const x of a) if (!b.has(x)) return false;
+      return true;
+    };
+
+    // 你目前的 presetSelectionsMap 已包含 lab_preset_tpn_fixed（minor+major去重）
+    const presetIds = [
+      "lab_preset_TPN_minor",
+      "lab_preset_TPN_major",
+      "lab_preset_gas",
+      "lab_preset_cv",
+      "lab_preset_gi",
+      "lab_preset_inf",
+      "lab_preset_hema",
+      "lab_preset_tpn_fixed",
+    ];
+
+    for (const pid of presetIds) {
+      const allow = presetSelectionsMap[pid] || [];
+      if (isEqualSet(selected, allow)) return pid;
+    }
+
+    return "lab_preset_custom";
+  }
+
   function applyItemPreset() {
     const presetId = getCheckedRadioId("lab_presets_selection");
     const cbs = Array.from(box.querySelectorAll('[data-role="itemCb"]'));
+
+    // ✅ 自選：不要動使用者勾選
+    if (presetId === "lab_preset_custom") return;
 
     if (presetId === "lab_preset_none") {
       cbs.forEach((cb) => (cb.checked = false));
@@ -605,9 +819,7 @@ export function init(root) {
     // ✅ tpn_fixed：UI 勾選 = minor + major（去重）
     let allow = presetSelectionsMap[presetId] || [];
     if (presetId === "lab_preset_tpn_fixed") {
-      const minor = presetSelectionsMap["lab_preset_TPN_minor"] || [];
-      const major = presetSelectionsMap["lab_preset_TPN_major"] || [];
-      allow = Array.from(new Set([...minor, ...major]));
+      allow = presetSelectionsMap["lab_preset_tpn_fixed"] || [];
     }
 
     cbs.forEach((cb) => {
@@ -1382,6 +1594,10 @@ export function init(root) {
     // user manual selection update
     if (t?.matches?.('[data-role="itemCb"]')) {
       syncSelectedItemsFromDOM();
+
+      // ✅ 手動改 item 後，讓 preset UI 反映目前狀態
+      const detected = detectPresetFromCurrentSelection();
+      setPresetRadio(detected);
       if (isAutoLastNPreset()) applyDatePreset();
       scheduleOutput();
       return;
@@ -1390,12 +1606,19 @@ export function init(root) {
     // rebuild item list when specimen changes (keep manual selection for remaining items)
     if (t?.matches?.('[data-role="specimenCb"]')) {
       rebuildItemsForSpecimens();
+
+      // ✅ specimen 變動會改變可選 items，更新目前 preset 顯示狀態
+      setPresetRadio(detectPresetFromCurrentSelection());
+
       if (isAutoLastNPreset()) applyDatePreset();
       scheduleOutput();
       return;
     }
 
     if (t?.matches?.('[data-role="dateCb"]')) {
+      const detected = detectDatePresetFromCurrentSelection();
+      setDatePresetRadio(detected);
+
       scheduleOutput();
       return;
     }
@@ -1429,37 +1652,105 @@ export function init(root) {
     if (displayHorizontal) displayHorizontal.checked = true;
   });
 
-  // ---- intro (kept same behavior)
+  // ---- intro (UPDATED)
   introBtn?.addEventListener("click", () => {
     if (typeof introJs === "undefined") return;
 
+    // ✅ Example updated: includes multiple dates and multiple specimens (B / U / CSF)
     const example = `
-選取\t項目代號\t項目\t檢體別\t20250129
-0125\t20250126
-0025\t20250125
-2328\t單位\t參考值
-True\t72A001\tWBC\tB\t3.5\t4.4\t9.3\t1000/uL\t5.2~13.4(>1d-8d)
-True\t72B001\tRBC\tB\t\t4.19\t3.18\tmillion/uL\t3.99~4.98(>1d-8d)
-True\t72B001\tHb\tB\t\t10.2\t10.3\tmillion/uL\t3.99~4.98(>1d-8d)
-True\t72B001\tHct\tB\t\t30.2\t30.3\tmillion/uL\t3.99~4.98(>1d-8d)
-True\t72B001\tPlt\tB\t\t325\t80\tmillion/uL\t3.99~4.98(>1d-8d)
-`.trim();
+選取\t項目代號\t項目\t檢體別\t20250129\t0125\t20250126\t0025\t20250125\t2328\t單位\t參考值
+True\t72A001\tWBC\tB\t3.5\t4.4\t9.3\t\t\t1000/uL\t5.2~13.4(>1d-8d)
+True\t72B001\tHb\tB\t\t10.2\t10.3\t\t\t\tg/dL\t12.2~16.6(>1d-8d)
+True\t72C001\tPlatelets\tB\t\t325\t80\t\t\t\t1000/uL\t150~450
+True\t72A200\tCreatinine\tB\t\t0.62\t0.58\t\t\t\tmg/dL\t0.2~0.8
+True\t72A201\tNa(Sodium)\tB\t136\t135\t134\t\t\t\tmmol/L\t135~145
+True\t72A202\tK(Potassium)\tB\t4.1\t4.5\t4.0\t\t\t\tmmol/L\t3.5~5.5
+True\t72A203\tCl(Chloride)\tB\t104\t103\t102\t\t\t\tmmol/L\t98~107
+True\t72A210\tGlucose(AC)\tU\t\t\t\t92\t88\t\tmg/dL\t-
+True\t72A300\tTotal Bilirubin\tB\t7.2\t8.1\t9.5\t\t\t\tmg/dL\t-
+True\t72A301\tD.Bilirubin\tB\t0.3\t0.4\t0.5\t\t\t\tmg/dL\t-
+True\t72A530\tPH\tCSF\t\t\t\t7.30\t7.28\t\t\t\t-
+True\t72B530\tPCO2\tCSF\t\t\t\t45\t48\t\tmmHg\t-
+  `.trim();
 
     if (rawEl) rawEl.value = example;
     process();
 
+    // ✅ Steps updated: include specimen / presets / trend chart / output copy
     const steps = [
-      { element: `[data-tool="${TOOL_KEY}"] [data-role="rawArea"]`, intro: `<p>(1) 請開啟His 4.0 新版檢驗</p>` },
-      { element: `[data-tool="${TOOL_KEY}"] [data-role="rawArea"]`, intro: `<p>(2) 點選 "全部彙總"</p><img src="./img/intro_lab_step_0_全部彙總.png" style="width:100%;height:auto;">` },
-      { element: `[data-tool="${TOOL_KEY}"] [data-role="rawArea"]`, intro: `<p>(3) 點選 "任一項檢驗項目"</p><img src="./img/intro_lab_step_1_點選任一檢驗項目.png" style="width:100%;height:auto;">` },
-      { element: `[data-tool="${TOOL_KEY}"] [data-role="rawArea"]`, intro: `<p>(4-1) Ctrl + A 全選</p><img src="./img/intro_lab_step_2_全選複製.png" style="width:100%;height:auto;"><p>(4-2) 再 Ctrl + C 複製</p>` },
-      { element: `[data-tool="${TOOL_KEY}"] [data-role="rawArea"]`, intro: `(5) 貼上複製的資料` },
-      { element: `[data-tool="${TOOL_KEY}"] [data-role="presetArea"]`, intro: `(6) 點選顯示方式(直式/橫式)` },
-      { element: `[data-tool="${TOOL_KEY}"] [data-role="dateArea"]`, intro: `(7) 點選想要的日期` },
-      { element: `[data-tool="${TOOL_KEY}"] [data-role="specimenArea"]`, intro: `(7-1) 點選想要的檢體別` },
-      { element: `[data-tool="${TOOL_KEY}"] [data-role="presetsArea"]`, intro: `(8) 點選想要的套組` },
-      { element: `[data-tool="${TOOL_KEY}"] [data-role="itemArea"]`, intro: `(9) 點選想要的檢驗項目` },
-      { element: `[data-tool="${TOOL_KEY}"] [data-role="outputsArea"]`, intro: `(10) 點選內容即可複製!` },
+      {
+        element: `[data-tool="${TOOL_KEY}"] [data-role="rawArea"]`,
+        intro:
+          `<p><b>(1) HIS 4.0 檢驗頁面</b></p>
+          <p>建議用「全部彙總」後再複製貼上。</p>`,
+      },
+      {
+        element: `[data-tool="${TOOL_KEY}"] [data-role="rawArea"]`,
+        intro:
+          `<p><b>(2) 複製資料</b></p>
+          <p>Ctrl + A 全選 → Ctrl + C 複製</p>
+          <img src="./img/intro_lab_step_0_全部彙總.png" style="width:100%;height:auto;">`,
+      },
+      {
+        element: `[data-tool="${TOOL_KEY}"] [data-role="rawArea"]`,
+        intro:
+          `<p><b>(3) 貼上 Raw Lab</b></p>
+          <p>Ctrl + V 貼到 Raw Lab，系統會即時解析、生成日期/檢體別/項目。</p>`,
+      },
+      {
+        element: `[data-tool="${TOOL_KEY}"] [data-role="presetArea"]`,
+        intro:
+          `<p><b>(4) 選擇顯示方式</b></p>
+          <p>橫式/直式切換：只影響輸出排版，不影響選取內容。</p>`,
+      },
+      {
+        element: `[data-tool="${TOOL_KEY}"] [data-role="specimenArea"]`,
+        intro:
+          `<p><b>(5) 選擇檢體別</b></p>
+          <p>預設會偏好勾選 B / BV（若存在）。</p>
+          <p>切換檢體別會重建「可選項目清單」，並保留仍存在的已選項目。</p>`,
+      },
+      {
+        element: `[data-tool="${TOOL_KEY}"] [data-role="dateArea"]`,
+        intro:
+          `<p><b>(6) 選擇日期（預設：近5次）</b></p>
+          <p>可用：全選 / 近15 / 近10 / 近5 / 全不選 / 自選。</p>
+          <p>近N次會優先抓「被選取項目」在該日期有值的欄位。</p>`,
+      },
+      {
+        element: `[data-tool="${TOOL_KEY}"] [data-role="presetsArea"]`,
+        intro:
+          `<p><b>(7) 選擇套組</b></p>
+          <p>TPN小抽/大抽、Gas、CV、GI、Inf、Hema、TPN固定格式、或自選。</p>
+          <p>切換套組會覆寫項目勾選（自選除外）。</p>`,
+      },
+      {
+        element: `[data-tool="${TOOL_KEY}"] [data-role="itemArea"]`,
+        intro:
+          `<p><b>(8) 客製化日期、檢驗項目</b></p>
+          <p>項目依 Date / CBC / Coag / Chemistry / Gas 分類顯示。</p>
+          <p>手動調整項目後，套組會自動切換為「最符合」或「自選」。</p>`,
+      },
+      {
+        element: `[data-tool="${TOOL_KEY}"] [data-role="outputs"]`,
+        intro:
+          `<p><b>(9) 輸出與複製</b></p>
+          <p>輸出內容為等寬對齊文字，點選內容即可複製（你原本的 copy 行為）。</p>
+          <p>若只選到單一非血液檢體（如 Urine），會顯示 Specimen header 並省略每列前綴。</p>`,
+      },
+      {
+        element: `[data-tool="${TOOL_KEY}"] [data-role="trendCanvas"]`,
+        intro:
+          `<p><b>(10) Trend 圖</b></p>
+          <p>會根據「目前勾選的日期 + 勾選的項目」畫出趨勢（需 Chart.js）。</p>
+          <p>若沒有足夠日期或沒有可轉數值的資料，趨勢圖會自動隱藏/不畫。</p>`,
+      },
+      {
+        element: `[data-tool="${TOOL_KEY}"] [data-role="reset"]`,
+        intro:
+          `<p><b>(11) Reset</b></p>
+          <p>清空資料與所有狀態，回到預設（近5次 + TPN小抽 + 橫式）。</p>`,
+      },
     ];
 
     const intro = introJs();
@@ -1472,6 +1763,7 @@ True\t72B001\tPlt\tB\t\t325\t80\tmillion/uL\t3.99~4.98(>1d-8d)
       scrollToElement: true,
     });
 
+    // ✅ keep your previous cleanup behavior
     intro.oncomplete(() => resetBtn?.click());
     intro.onexit(() => resetBtn?.click());
     intro.start();
