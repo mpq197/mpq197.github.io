@@ -1,5 +1,6 @@
 // /tools/medorders.js
-// updated: 2026-02-28
+// updated: 2026-03-04
+// note: 優化parse穩定性，新增教學
 
 //
 // =================================================================================================
@@ -59,7 +60,7 @@
 //  4c2) ROUTE 左側：
 //        - 找最右側 SIG（必定存在；先做黏字修復）
 //        - SIG 右側找 TIMING（可空）
-//        - SIG 左側找最右側 DOSE：((可分數/小數/0) + 單位) 或 QS（例外）
+//        - SIG 左側找最右側 DOSE：((可分數/小數/0/小數點開頭的小數如.5) + 單位) 或 QS（例外）或 PC （例外）
 //        - DOSE 左側（扣除 ORDER_TYPES）即為藥名
 //
 // -------------------------------------------------------------------------------------------------
@@ -163,18 +164,25 @@ const SIG_MAP = {
   Q6H: "Q6H",
   Q8H: "Q8H",
   Q12H: "Q12H",
+  Q12P: "Q12P", // Q12HPRN?
 
   QD: "QD",
   BID: "BID",
   TID: "TID",
   QID: "QID",
+  Q3D: "Q3D",
+  Q4D: "Q4D",
+  Q5D: "Q5D",
+  QOD: "QOD",
 
   QN: "QN",
   QAM: "QAM",
   QPM: "QPM",
+  QON: "QON",
 
   HS: "HS",
   CM: "CM",
+  BIHS: "BIHS",
   CMHS: "CMHS",
   AMHS: "AMHS",
   PMHS: "PMHS",
@@ -183,21 +191,14 @@ const SIG_MAP = {
   Q2W: "Q2W",
   Q3W: "Q3W",
   Q4W: "Q4W",
+  Q8W: "Q8W",
   BIW: "BIW",
   TIW: "TIW",
+  QOW: "QOW",
 
   QM: "QM",
   Q3M: "Q3M",
   Q6M: "Q6M",
-
-  Q3D: "Q3D",
-  Q4D: "Q4D",
-  Q5D: "Q5D",
-  QOD: "QOD",
-
-  Q8W: "Q8W",
-  QON: "QON",
-  QOW: "QOW",
 
   ONCE: "ONCE",
   STAT: "STAT",
@@ -212,7 +213,7 @@ const TIMING_MAP = {
 };
 
 // dose units (expandable)
-const DOSE_UNITS = ["MG", "MCG", "G", "IU", "U", "UN", "MU", "ML", "PC", "PK", "PU", "GT", "PI", "AMP", "VIAL", "TAB", "CAP", "BOT", "BAG"];
+const DOSE_UNITS = ["MG", "MCG", "G", "IU", "U", "UN", "MU", "ML", "PC", "PK", "PU", "GT", "PI", "BT"];
 
 
 // 自備藥特殊處理：同藥名但不同劑型（針劑、水劑、外用、口服）不視為同種藥（避免誤配對）
@@ -382,7 +383,7 @@ const DOSE_UNIT_RE = new RegExp(
 );
 
 const DOSE_RE = new RegExp(
-  String.raw`(?:^|\s)(QS|(?:(?:\d+(?:\.\d+)?)|(?:\d+\/\d+))\s*${DOSE_UNIT_RE.source})(?=\s|$)`,
+  String.raw`(?:^|\s)(QS|PC|(?:(?:\d+(?:\.\d+)?|\.\d+)|(?:\d+\/\d+))\s*${DOSE_UNIT_RE.source})(?=\s|$)`,
   "ig"
 );
 
@@ -1146,7 +1147,7 @@ function renderResults(root, state) {
   const totalRoutes = filtered.reduce((acc, d) => acc + d.routes.size, 0);
   const lastPT = state.lastPrintTime ? fmtYMDHM(state.lastPrintTime) : "—";
 
-  meta.textContent = `instances: ${state.rows.length}｜藥品: ${filtered.length}｜route groups: ${totalRoutes}｜unmatched DC: ${
+  meta.textContent = `藥囑筆數 ${state.rows.length}｜藥品數: ${filtered.length}｜幾種途徑: ${totalRoutes}｜unmatched DC: ${
     state.unmatchedDc.length
   }｜parse failed: ${state.parseFailures.length}｜lastPrint: ${lastPT}｜debug: ${dbgOn ? "ON" : "OFF"}`;
 
@@ -1174,7 +1175,7 @@ function renderResults(root, state) {
   debugTop.innerHTML = dbgOn
     ? `
       <div class="small neo-muted">
-        <div><b>解析策略</b>：狀態機進出藥品表格 → ORDER_TYPES 切 instance → instance 內「主列」最多合併 3 行 → 主列右到左剝離欄位；其餘行全部 note。</div>
+        <div><b>解析策略</b>：狀態機進出藥品表格 → ORDER_TYPES (NEW, DC ...) 表示藥囑開始 → 從第一行開始往下合併直到同時包含劑量、途徑、用法，、藥囑 (最多合併 3 行) → 從右到左解析各欄位；其餘行全部當備註。</div>
         <div>同分鐘排序：STOP(DC*) → RENEW(trigger) → START。</div>
         <div>MEDICATION RENEW：偵測 banner 區塊；在該區塊內遇到列印時間產生 RENEW event，對 open 且 plannedEnd&gt;renewTime 的 instance 寫入 actualEnd（implicitRenew）。</div>
         <div>ONGOING：相對最後列印時間 lastPrintTime；plannedEnd ≤ lastPrintTime → 自然結束，否則 ONGOING。</div>
@@ -1343,7 +1344,7 @@ export function render() {
     </style>
 
     <div class="card h-100">
-      <div class="card-header text-center">藥囑整理（instance-based）</div>
+      <div class="card-header text-center">藥囑整理</div>
 
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
@@ -1364,6 +1365,7 @@ export function render() {
         <div class="d-flex justify-content-between align-items-center mt-2">
           <div class="small neo-muted" data-role="parse_meta"></div>
           <div class="d-flex gap-2">
+            <button type="button" class="btn btn-secondary btn-sm" data-role="intro">教學</button>
             <button type="button" class="btn btn-secondary btn-sm" data-role="clear_all">Reset</button>
           </div>
         </div>
@@ -1385,6 +1387,7 @@ export function init(root) {
   const btnClearQ = root.querySelector('[data-role="clear_q"]');
   const btnClearAll = root.querySelector('[data-role="clear_all"]');
   const elDbg = root.querySelector('[data-role="debug_toggle"]');
+  const btnIntro = root.querySelector('[data-role="intro"]');
 
   const state = {
     raw: "",
@@ -1415,6 +1418,87 @@ export function init(root) {
   }
 
   const recomputeDebounced = debounce(recompute, 250);
+
+  function intro() {
+    // 1) Prefill：給一段「最短可解析」示範（建議你放你們實際範例）
+    // 這段要含：列印時間 + 表頭 + 至少一筆 NEW/CHG... + 醫師:( 讓 state machine 退場
+    const demo = `
+
+[22222222 好病人] 列印時間:2026/01/01 05:05
+類別     醫囑名稱                                               用法/方向 檢體/部位
+        Chest A-P View                                               P:Portable
+類別     藥品名稱                               劑量  用法 飯前後 途徑  數量   流速
+    St   Heparin sodium 25,000u/5mL/vial           0.05ML  STAT       IVF      
+  (UA LINE:HEPARIN 25000U/5ML 抽0.1ML稀釋成10ML, 注入5ML至half saline 500ML run as order)
+NEW   Heparin sodium 25,000u/5mL/vial           0.05MLIRRE        IVF   7天     
+  (UA LINE:HEPARIN 25000U/5ML 抽0.1ML稀釋成10ML, 注入5ML至half saline 500ML run as order)
+
+         醫師:_____(好醫師,MPQ197,G99999)       執行護師:         時間:
+
+[22222222 好病人] 列印時間:2026/01/07 05:05
+類別     藥品名稱                               劑量  用法 飯前後 途徑  數量   流速
+DC-C   Heparin sodium 25,000u/5mL/vial           0.05MLIRRE        IVF   7天     
+  (UA LINE:HEPARIN 25000U/5ML 抽0.1ML稀釋成10ML, 注入5ML至half saline 500ML run as order)
+
+         醫師:_____(好醫師,MPQ197,G99999)       執行護師:         時間:
+
+[22222222 好病人] 列印時間:2026/01/12 05:05
+類別     藥品名稱                               劑量  用法 飯前後 途徑  數量   流速
+NEW   Heparin sodium 25,000u/5mL/vial           0.05MLIRRE        IVF   7天     
+  (UA LINE:HEPARIN 25000U/5ML 抽0.1ML稀釋成10ML, 注入5ML至half saline 500ML run as order)
+
+         醫師:_____(好醫師,MPQ197,G99999)       執行護師:         時間:
+ 
+  `.trim();
+
+    elSrc.value = demo;
+    state.raw = demo;
+
+    // 2) 視需要：打開 debug，讓使用者看到 failures/unmatched 區塊
+    if (elDbg && !elDbg.checked) {
+      elDbg.checked = true;
+      state.debug = true;
+    }
+
+    // 3) 清搜尋，避免 demo 被過濾掉
+    elQ.value = "";
+    state.query = "";
+
+    // 4) 直接重算（不要 debounce）
+    // 你的 recompute() 是 init() 內函數，直接呼叫
+    recompute();
+
+    // 5) intro.js
+    if (typeof window.introJs !== "function") return;
+
+    const steps = [
+      { element: root.querySelector('[data-role="src"]'), intro: `
+<b>把整段醫囑貼在這裡</b><br>
+點住院病歷醫囑<br> → 點最近的一筆醫囑<br> → 按住shift鍵<br> → 滑到最早的第一筆醫囑並點擊<br><br>
+(這時會顯示病人所有的醫囑)<br> → Ctrl+A 全選<br> → Ctrl+C 複製<br> → 在這裡貼上列印內容
+` },
+      { element: root.querySelector('[data-role="parse_meta"]'), intro: "解析摘要：<br>unmatched DC(找不到開立時藥囑)<br>parse failed(解析失敗，請手動檢查!)" },
+      { element: root.querySelector('[data-role="result_list"]'), intro: "結果：每個藥品依給藥途徑分組；並顯示用藥區間。點 Copy 可複製摘要。" },
+      { element: root.querySelector('[data-role="q"]'), intro: "搜尋：輸入藥名關鍵字過濾" },
+      { element: root.querySelector('[data-role="debug_toggle"]'), intro: "Debug：顯示 Parse Failures、Unmatched DC、instances 明細（用來校對貼上的內容/解析規則）。" },
+      { element: root.querySelector('[data-role="clear_all"]'), intro: "Reset：清空所有輸入與狀態。" },
+    ].filter((s) => s.element || s.intro);
+
+    const intro = window.introJs();
+    intro.setOptions({
+      steps,
+      showProgress: true,
+      showBullets: false,
+      disableInteraction: false,
+      exitOnOverlayClick: false,
+      scrollToElement: true,
+      nextLabel: "下一步",
+      prevLabel: "上一步",
+      doneLabel: "完成",
+    });
+
+    intro.start();
+  }
 
   elSrc.addEventListener("input", () => {
     state.raw = elSrc.value || "";
@@ -1451,6 +1535,8 @@ export function init(root) {
     state.debug = !!elDbg.checked;
     renderResults(root, state);
   });
+
+  btnIntro?.addEventListener("click", () => intro());
 
   bindCopy(root);
   renderResults(root, state);
