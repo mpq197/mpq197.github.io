@@ -960,7 +960,7 @@ export function init(root) {
 
   seed();
 
-  const scheduler = createScheduler(() => {
+  const schedule = createScheduler(() => {
     if (!root.isConnected) return;
     renderAll();
   });
@@ -987,7 +987,7 @@ export function init(root) {
 
   function rerender() {
     normalize3Gen(state);
-    scheduler.schedule();
+    schedule();
   }
 
   function renderAll() {
