@@ -1,6 +1,6 @@
 // tools/lab.js
-// updated: 2026-03-03
-// note: major revise, bug fixes, and new features added. 
+// updated: 2026-03-05
+// note: add Order/Bar area with drag-reorder + add/clear/reset bars (horizontal only)
 
 import { createScheduler } from "../core/utils.js";
 
@@ -21,10 +21,10 @@ export function render() {
       /* each category row */
       [data-tool="lab"] .lab-cat-group{
         display:grid;
-        grid-template-columns:110px 1fr;
+        grid-template-columns:80px 1fr;
         gap:10px;
         align-items:center;
-        padding:10px 0;              /* ✅ 關鍵：讓內容離分隔線有距離 */
+        padding:10px 0;
       }
 
       [data-tool="lab"] .lab-cat-group + .lab-cat-group{
@@ -53,13 +53,92 @@ export function render() {
         border-radius:999px;
         white-space:nowrap;
       }
-      
-      /* 讓 Date 看起來跟其他分類有分隔線 */
+
+      /* Date separation */
       [data-tool="lab"] .lab-cat-group.is-date{
         border-bottom:1px solid #6c757d2e;
       }
-        
+
+      /* -----------------------------
+         Order / Bar area
+      ----------------------------- */
+      [data-tool="lab"] .lab-order-panel{
+        margin-top:10px;
+        border:1px solid #6c757d2e;
+        border-radius:10px;
+        padding:10px 10px 10px 0;
+      }
+
+      [data-tool="lab"] .lab-order-header{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
+      }
+
+      [data-tool="lab"] .lab-order-title{
+        font-weight:700;
+        color:#444;
+        white-space:nowrap;
+        text-align:center;
+        width:80px;
+      }
+
+      [data-tool="lab"] .lab-order-actions{
+        display:flex;
+        gap:6px;
+        flex-wrap:wrap;
+        justify-content:flex-end;
+      }
+
+      [data-tool="lab"] .lab-order-list{
+        display:flex;
+        flex-wrap:nowrap;      /* ✅ 不換行 */
+        overflow-x:auto;       /* ✅ 超出用水平捲動 */
+        overflow-y:hidden;
+        gap:2px;
+        align-items:center;
+        min-height:36px;
+        padding:10px;
+        scroll-behavior:smooth;
+        -webkit-overflow-scrolling:touch;
+      }
+
+      [data-tool="lab"] .lab-order-empty{
+        color:#888;
+        font-size:12px;
+        padding:4px 6px;
+      }
+
+      [data-tool="lab"] .lab-order-chip{
+        user-select:none;
+        cursor:grab;
+        padding:3px 10px;
+        border-radius:999px;
+        font-size:12px;
+        border:1px solid #6c757d66;
+        background:#ffffff;
+        color:#000000;
+      }
+
+
+      /* since you are using bootstrap dark mode, keep neutral */
+      [data-tool="lab"] .lab-order-chip:active{
+        cursor:grabbing;
+      }
+
+      [data-tool="lab"] .lab-order-chip.is-bar{
+        padding:3px 10px;
+        font-weight:800;
+        letter-spacing:1px;
+        opacity:0.95;
+      }
+
+      [data-tool="lab"] .lab-order-chip.dragging{
+        opacity:0.45;
+      }
     </style>
+
     <div class="container mt-2" data-tool="${TOOL_KEY}">
       <div class="card h-100">
         <div class="card-header text-center">lab整理</div>
@@ -77,18 +156,36 @@ export function render() {
           <div class="row mt-2">
             <div class="col" data-role="presetArea">
               <span>✔ 選取顯示方式</span>
-              <div class="mt-1 d-flex gap-1">
-                <div class="btn-group mb-2" role="group" aria-label="display mode toggle buttons" data-role="displayModeGroup">
-                  <input type="radio" class="btn-check" name="lab_display_mode" id="lab_display_horizontal" autocomplete="off" checked>
-                  <label class="btn btn-outline-secondary" for="lab_display_horizontal">橫式</label>
+              <div class="mt-1 d-flex align-items-center justify-content-between gap-2 flex-wrap">
 
-                  <input type="radio" class="btn-check" name="lab_display_mode" id="lab_display_vertical" autocomplete="off">
-                  <label class="btn btn-outline-secondary" for="lab_display_vertical">直式</label>
+                <div class="d-flex align-items-center gap-1">
+
+                  <!-- 橫式 / 直式 -->
+                  <div class="btn-group mb-2" role="group" aria-label="display mode toggle buttons" data-role="displayModeGroup">
+                    <input type="radio" class="btn-check" name="lab_display_mode" id="lab_display_horizontal" autocomplete="off" checked>
+                    <label class="btn btn-outline-secondary" for="lab_display_horizontal">橫式</label>
+
+                    <input type="radio" class="btn-check" name="lab_display_mode" id="lab_display_vertical" autocomplete="off">
+                    <label class="btn btn-outline-secondary" for="lab_display_vertical">直式</label>
+                  </div>
+
+                  <!-- Trend 開關 -->
+                  <div class="btn-group mb-2" role="group" aria-label="trend toggle" data-role="trendModeGroup">
+
+                    <input type="radio" class="btn-check" name="lab_trend_mode" id="lab_trend_on" autocomplete="off">
+                    <label class="btn btn-outline-secondary" for="lab_trend_on">Chart</label>
+
+                    <input type="radio" class="btn-check" name="lab_trend_mode" id="lab_trend_off" autocomplete="off" checked>
+                    <label class="btn btn-outline-secondary" for="lab_trend_off">No Chart</label>
+
+                  </div>
+
                 </div>
+
               </div>
             </div>
           </div>
-          
+
           <!-- 檢體別 selection -->
           <div class="row mt-2">
             <div class="col" data-role="specimenArea">
@@ -165,9 +262,7 @@ export function render() {
 
                   <div class="btn-group mt-1 mb-2" role="group" aria-label="tpn fixed preset buttons" data-role="labPresetGroupFixed">
                     <input type="radio" class="btn-check" name="lab_presets_selection" id="lab_preset_tpn_fixed" autocomplete="off">
-                    <label class="btn btn-outline-secondary" for="lab_preset_tpn_fixed">
-                      TPN固定格式
-                    </label>
+                    <label class="btn btn-outline-secondary" for="lab_preset_tpn_fixed">TPN固定格式</label>
                   </div>
 
                   <div class="btn-group mt-1 mb-2" role="group" aria-label="custom preset buttons" data-role="labPresetGroupCustom">
@@ -191,10 +286,23 @@ export function render() {
                   </div>
                 </div>
 
-                <!-- ✅ Items group (existing) -->
+                <!-- ✅ Items group -->
                 <div class="lab-items-panel__body" data-role="itemSelection"><br></div>
               </div>
             </div>
+          </div>
+
+          <!-- ✅ Order/Bar area (NEW) -->
+          <div class="lab-order-panel mt-2" data-role="orderArea">
+            <div class="lab-order-header">
+              <div class="lab-order-title">Order</div>
+              <div class="lab-order-actions">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-role="addBarBtn">+ Bar</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-role="clearBarsBtn">- All Bar</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-role="resetOrderBtn">重置</button>
+              </div>
+            </div>
+            <div class="lab-order-list" data-role="orderList"></div>
           </div>
 
           <!-- Outputs + buttons -->
@@ -240,6 +348,13 @@ export function init(root) {
   const resetBtn = box.querySelector('[data-role="reset"]');
   const introBtn = box.querySelector('[data-role="introBtn"]');
 
+  // Order/Bar (NEW)
+  const orderAreaEl = box.querySelector('[data-role="orderArea"]');
+  const orderListEl = box.querySelector('[data-role="orderList"]');
+  const addBarBtn = box.querySelector('[data-role="addBarBtn"]');
+  const clearBarsBtn = box.querySelector('[data-role="clearBarsBtn"]');
+  const resetOrderBtn = box.querySelector('[data-role="resetOrderBtn"]');
+
   // Trend chart
   const trendCanvas = box.querySelector('[data-role="trendCanvas"]');
   let trendChart = null;
@@ -253,6 +368,11 @@ export function init(root) {
 
   // keep user's manual item selection across specimen UI rebuilds (store ORIGINAL row indices)
   let selectedItemIdxSet = new Set();
+
+  // Order tokens (NEW)
+  // token: { t:'item', idx:number } or { t:'bar', id:string }
+  let orderTokens = [];
+  let barSeq = 0;
 
   // ---- constants (same as your original)
   const labHeaderAbbrDict = {
@@ -313,29 +433,29 @@ export function init(root) {
   const excludingRowKeywords = {
     "項目代號": [
       //刪除 NBS 1 & 2
-      "72A285", "72B285", "72C285", "72D285", "72E285", "72F285", "72G285", "72H285", "72I285", "72J285", "72K285", "72L285", "72M285", "72N285", "72O285", "72P285", "72Q285", "72R285", "72S285", "72T285", "72U285", "72V285", "72W285", "72X285", "72Y285", "72Z285",
-      "72a285", "72b285", "72c285", "72d285", "72e285", "72f285", "72g285", "72h285", "72i285",
+      "72A285","72B285","72C285","72D285","72E285","72F285","72G285","72H285","72I285","72J285","72K285","72L285","72M285","72N285","72O285","72P285","72Q285","72R285","72S285","72T285","72U285","72V285","72W285","72X285","72Y285","72Z285",
+      "72a285","72b285","72c285","72d285","72e285","72f285","72g285","72h285","72i285",
       //刪除 INR/aPTT的MNPT
-      "72B037", "72B038",
+      "72B037","72B038",
       //刪除 Dbil/Tbil ratio
       "72A513",
       //刪除 G6PD
       "72-065",
-      //刪除 gas 多餘項目 72A530(Temperature) 72G530(ctCO2) 72L530(72L530) 72M530(AaDO2) 72A530(TEMP) 72K530(SAT) 72L530(Po2(A-a)) 72M530(FIO2)
-      "72A530", "72G530", "72L530", "72M530", "72A530", "72A530", "72K530", "72L530", "72M530",
+      //刪除 gas 多餘項目
+      "72A530","72G530","72L530","72M530","72A530","72A530","72K530","72L530","72M530",
       //刪除 RBC, MCV, MCH, MCHC, RDW, PDW, MPV
-      "72B001", "72E001", "72F001", "72G001", "72H001", "72K001", "72L001",
+      "72B001","72E001","72F001","72G001","72H001","72K001","72L001",
     ],
   };
 
   const presetSelectionsMap = {
-    "lab_preset_TPN_minor": ["WBC", "Hb", "Hct", "Plt", "Na", "K", "Cl", "Ca", "Mg", "P", "BUN", "Cr", "AST", "ALT", "DB", "TB", "CRP", "Pct"],
-    "lab_preset_TPN_major": ["TG", "Chol", "TP", "Alb", "ALP", "γGT", "iPTH"],
-    "lab_preset_gas": ["pH", "pCO2", "pO2", "HCO3", "SBE"],
-    "lab_preset_cv": ["CK-MB", "hs-Troponin I", "Lactate", "BNP", "NT-ProBNP"],
-    "lab_preset_gi": ["BUN", "Cr", "AST", "ALT", "DB", "TB", "ALP", "γGT", "Amylase", "Lipase", "Na", "K", "Cl", "iCa", "Ca", "Mg", "P"],
-    "lab_preset_inf": ["WBC", "Seg", "Lym", "ANC", "CRP", "Pct", "Ferritin"],
-    "lab_preset_hema": ["Hb", "Hct", "Plt", "PT", "INR", "aPTT", "aPTT/m", "Fibrinogen", "D-dimer", "FDP"],
+    "lab_preset_TPN_minor": ["WBC","Hb","Hct","Plt","Na","K","Cl","Ca","Mg","P","BUN","Cr","AST","ALT","DB","TB","CRP","Pct"],
+    "lab_preset_TPN_major": ["TG","Chol","TP","Alb","ALP","γGT","iPTH"],
+    "lab_preset_gas": ["pH","pCO2","pO2","HCO3","SBE"],
+    "lab_preset_cv": ["CK-MB","hs-Troponin I","Lactate","BNP","NT-ProBNP"],
+    "lab_preset_gi": ["BUN","Cr","AST","ALT","DB","TB","ALP","γGT","Amylase","Lipase","Na","K","Cl","iCa","Ca","Mg","P"],
+    "lab_preset_inf": ["WBC","Seg","Lym","ANC","CRP","Pct","Ferritin"],
+    "lab_preset_hema": ["Hb","Hct","Plt","PT","INR","aPTT","aPTT/m","Fibrinogen","D-dimer","FDP"],
   };
 
   // 合併 minor + major，順序 = minor 在前、major 在後，並去重
@@ -346,12 +466,12 @@ export function init(root) {
   ]);
 
   const labOrder = [
-    "WBC", "Hb", "Hct", "Plt", "Seg", "Band", "Lym", "Mono", "Eos", "Baso", "Atyp-Lym", "Meta-Mye", "Myelocyte", "Promyelocyte", "Blast", "Megakaryocyte", "ANC", "nRBC",
-    "PT", "INR", "aPTT", "aPTT/m",
-    "Na", "K", "Cl", "iCa", "Ca", "Mg", "P", "Zn",
-    "BUN", "Cr", "AST", "ALT", "DB", "TB",
-    "CRP", "Pct",
-    "TG", "Chol", "TP", "Alb", "ALP", "γGT", "iPTH", "fT4", "TSH",
+    "WBC","Hb","Hct","Plt","Seg","Band","Lym","Mono","Eos","Baso","Atyp-Lym","Meta-Mye","Myelocyte","Promyelocyte","Blast","Megakaryocyte","ANC","nRBC",
+    "PT","INR","aPTT","aPTT/m",
+    "Na","K","Cl","iCa","Ca","Mg","P","Zn",
+    "BUN","Cr","AST","ALT","DB","TB",
+    "CRP","Pct",
+    "TG","Chol","TP","Alb","ALP","γGT","iPTH","fT4","TSH",
   ];
 
   // ---- helpers
@@ -360,13 +480,16 @@ export function init(root) {
     return el ? el.id : null;
   }
 
-  // ----- DOM-safe builders (avoid innerHTML / XSS)
   function clearToBr(el) {
     if (!el) return;
     el.replaceChildren(document.createElement("br"));
   }
 
-  // Keep user's manual item selections in sync with DOM.
+  function isTrendEnabled() {
+    const id = getCheckedRadioId("lab_trend_mode");
+    return id === "lab_trend_on";
+  }
+
   function syncSelectedItemsFromDOM() {
     const cbs = Array.from(box.querySelectorAll('[data-role="itemCb"]'));
     const next = new Set();
@@ -392,7 +515,7 @@ export function init(root) {
       return;
     }
 
-    dateSelEl.replaceChildren(); // clear
+    dateSelEl.replaceChildren();
 
     headers.forEach((h, idx) => {
       const hide = idx === 0;
@@ -403,8 +526,6 @@ export function init(root) {
       input.dataset.role = "dateCb";
       input.dataset.index = String(idx);
       input.id = `lab_date_${idx}`;
-
-      // default selection handled by applyDatePreset()
       input.checked = false;
 
       if (hide) input.style.display = "none";
@@ -420,9 +541,7 @@ export function init(root) {
       dateSelEl.appendChild(label);
     });
 
-    if (!headers.length) {
-      clearToBr(dateSelEl);
-    }
+    if (!headers.length) clearToBr(dateSelEl);
   }
 
   function buildSpecimenCheckboxes(specList) {
@@ -459,53 +578,34 @@ export function init(root) {
       specimenSelEl.appendChild(label);
     });
 
-    if (!specList.length) {
-      clearToBr(specimenSelEl);
-    }
+    if (!specList.length) clearToBr(specimenSelEl);
   }
 
   function getLabCategory(lab) {
     const CBC = new Set([
-      "WBC","Hb","Hct","Plt", "MCV", 
+      "WBC","Hb","Hct","Plt","MCV",
       "Seg","Band","Lym","Mono","Eos","Baso",
       "Atyp-Lym","Meta-Mye","Myelocyte","Promyelocyte","Blast","Megakaryocyte",
       "ANC","nRBC"
     ]);
 
-    const Coag = new Set([
-      "PT","INR","aPTT","aPTT/m",
-      "Fibrinogen","D-dimer","FDP"
-    ]);
+    const Coag = new Set(["PT","INR","aPTT","aPTT/m","Fibrinogen","D-dimer","FDP"]);
 
     const Chemistry = new Set([
-      // Electrolytes
       "Na","K","Cl","iCa","Ca","Mg","P","Zn",
-
-      // Renal/Liver
       "BUN","Cr","AST","ALT","DB","TB","ALP","γGT",
-
-      // Inflammation
       "CRP","Pct","Ferritin",
-
-      // Nutrition/Lipid
       "TG","Chol","TP","Alb",
-
-      // Endocrine
       "iPTH","fT4","TSH",
-
-      // Sugar
       "Sugar"
     ]);
 
-    const Gas = new Set([
-      "pH","pCO2","pO2","HCO3","SBE"
-    ]);
+    const Gas = new Set(["pH","pCO2","pO2","HCO3","SBE"]);
 
     if (CBC.has(lab)) return "CBC";
     if (Coag.has(lab)) return "Coag";
-    if (Chemistry.has(lab)) return "Chemistry";
+    if (Chemistry.has(lab)) return "Chem";
     if (Gas.has(lab)) return "Gas";
-
     return "Other";
   }
 
@@ -526,22 +626,19 @@ export function init(root) {
       groups.get(cat).push(idx);
     });
 
-    const catOrder = ["CBC", "Coag", "Chemistry", "Gas", "Other"];
+    const catOrder = ["CBC", "Coag", "Chem", "Gas", "Other"];
 
     for (const cat of catOrder) {
       const idxs = groups.get(cat);
       if (!idxs || !idxs.length) continue;
 
-      // group row
       const groupRow = document.createElement("div");
       groupRow.className = "lab-cat-group";
 
-      // left title
       const left = document.createElement("div");
       left.className = "lab-cat-left";
       left.textContent = cat;
 
-      // right box
       const right = document.createElement("div");
       right.className = "lab-cat-right";
 
@@ -566,7 +663,7 @@ export function init(root) {
         const label = document.createElement("label");
         label.className = "btn btn-outline-secondary btn-check-label btn-sm";
         label.htmlFor = input.id;
-        label.textContent = sp === "B"? lab : `${lab} (${sp})`;
+        label.textContent = sp === "B" ? lab : `${lab} (${sp})`;
 
         itemsWrap.appendChild(input);
         itemsWrap.appendChild(label);
@@ -581,10 +678,15 @@ export function init(root) {
     if (!rows.length) clearToBr(itemSelEl);
   }
 
+  function getSelectedSpecimensSet() {
+    const selected = Array.from(box.querySelectorAll('[data-role="specimenCb"]:checked'))
+      .map((cb) => String(cb.dataset.value ?? "").trim())
+      .filter(Boolean);
+    return new Set(selected);
+  }
+
   function getSelectedRowIndicesForCurrentFilters() {
     const selectedSpecimens = getSelectedSpecimensSet();
-
-    // 目前勾選的檢驗項目（itemCb 的 dataset.index 是 original row index）
     const selectedRows = Array.from(box.querySelectorAll('[data-role="itemCb"]:checked'))
       .map((cb) => Number(cb.dataset.index))
       .filter(Number.isFinite)
@@ -592,49 +694,27 @@ export function init(root) {
         const sp = rowSpecimens?.[rowIdx] || "(空)";
         return selectedSpecimens.size ? selectedSpecimens.has(sp) : true;
       });
-
     return selectedRows;
-    }
+  }
 
-    // 回傳「有任一 selectedRows 在該日期欄位有值」的日期欄位 index（含排序、取最後 n 個）
-    function computeLastNDateColsWithAnyValue(n) {
+  function computeLastNDateColsWithAnyValue(n) {
     if (!abbrHeaders || !abbrRows || !dateIsoKeys) return [];
 
     const selectedRows = getSelectedRowIndicesForCurrentFilters();
-
-    // 如果使用者目前沒勾任何 item：你可以選擇
-    // A) 回傳 [] 讓 applyDatePreset fallback 回原本邏輯
-    // B) 視為全部 rows 都納入
-    // 這裡我採 A，避免「沒勾任何項目時」邏輯怪掉
     if (!selectedRows.length) return [];
 
     const candidates = [];
-
-    // col 0 是 [Lab]，從 1 開始
     for (let col = 1; col < abbrHeaders.length; col++) {
       let hasAny = false;
-
       for (const rIdx of selectedRows) {
         const v = String(abbrRows?.[rIdx]?.[col] ?? "").trim();
-        if (v !== "") {
-          hasAny = true;
-          break;
-        }
+        if (v !== "") { hasAny = true; break; }
       }
-
-      if (hasAny) {
-        candidates.push({
-          col,
-          iso: dateIsoKeys[col] || "", // "YYYY-MM-DDTHH:mm"
-        });
-      }
+      if (hasAny) candidates.push({ col, iso: dateIsoKeys[col] || "" });
     }
 
-    // 依日期排序（old -> new），取最後 n 個
     candidates.sort((a, b) => String(a.iso).localeCompare(String(b.iso)));
-    const picked = candidates.slice(Math.max(0, candidates.length - n)).map((x) => x.col);
-
-    return picked;
+    return candidates.slice(Math.max(0, candidates.length - n)).map((x) => x.col);
   }
 
   function setDatePresetRadio(id) {
@@ -650,21 +730,16 @@ export function init(root) {
     );
   }
 
-  // 回傳日期 presetId；若不符合任何 preset -> custom
   function detectDatePresetFromCurrentSelection() {
     const selected = getCheckedDateColSet();
-
-    // 一律要求 col0 ([Lab]) 必須在
     if (!selected.has(0)) return "lab_date_preset_custom";
 
     const allCbs = Array.from(box.querySelectorAll('[data-role="dateCb"]'));
     const total = allCbs.length;
 
-    // 全選/全不選（注意：你現在 applyDatePreset 會永遠勾 0，所以「全不選」其實是只剩 0）
     if (selected.size === total && total > 0) return "lab_date_preset_all";
     if (selected.size === 1 && selected.has(0)) return "lab_date_preset_none";
 
-    // last N：這裡要沿用你既有的「有值日期」算法（避免跟 applyDatePreset 不一致）
     const isEqual = (a, b) => {
       if (a.size !== b.size) return false;
       for (const x of a) if (!b.has(x)) return false;
@@ -674,7 +749,6 @@ export function init(root) {
     const mkExpected = (n) => {
       const cols = computeLastNDateColsWithAnyValue(n);
       if (!cols.length) {
-        // fallback：你目前 applyDatePreset 的 fallback 是「最後 n 欄」
         const fallback = [];
         for (let i = Math.max(1, total - n); i < total; i++) fallback.push(i);
         cols.push(...fallback);
@@ -695,25 +769,18 @@ export function init(root) {
     const len = cbs.length;
 
     const setChecked = (fn) => {
-     cbs.forEach((cb, idx) => {
-       if (idx === 0) {
-         cb.checked = true;   // ✅ 永遠保留 [Lab] 欄
-       } else {
-         cb.checked = !!fn(idx, len);
-       }
-     });
+      cbs.forEach((cb, idx) => {
+        if (idx === 0) cb.checked = true;
+        else cb.checked = !!fn(idx, len);
+      });
     };
 
-    // ✅ 共用：以「有值日期」決定 last N
     const applyLastNWithAnyValue = (n) => {
       const pickedCols = computeLastNDateColsWithAnyValue(n);
-
-      // 如果目前沒有任何「有值日期」（或沒勾任何 item），fallback 回原本的最後 N 欄
       if (!pickedCols.length) {
         setChecked((i, L) => i === 0 || i >= L - n);
         return;
       }
-
       const pickedSet = new Set(pickedCols);
       setChecked((i) => i === 0 || pickedSet.has(i));
     };
@@ -721,29 +788,18 @@ export function init(root) {
     if (presetId === "lab_date_preset_custom") return;
 
     switch (presetId) {
-      case "lab_date_preset_all":
-        setChecked(() => true);
-        break;
-
-      case "lab_date_preset_last_15":
-        applyLastNWithAnyValue(15);
-        break;
-
-      case "lab_date_preset_last_10":
-        applyLastNWithAnyValue(10);
-        break;
-
-      case "lab_date_preset_last_5":
-        applyLastNWithAnyValue(5);
-        break;
-
-      case "lab_date_preset_none":
-        setChecked(() => false);
-        break;
-
-      default:
-        break;
+      case "lab_date_preset_all": setChecked(() => true); break;
+      case "lab_date_preset_last_15": applyLastNWithAnyValue(15); break;
+      case "lab_date_preset_last_10": applyLastNWithAnyValue(10); break;
+      case "lab_date_preset_last_5": applyLastNWithAnyValue(5); break;
+      case "lab_date_preset_none": setChecked(() => false); break;
+      default: break;
     }
+  }
+
+  function setPresetRadio(id) {
+    const el = box.querySelector(`#${id}`);
+    if (el) el.checked = true;
   }
 
   function getSelectedLabsFromState() {
@@ -755,16 +811,8 @@ export function init(root) {
     return new Set(labs);
   }
 
-  function setPresetRadio(id) {
-    const el = box.querySelector(`#${id}`);
-    if (el) el.checked = true;
-  }
-
-  // 回傳最符合的 presetId；若不符合任何 preset，回傳 "lab_preset_custom"
   function detectPresetFromCurrentSelection() {
     const selected = getSelectedLabsFromState();
-
-    // 特例：全不選 / 全選（如果你希望也能自動回到這兩種）
     const allCbs = Array.from(box.querySelectorAll('[data-role="itemCb"]'));
     const total = allCbs.length;
     const count = selected.size;
@@ -772,7 +820,6 @@ export function init(root) {
     if (count === 0) return "lab_preset_none";
     if (count === total && total > 0) return "lab_preset_all";
 
-    // 一般套組：用「集合完全相等」判斷
     const isEqualSet = (a, arr) => {
       const b = new Set(arr || []);
       if (a.size !== b.size) return false;
@@ -780,7 +827,6 @@ export function init(root) {
       return true;
     };
 
-    // 你目前的 presetSelectionsMap 已包含 lab_preset_tpn_fixed（minor+major去重）
     const presetIds = [
       "lab_preset_TPN_minor",
       "lab_preset_TPN_major",
@@ -804,7 +850,6 @@ export function init(root) {
     const presetId = getCheckedRadioId("lab_presets_selection");
     const cbs = Array.from(box.querySelectorAll('[data-role="itemCb"]'));
 
-    // ✅ 自選：不要動使用者勾選
     if (presetId === "lab_preset_custom") return;
 
     if (presetId === "lab_preset_none") {
@@ -816,7 +861,6 @@ export function init(root) {
       return;
     }
 
-    // ✅ tpn_fixed：UI 勾選 = minor + major（去重）
     let allow = presetSelectionsMap[presetId] || [];
     if (presetId === "lab_preset_tpn_fixed") {
       allow = presetSelectionsMap["lab_preset_tpn_fixed"] || [];
@@ -828,52 +872,34 @@ export function init(root) {
     });
   }
 
-  function getSelectedSpecimensSet() {
-    const selected = Array.from(box.querySelectorAll('[data-role="specimenCb"]:checked'))
-      .map((cb) => String(cb.dataset.value ?? "").trim())
-      .filter(Boolean);
-    return new Set(selected);
-  }
-
   function isAutoLastNPreset() {
     const id = getCheckedRadioId("lab_date_presets_selection");
     return id === "lab_date_preset_last_5" || id === "lab_date_preset_last_10" || id === "lab_date_preset_last_15";
   }
 
   function pickSingleSpecimenForTPNFixed() {
-    // User said: "不須多檢體別" => TPN fixed uses ONE specimen
     const checked = Array.from(box.querySelectorAll('[data-role="specimenCb"]:checked'));
     if (checked.length) return String(checked[0].dataset.value ?? "").trim() || "(空)";
-    // if none checked, fallback to first known specimen
     if (specimens && specimens.length) return specimens[0];
     return "(空)";
   }
 
   // -----------------------------
-  // Specimen label formatting (NEW)
-  // Rules:
-  // 1) B is default: no marking.
-  // 2) BV -> v-<Lab>, Urine -> u-<Lab>, CSF -> c-<Lab>, Stool -> s-<Lab>, Pleural -> pl-<Lab>, Ascites -> as-<Lab>
-  // 3) If only ONE non-blood specimen selected (e.g., only Urine), show header "Specimen: U (urine)" and suppress per-row prefixes.
-  // 4) If any marking happens, output legend at the very last line.
+  // Specimen label formatting
   // -----------------------------
-
-  const DEFAULT_BLOOD_SPECIMENS = new Set(["B"]); // ONLY B is default no-mark
-  const BLOOD_RELATED_SPECIMENS = new Set(["B", "BV"]); // treat BV as blood-related for rule #3
+  const DEFAULT_BLOOD_SPECIMENS = new Set(["B"]);
+  const BLOOD_RELATED_SPECIMENS = new Set(["B", "BV"]);
 
   function normalizeSpecimenKey(sp) {
     const s = String(sp ?? "").trim();
     if (!s) return "";
-    // keep original for display elsewhere, but normalize for matching
     return s.toUpperCase();
   }
 
   function specimenMeta(sp) {
     const key = normalizeSpecimenKey(sp);
-
-    // You can expand synonyms here if HIS uses different text.
     const map = {
-      "B":   { code: "B",  prefix: "",   legendKey: "b",  meaning: "blood (default)" }, // default, usually not shown
+      "B":   { code: "B",  prefix: "",   legendKey: "b",  meaning: "blood (default)" },
       "BV":  { code: "BV", prefix: "v-", legendKey: "v",  meaning: "venous blood" },
       "U":   { code: "U",  prefix: "u-", legendKey: "u",  meaning: "urine" },
       "URINE": { code: "U", prefix: "u-", legendKey: "u", meaning: "urine" },
@@ -892,7 +918,6 @@ export function init(root) {
 
     if (map[key]) return map[key];
 
-    // fallback: use 1–2 letters as prefix
     const short = key.slice(0, 2);
     const prefix = short ? `${short.toLowerCase()}-` : "";
     return {
@@ -904,25 +929,21 @@ export function init(root) {
   }
 
   function computeSpecimenContextForOutput() {
-    // Selected specimens from UI
     const sel = Array.from(getSelectedSpecimensSet()).map(normalizeSpecimenKey).filter(Boolean);
-
-    // Rule #3 trigger: only ONE non-blood specimen selected (exclude blood-related specimens B/BV)
     const nonBlood = sel.filter((k) => !BLOOD_RELATED_SPECIMENS.has(k));
-    const singleNonBloodOnly = nonBlood.length === 1 && sel.length === 1; // only that one selected
+    const singleNonBloodOnly = nonBlood.length === 1 && sel.length === 1;
 
-    // Build header line if rule #3 active
     let headerLine = "";
     let headerLegend = null;
     if (singleNonBloodOnly) {
       const m = specimenMeta(nonBlood[0]);
       headerLine = `Specimen: ${m.code} (${m.meaning})`;
-      headerLegend = m; // for legend at last line
+      headerLegend = m;
     }
 
     return {
       selectedKeys: new Set(sel),
-      suppressRowPrefix: singleNonBloodOnly, // suppress per-row prefixes when only one non-blood specimen selected
+      suppressRowPrefix: singleNonBloodOnly,
       headerLine,
       headerLegend,
     };
@@ -932,36 +953,28 @@ export function init(root) {
     const lab = String(labName ?? "").trim();
     const spKey = normalizeSpecimenKey(specimen);
 
-    // Rule #1: B no mark
     if (DEFAULT_BLOOD_SPECIMENS.has(spKey)) return lab;
 
     const m = specimenMeta(spKey);
 
-    // If rule #3 active: we already show header, suppress per-row prefix
     if (ctx?.suppressRowPrefix) {
-      // still record legend usage (so last line shows meaning)
       if (usedLegendSet) usedLegendSet.set(m.legendKey, m);
       return lab;
     }
 
-    // Normal: add prefix for non-default specimen
     if (usedLegendSet) usedLegendSet.set(m.legendKey, m);
     return `${m.prefix}${lab}`;
   }
 
   function buildLegendLine(usedLegendSet, ctx) {
-    // Only show legend if there is any marking OR header is shown
     const items = [];
 
-    // header specimen legend
     if (ctx?.headerLegend) {
       items.push(`${ctx.headerLegend.legendKey}=${ctx.headerLegend.code}(${ctx.headerLegend.meaning})`);
     }
 
-    // prefix-used legends
     if (usedLegendSet && usedLegendSet.size) {
       for (const [k, m] of usedLegendSet.entries()) {
-        // avoid duplicate with header legendKey
         if (ctx?.headerLegend && ctx.headerLegend.legendKey === k) continue;
         items.push(`${k}=${m.code}(${m.meaning})`);
       }
@@ -971,16 +984,269 @@ export function init(root) {
     return `\nSpecimen legend: ${items.join(", ")}`;
   }
 
+  // -----------------------------
+  // Order/Bar logic (NEW)
+  // -----------------------------
+  function tokenId(tok) {
+    return tok.t === "item" ? `i:${tok.idx}` : `b:${tok.id}`;
+  }
 
-  // Rebuild item checkbox UI according to currently selected specimens.
-  // Preserve user's manual item selections (intersection with filtered view).
+  function isTPNFixed() {
+    return getCheckedRadioId("lab_presets_selection") === "lab_preset_tpn_fixed";
+  }
+
+  function ensureOrderAreaVisibility() {
+    if (!orderAreaEl) return;
+    // Spec requirement: bars only affect horizontal output; but order area is still meaningful.
+    // However, for TPN fixed format, we hide the order area to avoid confusion.
+    orderAreaEl.style.display = isTPNFixed() ? "none" : "";
+  }
+
+  function getRowLabName(idx) {
+    return String(abbrRows?.[idx]?.[0] ?? "").trim();
+  }
+
+  function getDefaultOrderedSelectedItemIndices() {
+    const selected = Array.from(selectedItemIdxSet).filter(Number.isFinite);
+    selected.sort((a, b) => {
+      const la = getRowLabName(a);
+      const lb = getRowLabName(b);
+      const ia = labOrder.indexOf(la) === -1 ? Infinity : labOrder.indexOf(la);
+      const ib = labOrder.indexOf(lb) === -1 ? Infinity : labOrder.indexOf(lb);
+      if (ia !== ib) return ia - ib;
+      return a - b;
+    });
+    return selected;
+  }
+
+  function buildDefaultTokensWithBars() {
+    const items = getDefaultOrderedSelectedItemIndices().map((idx) => ({ t: "item", idx }));
+    const out = [];
+    const barAfterLabs = new Set(["Plt", "P", "TB"]);
+
+    for (const tok of items) {
+      out.push(tok);
+      const lab = getRowLabName(tok.idx);
+      if (barAfterLabs.has(lab)) {
+        out.push({ t: "bar", id: `bar${++barSeq}` });
+      }
+    }
+    return out;
+  }
+
+  function syncOrderTokensFromSelection({ reset = false } = {}) {
+    // If no data yet
+    if (!abbrRows) {
+      orderTokens = [];
+      rebuildOrderUI();
+      return;
+    }
+
+    if (reset || !orderTokens.length) {
+      orderTokens = buildDefaultTokensWithBars();
+      rebuildOrderUI();
+      return;
+    }
+
+    // Keep existing order + bars, remove unselected items, append new items by default order.
+    const selectedSet = new Set(Array.from(selectedItemIdxSet).filter(Number.isFinite));
+
+    const kept = [];
+    const seenItems = new Set();
+
+    for (const tok of orderTokens) {
+      if (tok.t === "bar") {
+        kept.push(tok);
+        continue;
+      }
+      if (selectedSet.has(tok.idx)) {
+        kept.push(tok);
+        seenItems.add(tok.idx);
+      }
+    }
+
+    const missing = getDefaultOrderedSelectedItemIndices().filter((idx) => !seenItems.has(idx));
+    for (const idx of missing) kept.push({ t: "item", idx });
+
+    // If all items removed (rare), drop leading/trailing bars:
+    orderTokens = compactBars(kept);
+    rebuildOrderUI();
+  }
+
+  function compactBars(tokens) {
+    // remove duplicate bars, and remove bars at start/end, and bars adjacent
+    const out = [];
+    let prevWasBar = false;
+
+    for (const tok of tokens) {
+      if (tok.t === "bar") {
+        if (out.length === 0) continue; // no leading bar
+        if (prevWasBar) continue;       // no double bar
+        out.push(tok);
+        prevWasBar = true;
+      } else {
+        out.push(tok);
+        prevWasBar = false;
+      }
+    }
+
+    // remove trailing bar
+    // while (out.length && out[out.length - 1].t === "bar") out.pop();
+    return out;
+  }
+
+  function rebuildOrderUI() {
+    if (!orderListEl) return;
+    orderListEl.replaceChildren();
+
+    ensureOrderAreaVisibility();
+    if (isTPNFixed()) return;
+
+    const selectedItems = Array.from(selectedItemIdxSet).filter(Number.isFinite);
+    if (!selectedItems.length) {
+      const msg = document.createElement("div");
+      msg.className = "lab-order-empty";
+      msg.textContent = "（尚未選取任何 Lab items）";
+      orderListEl.appendChild(msg);
+      return;
+    }
+
+    // Ensure tokens are synced before building UI
+    if (!orderTokens.length) syncOrderTokensFromSelection({ reset: true });
+
+    // Build chips
+    for (const tok of orderTokens) {
+      if (tok.t === "item") {
+        // if item not selected, skip rendering (should not happen, but safe)
+        if (!selectedItemIdxSet.has(tok.idx)) continue;
+
+        const lab = getRowLabName(tok.idx) || `Lab${tok.idx + 1}`;
+        const sp = String(rowSpecimens?.[tok.idx] ?? "").trim() || "(空)";
+        const label = sp === "B" ? lab : `${lab} (${sp})`;
+
+        const chip = document.createElement("div");
+        chip.className = "lab-order-chip";
+        chip.draggable = true;
+        chip.dataset.role = "orderChip";
+        chip.dataset.tok = tokenId(tok);
+        chip.textContent = label;
+
+        orderListEl.appendChild(chip);
+      } else {
+        const chip = document.createElement("div");
+        chip.className = "lab-order-chip is-bar";
+        chip.draggable = true;
+        chip.dataset.role = "orderChip";
+        chip.dataset.tok = tokenId(tok);
+        chip.textContent = "|";
+        orderListEl.appendChild(chip);
+      }
+    }
+
+    // If everything got filtered out (shouldn't), show empty
+    if (!orderListEl.children.length) {
+      const msg = document.createElement("div");
+      msg.className = "lab-order-empty";
+      msg.textContent = "（無可排序項目）";
+      orderListEl.appendChild(msg);
+    }
+  }
+
+  function readTokensFromOrderDOM() {
+    const els = Array.from(orderListEl?.querySelectorAll?.('[data-role="orderChip"]') || []);
+    const next = [];
+    for (const el of els) {
+      const s = String(el.dataset.tok || "");
+      if (s.startsWith("i:")) {
+        const idx = Number(s.slice(2));
+        if (Number.isFinite(idx)) next.push({ t: "item", idx });
+      } else if (s.startsWith("b:")) {
+        const id = s.slice(2);
+        if (id) next.push({ t: "bar", id });
+      }
+    }
+    orderTokens = compactBars(next);
+  }
+
+  function addBarTokenAtEnd() {
+    if (isTPNFixed()) return;
+    // Ensure current tokens reflect selection
+    syncOrderTokensFromSelection({ reset: false });
+    orderTokens.push({ t: "bar", id: `bar${++barSeq}` });
+    orderTokens = compactBars(orderTokens);
+    rebuildOrderUI();
+  }
+
+  function clearAllBars() {
+    orderTokens = orderTokens.filter((t) => t.t !== "bar");
+    rebuildOrderUI();
+  }
+
+  function resetOrderTokens() {
+    orderTokens = buildDefaultTokensWithBars();
+    rebuildOrderUI();
+  }
+
+  // drag & drop (NEW)
+  let draggingEl = null;
+
+  function getDragAfterElement(container, x) {
+    const draggableEls = [...container.querySelectorAll('[data-role="orderChip"]:not(.dragging)')];
+    let closest = { offset: Number.NEGATIVE_INFINITY, element: null };
+
+    for (const child of draggableEls) {
+      const box = child.getBoundingClientRect();
+      const offset = x - (box.left + box.width / 2);
+      if (offset < 0 && offset > closest.offset) {
+        closest = { offset, element: child };
+      }
+    }
+    return closest.element;
+  }
+
+  if (orderListEl) {
+    orderListEl.addEventListener("dragstart", (e) => {
+      const t = e.target;
+      if (!t?.matches?.('[data-role="orderChip"]')) return;
+      draggingEl = t;
+      t.classList.add("dragging");
+      e.dataTransfer?.setData?.("text/plain", t.dataset.tok || "");
+      e.dataTransfer?.setDragImage?.(t, 10, 10);
+    });
+
+    orderListEl.addEventListener("dragend", (e) => {
+      const t = e.target;
+      if (!t?.matches?.('[data-role="orderChip"]')) return;
+      t.classList.remove("dragging");
+      draggingEl = null;
+
+      // commit orderTokens
+      readTokensFromOrderDOM();
+      // output update
+      scheduleOutput();
+    });
+
+    orderListEl.addEventListener("dragover", (e) => {
+      if (!draggingEl) return;
+      e.preventDefault();
+      const afterEl = getDragAfterElement(orderListEl, e.clientX);
+      if (afterEl == null) {
+        orderListEl.appendChild(draggingEl);
+      } else {
+        orderListEl.insertBefore(draggingEl, afterEl);
+      }
+    });
+  }
+
+  // -----------------------------
+  // Rebuild items for specimen changes (same as before)
+  // -----------------------------
   function rebuildItemsForSpecimens() {
     if (!abbrHeaders || !abbrRows || !rowSpecimens) return;
 
-    // remember current manual selection before tearing down DOM
     syncSelectedItemsFromDOM();
 
-    const sel = getSelectedSpecimensSet(); // Set of specimen strings
+    const sel = getSelectedSpecimensSet();
     const filteredRows = [];
     const filteredRowSpecs = [];
     const origIndices = [];
@@ -995,14 +1261,11 @@ export function init(root) {
     }
 
     buildItemCheckboxes(abbrHeaders, filteredRows, filteredRowSpecs, origIndices);
-
-    // re-check user's previous selection for items that still exist in this filtered view
     applySavedItemSelectionToDOM();
   }
 
   // -----------------------------
-  // New parser: keep ISO keys internally, display headers as MM/DD
-  // Also keep ALL specimens and expose specimen selection in UI.
+  // Parser (unchanged)
   // -----------------------------
   function parseRawToTable(rawText) {
     const raw = String(rawText ?? "");
@@ -1024,7 +1287,6 @@ export function init(root) {
       return { headers: null, rows: null, dateIsoKeys: null, rowSpecimens: null, specimens: null };
     }
 
-    // flatten header tokens
     const headerTokens = [];
     for (const line of lines.slice(0, dataStartIdx)) {
       const toks = line.split("\t").filter((t) => t !== "");
@@ -1067,7 +1329,7 @@ export function init(root) {
       }
 
       const iso = `${y}-${m}-${d}T${hh}:${mm}`;
-      const display = `${m}/${d}`; // display layer only
+      const display = `${m}/${d}`;
       dateMeta.push({ iso, display, src: dateMeta.length });
     }
 
@@ -1075,7 +1337,6 @@ export function init(root) {
       return { headers: null, rows: null, dateIsoKeys: null, rowSpecimens: null, specimens: null };
     }
 
-    // sort by ISO ascending (old -> new)
     dateMeta.sort((a, b) => a.iso.localeCompare(b.iso));
 
     const headers = ["[Lab]", ...dateMeta.map((x) => x.display)];
@@ -1102,18 +1363,15 @@ export function init(root) {
 
       specimenSet.add(specimen);
 
-      // blacklist by item code
       if ((excludingRowKeywords["項目代號"] || []).includes(itemCode)) continue;
 
-      // abbreviate item name only
       const itemName = labHeaderAbbrDict[itemNameRaw] || itemNameRaw;
       if (!itemName) continue;
 
-      // values begin at col 4
       const rawValues = cells.slice(4, 4 + dateMeta.length);
 
       const values = valueOrder.map((k) => {
-        let s = String( rawValues[k] ?? "")
+        let s = String(rawValues[k] ?? "")
           .replace(/( [H,L])$/, "")
           .replace(/^< /, "<")
           .trim();
@@ -1134,30 +1392,58 @@ export function init(root) {
     };
   }
 
+  // -----------------------------
+  // Output building with Order/Bar (UPDATED)
+  // -----------------------------
+  function getOrderedSelectedRowIndicesForOutput() {
+    const selectedSpecimens = getSelectedSpecimensSet();
+    const selected = new Set(
+      Array.from(box.querySelectorAll('[data-role="itemCb"]:checked'))
+        .map((cb) => Number(cb.dataset.index))
+        .filter(Number.isFinite)
+        .filter((rowIdx) => {
+          const sp = rowSpecimens?.[rowIdx] || "(空)";
+          return selectedSpecimens.size ? selectedSpecimens.has(sp) : true;
+        })
+    );
+
+    // Ensure orderTokens is synced (keeps bars)
+    syncOrderTokensFromSelection({ reset: false });
+
+    const ordered = [];
+    const seen = new Set();
+
+    for (const tok of orderTokens) {
+      if (tok.t !== "item") continue;
+      if (!selected.has(tok.idx)) continue;
+      ordered.push(tok.idx);
+      seen.add(tok.idx);
+    }
+
+    // Any selected but missing in tokens -> append by default order
+    const rest = getDefaultOrderedSelectedItemIndices().filter((idx) => selected.has(idx) && !seen.has(idx));
+    ordered.push(...rest);
+
+    return ordered;
+  }
+
   function buildFilteredArray(headers, rows, ctx, usedLegendSet) {
     if (!headers || !rows) return null;
 
-      const selectedCols = Array.from(box.querySelectorAll('[data-role="dateCb"]:checked'))
+    const selectedCols = Array.from(box.querySelectorAll('[data-role="dateCb"]:checked'))
       .map((cb) => Number(cb.dataset.index))
       .filter(Number.isFinite);
-
-    const selectedSpecimens = getSelectedSpecimensSet();
-
-    const selectedRows = Array.from(box.querySelectorAll('[data-role="itemCb"]:checked'))
-      .map((cb) => Number(cb.dataset.index))
-      .filter(Number.isFinite)
-      .filter((rowIdx) => {
-        const sp = rowSpecimens?.[rowIdx] || "(空)";
-        return selectedSpecimens.size ? selectedSpecimens.has(sp) : true;
-      });
 
     const displayModeId = getCheckedRadioId("lab_display_mode");
     const isHorizontal = displayModeId === "lab_display_horizontal";
 
-    // Build vertical matrix first
+    // ordered rows (UPDATED)
+    const selectedRowsOrdered = getOrderedSelectedRowIndicesForOutput();
+
+    // vertical matrix first
     let arr = [
       headers.filter((_, i) => selectedCols.includes(i)),
-      ...selectedRows.map((i) => {
+      ...selectedRowsOrdered.map((i) => {
         const sp = rowSpecimens?.[i] || "(空)";
         return selectedCols.map((j, k) => {
           if (k === 0) return formatLabLabel(rows[i]?.[0] ?? "", sp, ctx, usedLegendSet);
@@ -1168,16 +1454,7 @@ export function init(root) {
 
     let [h, ...r] = arr;
 
-    // sort by predefined order (lab name without specimen suffix)
-    r.sort((a, b) => {
-      const labA = String(a[0] ?? "").split("(")[0];
-      const labB = String(b[0] ?? "").split("(")[0];
-      const ia = labOrder.indexOf(labA) === -1 ? Infinity : labOrder.indexOf(labA);
-      const ib = labOrder.indexOf(labB) === -1 ? Infinity : labOrder.indexOf(labB);
-      return ia - ib;
-    });
-
-    // limit label length <= 12 (allow "(B)" etc)
+    // limit label length <= 12
     r = r.map((row) =>
       row.map((cell) => {
         const s = String(cell ?? "");
@@ -1189,16 +1466,67 @@ export function init(root) {
     const emptyCols = h.map((_, i) => r.every((row) => (row[i] ?? "") === ""));
     h = h.filter((_, i) => !emptyCols[i]);
     r = r.map((row) => row.filter((_, i) => !emptyCols[i]));
-
     arr = [h, ...r];
 
     // horizontal display (transpose)
     if (isHorizontal) {
       arr = arr[0].map((_, i) => arr.map((row) => row[i] ?? ""));
-      const classificationEndTexts = ["Plt", "P", "TB"];
-      arr = arr.map((row) =>
-        row.map((cell) => (classificationEndTexts.includes(cell) ? cell + " |" : cell))
-      );
+
+      // ✅ bars based on orderTokens (only horizontal; vertical ignores)
+      // Insert bar columns where bar tokens exist between item tokens.
+      // arr currently has:
+      //  - row0: [Lab] + lab labels...
+      //  - row1..: dates + values...
+      // We will build a new matrix by walking orderTokens and mapping to columns.
+      const headerRow = arr[0] || [];
+      const colCount = headerRow.length;
+
+      // Map lab label -> column index in current horizontal matrix.
+      // Because labels may include prefixes (u-/v-) depending on ctx, we use the ACTUAL text in headerRow.
+      const labelToCol = new Map();
+      for (let c = 1; c < colCount; c++) {
+        const labLabel = String(headerRow[c] ?? "");
+        if (!labelToCol.has(labLabel)) labelToCol.set(labLabel, c);
+      }
+
+      // Build the desired lab-label list in current ctx:
+      // For each token item idx, compute the formatted label (must match headerRow label)
+      const desired = [];
+      const tokensForBars = [];
+
+      for (const tok of orderTokens) {
+        if (tok.t === "bar") {
+          tokensForBars.push({ t: "bar", id: tok.id });
+          continue;
+        }
+        if (!selectedItemIdxSet.has(tok.idx)) continue;
+
+        const sp = rowSpecimens?.[tok.idx] || "(空)";
+        const lbl = formatLabLabel(rows[tok.idx]?.[0] ?? "", sp, ctx, null);
+        tokensForBars.push({ t: "item", label: lbl });
+      }
+
+      // Build new columns: col0 always kept; then follow tokensForBars, inserting bar columns
+      const newArr = arr.map((row) => [row[0]]);
+
+      for (const tok of tokensForBars) {
+        if (tok.t === "bar") {
+          for (let rIdx = 0; rIdx < arr.length; rIdx++) {
+            newArr[rIdx].push(rIdx === 0 ? "|" : "");
+          }
+          continue;
+        }
+
+        const col = labelToCol.get(tok.label);
+        if (Number.isFinite(col)) {
+          for (let rIdx = 0; rIdx < arr.length; rIdx++) {
+            newArr[rIdx].push(arr[rIdx][col] ?? "");
+          }
+        }
+      }
+
+      // Replace
+      arr = newArr;
     }
 
     return arr;
@@ -1207,19 +1535,34 @@ export function init(root) {
   function toAlignedText(matrix) {
     if (!matrix || !matrix[0]) return "";
 
-    const MIN_VALUE_COL_WIDTH = 3; // 「至少空三格」
+    const MIN_VALUE_COL_WIDTH = 3;
+
+    // ✅ 以「header row 是否為 |」判斷 bar 欄
+    const isBarCol = (i) => String(matrix[0][i] ?? "") === "|";
 
     const widths = matrix[0].map((_, i) => {
+      if (isBarCol(i)) return 1; // ✅ bar 欄固定寬度 1
+
       const maxLen = Math.max(...matrix.map((row) => String(row[i] ?? "").length));
       return i === 0 ? maxLen : Math.max(maxLen, MIN_VALUE_COL_WIDTH);
     });
 
     return matrix
-      .map((row) => row.map((cell, i) => String(cell ?? "").padEnd(widths[i])).join(" "))
+      .map((row) =>
+        row
+          .map((cell, i) => {
+            const s = String(cell ?? "");
+
+            // ✅ bar 欄整欄都只 pad 1 格（包含空字串）
+            if (isBarCol(i)) return s.padEnd(1);
+
+            return s.padEnd(widths[i]);
+          })
+          .join(" ")
+      )
       .join("\n");
   }
 
-  // DOM-safe output rendering (no innerHTML)
   function setOutputText(txt) {
     if (!outEl) return;
     outEl.replaceChildren();
@@ -1237,18 +1580,14 @@ export function init(root) {
   function buildTPNFixedText(headers, rows, ctx, usedLegendSet) {
     if (!headers || !rows) return "";
 
-    // selected cols (as chosen by user)
     const selectedColsAll = Array.from(box.querySelectorAll('[data-role="dateCb"]:checked'))
       .map((cb) => Number(cb.dataset.index))
       .filter(Number.isFinite);
 
-    // Need at least [Lab] + 1 date selected at UI level; otherwise no output.
     if (!selectedColsAll.length) return "";
 
-    // TPN fixed: single specimen only
     const pickedSpecimen = pickSingleSpecimenForTPNFixed();
 
-    // Build labName -> row for picked specimen only
     const rowByLab = new Map();
     for (let idx = 0; idx < rows.length; idx++) {
       const sp = rowSpecimens?.[idx] || "(空)";
@@ -1259,14 +1598,10 @@ export function init(root) {
     }
 
     const transpose = (m) => m[0].map((_, i) => m.map((row) => row[i] ?? ""));
-
     const classificationEndTexts = ["Plt", "P", "TB"];
     const markBars = (m) =>
-      m.map((row) =>
-        row.map((cell) => (classificationEndTexts.includes(cell) ? cell + " |" : cell))
-      );
+      m.map((row) => row.map((cell) => (classificationEndTexts.includes(cell) ? cell + " |" : cell)));
 
-    // Helper: detect if a date column (colIndex) has ANY value among specified labs
     function makeHasAnyValueInCol(labs) {
       return (colIndex) => {
         for (const labName of labs) {
@@ -1278,21 +1613,11 @@ export function init(root) {
       };
     }
 
-    // Helper: build a vertical block for a lab list, but
-    // - it filters date columns that are entirely empty within THIS lab list
-    // - returns null if no date columns remain (i.e., only [Lab] remains)
     function buildForcedVerticalBlock(items) {
       const labs = (items || []).filter(Boolean);
-
-      // keep [Lab] col (0) always if selected; filter date cols based on emptiness within this block
       const hasAny = makeHasAnyValueInCol(labs);
 
-      // ensure we keep column 0 if user selected it; but your UI typically includes 0 when using presets
-      const selectedCols = selectedColsAll
-        .filter((colIdx) => colIdx === 0 || hasAny(colIdx));
-
-      // If after filtering, there is no date col left, don't output this block
-      // We treat "date cols" as any selected col other than 0
+      const selectedCols = selectedColsAll.filter((colIdx) => colIdx === 0 || hasAny(colIdx));
       const hasAnyDateCol = selectedCols.some((c) => c !== 0);
       if (!hasAnyDateCol) return null;
 
@@ -1300,17 +1625,12 @@ export function init(root) {
 
       const body = labs.map((labName) => {
         const found = rowByLab.get(labName);
-
         return selectedCols.map((colIndex, idxInSelected) => {
-          if (idxInSelected === 0) {
-            // label cell: apply specimen prefixing rules
-            return formatLabLabel(labName, pickedSpecimen, ctx, usedLegendSet);
-          }
+          if (idxInSelected === 0) return formatLabLabel(labName, pickedSpecimen, ctx, usedLegendSet);
           return found?.[colIndex] ?? "";
         });
       });
 
-      // sort by labOrder (strip specimen suffix if any)
       body.sort((a, b) => {
         const la = String(a[0] ?? "").split("(")[0];
         const lb = String(b[0] ?? "").split("(")[0];
@@ -1325,14 +1645,11 @@ export function init(root) {
     const minorItems = presetSelectionsMap["lab_preset_TPN_minor"] || [];
     const majorItems = presetSelectionsMap["lab_preset_TPN_major"] || [];
 
-    // Build blocks independently (each removes its own empty date columns)
     const minorV = buildForcedVerticalBlock(minorItems);
     const majorV = buildForcedVerticalBlock(majorItems);
 
-    // If both blocks are empty after filtering, output nothing
     if (!minorV && !majorV) return "";
 
-    // Convert each block to fixed-format horizontal (transpose)
     let t1 = "";
     if (minorV) {
       let minorH = transpose(minorV);
@@ -1347,15 +1664,12 @@ export function init(root) {
       t2 = toAlignedText(majorH).trimEnd();
     }
 
-    // Join blocks:
-    // - if only one exists, return it
-    // - if both exist, keep two blank lines between blocks (as original)
     if (t1 && t2) return [t1, "", "", t2].join("\n");
     return (t1 || t2 || "").trimEnd();
   }
 
   // -----------------------------
-  // Trend chart helpers (Chart.js)
+  // Trend chart (order respected by selection orderTokens for dataset ordering)
   // -----------------------------
   function cleanNumeric(cell) {
     let s = String(cell ?? "").trim();
@@ -1375,41 +1689,47 @@ export function init(root) {
 
     const selectedSpecimens = getSelectedSpecimensSet();
 
-    const selectedRows = Array.from(box.querySelectorAll('[data-role="itemCb"]:checked'))
-      .map((cb) => Number(cb.dataset.index))
-      .filter(Number.isFinite)
-      .filter((rowIdx) => {
-        const sp = rowSpecimens?.[rowIdx] || "(空)";
-        return selectedSpecimens.size ? selectedSpecimens.has(sp) : true;
-      });
+    const selectedRowSet = new Set(
+      Array.from(box.querySelectorAll('[data-role="itemCb"]:checked'))
+        .map((cb) => Number(cb.dataset.index))
+        .filter(Number.isFinite)
+        .filter((rowIdx) => {
+          const sp = rowSpecimens?.[rowIdx] || "(空)";
+          return selectedSpecimens.size ? selectedSpecimens.has(sp) : true;
+        })
+    );
 
-    if (!selectedCols.length || !selectedRows.length) return { datasets: [] };
+    if (!selectedCols.length || !selectedRowSet.size) return { datasets: [] };
 
     const colMeta = selectedCols
-      .map((i) => ({
-        i,
-        iso: dateIsoKeys?.[i] || null, // "YYYY-MM-DDTHH:mm"
-      }))
+      .map((i) => ({ i, iso: dateIsoKeys?.[i] || null }))
       .filter((c) => !!c.iso);
 
-    // old -> new
     colMeta.sort((a, b) => a.iso.localeCompare(b.iso));
 
-    const datasets = selectedRows.map((rIdx) => {
+    // keep dataset order aligned with orderTokens (bars ignored)
+    syncOrderTokensFromSelection({ reset: false });
+    const rowOrder = [];
+    const seen = new Set();
+    for (const tok of orderTokens) {
+      if (tok.t !== "item") continue;
+      if (!selectedRowSet.has(tok.idx)) continue;
+      rowOrder.push(tok.idx);
+      seen.add(tok.idx);
+    }
+    for (const idx of getDefaultOrderedSelectedItemIndices()) {
+      if (selectedRowSet.has(idx) && !seen.has(idx)) rowOrder.push(idx);
+    }
+
+    const datasets = rowOrder.map((rIdx) => {
       const lab = String(rows[rIdx]?.[0] ?? "").trim() || `Lab${rIdx + 1}`;
       const sp = rowSpecimens?.[rIdx] || "(空)";
 
       const data = colMeta
-        .map((c) => ({
-          x: Date.parse(c.iso),                // ✅ timestamp (ms)
-          y: cleanNumeric(rows[rIdx]?.[c.i]),  // ✅ numeric or null
-        }))
-        .filter((p) => Number.isFinite(p.x));  // safety
+        .map((c) => ({ x: Date.parse(c.iso), y: cleanNumeric(rows[rIdx]?.[c.i]) }))
+        .filter((p) => Number.isFinite(p.x));
 
-      return {
-        label: `${lab}(${sp})`,
-        data,
-      };
+      return { label: `${lab}(${sp})`, data };
     });
 
     return { datasets };
@@ -1450,11 +1770,11 @@ export function init(root) {
 
     const cfg = {
       type: "line",
-      data: { datasets: ds }, // ✅ no labels
+      data: { datasets: ds },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        parsing: false, // ✅ important: we provide {x,y}
+        parsing: false,
         interaction: { mode: "nearest", intersect: false },
         plugins: {
           legend: { display: true },
@@ -1469,12 +1789,7 @@ export function init(root) {
           },
         },
         scales: {
-          x: {
-            type: "linear",
-            ticks: {
-              callback: (v) => fmtMMDD(v),
-            },
-          },
+          x: { type: "linear", ticks: { callback: (v) => fmtMMDD(v) } },
           y: { beginAtZero: false },
         },
       },
@@ -1493,11 +1808,11 @@ export function init(root) {
   // Output renderer
   // -----------------------------
   function renderOutput() {
-    const presetId = getCheckedRadioId("lab_presets_selection");
+    ensureOrderAreaVisibility();
 
-    // compute specimen context for this render
+    const presetId = getCheckedRadioId("lab_presets_selection");
     const ctx = computeSpecimenContextForOutput();
-    const usedLegendSet = new Map(); // legendKey -> meta
+    const usedLegendSet = new Map();
 
     let mainText = "";
 
@@ -1516,10 +1831,19 @@ export function init(root) {
     if (legendLine) lines.push(legendLine);
 
     setOutputText(lines.join("\n"));
-    renderTrendChart();
+    if (isTrendEnabled()) {
+      renderTrendChart();
+    } else {
+      if (trendChart) {
+        trendChart.destroy();
+        trendChart = null;
+      }
+    }
   }
 
-  // ---- main processor (parse -> build selections -> apply presets -> output)
+  // -----------------------------
+  // Main processor
+  // -----------------------------
   const process = () => {
     const rawText = String(rawEl?.value ?? "").trim();
     const parsed = parseRawToTable(rawText);
@@ -1533,6 +1857,10 @@ export function init(root) {
     // reset manual selection on new raw input
     selectedItemIdxSet = new Set();
 
+    // reset order state on new raw input
+    orderTokens = [];
+    barSeq = 0;
+
     if (DEBUG) {
       console.groupCollapsed("[lab] process");
       console.log({ headers: abbrHeaders, rows: abbrRows?.length, specimens });
@@ -1542,31 +1870,30 @@ export function init(root) {
     buildDateCheckboxes(abbrHeaders);
     buildSpecimenCheckboxes(specimens);
 
-    // initial items: show only selected specimens (default B/BV if present)
     rebuildItemsForSpecimens();
 
     applyItemPreset();
-    
-    // store preset-applied selection as baseline manual selection
     syncSelectedItemsFromDOM();
+
+    // initialize orderTokens with default bars after Plt/P/TB
+    syncOrderTokensFromSelection({ reset: true });
 
     applyDatePreset(); // default: 近5次
 
+    rebuildOrderUI();
     renderOutput();
   };
 
   const scheduleProcess = createScheduler(process);
   const scheduleOutput = createScheduler(renderOutput);
 
-  // ---- delegated events (NO per-checkbox binding)
+  // ---- delegated events
   box.addEventListener("input", (e) => {
     const t = e.target;
-
     if (t?.matches?.('[data-role="rawText"]')) {
       scheduleProcess();
       return;
     }
-
     scheduleOutput();
   });
 
@@ -1578,37 +1905,50 @@ export function init(root) {
       scheduleOutput();
       return;
     }
+
     if (t?.name === "lab_presets_selection") {
-      // preset change overwrites selection by design
       applyItemPreset();
       syncSelectedItemsFromDOM();
+
+      // preset change may change selected items -> resync order tokens (keep bars)
+      syncOrderTokensFromSelection({ reset: false });
+      rebuildOrderUI();
+
       if (isAutoLastNPreset()) applyDatePreset();
       scheduleOutput();
       return;
     }
+
     if (t?.name === "lab_display_mode") {
       scheduleOutput();
       return;
     }
 
-    // user manual selection update
     if (t?.matches?.('[data-role="itemCb"]')) {
       syncSelectedItemsFromDOM();
 
-      // ✅ 手動改 item 後，讓 preset UI 反映目前狀態
+      // update preset UI
       const detected = detectPresetFromCurrentSelection();
       setPresetRadio(detected);
+
+      // selection changed -> resync order tokens (keep bars)
+      syncOrderTokensFromSelection({ reset: false });
+      rebuildOrderUI();
+
       if (isAutoLastNPreset()) applyDatePreset();
       scheduleOutput();
       return;
     }
 
-    // rebuild item list when specimen changes (keep manual selection for remaining items)
     if (t?.matches?.('[data-role="specimenCb"]')) {
       rebuildItemsForSpecimens();
 
-      // ✅ specimen 變動會改變可選 items，更新目前 preset 顯示狀態
+      // specimen change -> selection might effectively reduce available items
+      syncSelectedItemsFromDOM();
       setPresetRadio(detectPresetFromCurrentSelection());
+
+      syncOrderTokensFromSelection({ reset: false });
+      rebuildOrderUI();
 
       if (isAutoLastNPreset()) applyDatePreset();
       scheduleOutput();
@@ -1618,10 +1958,30 @@ export function init(root) {
     if (t?.matches?.('[data-role="dateCb"]')) {
       const detected = detectDatePresetFromCurrentSelection();
       setDatePresetRadio(detected);
-
       scheduleOutput();
       return;
     }
+
+    if (t?.name === "lab_trend_mode") {
+      scheduleOutput();
+      return;
+    }
+  });
+
+  // Order/Bar buttons (NEW)
+  addBarBtn?.addEventListener("click", () => {
+    addBarTokenAtEnd();
+    scheduleOutput();
+  });
+
+  clearBarsBtn?.addEventListener("click", () => {
+    clearAllBars();
+    scheduleOutput();
+  });
+
+  resetOrderBtn?.addEventListener("click", () => {
+    resetOrderTokens();
+    scheduleOutput();
   });
 
   // ---- reset
@@ -1632,12 +1992,17 @@ export function init(root) {
     dateIsoKeys = null;
     rowSpecimens = null;
     specimens = null;
+
     selectedItemIdxSet = new Set();
+    orderTokens = [];
+    barSeq = 0;
 
     clearToBr(dateSelEl);
     clearToBr(specimenSelEl);
     clearToBr(itemSelEl);
     clearToBr(outEl);
+
+    if (orderListEl) orderListEl.replaceChildren();
 
     if (trendChart) {
       trendChart.destroy();
@@ -1647,16 +2012,19 @@ export function init(root) {
     const datePresetLast5 = box.querySelector("#lab_date_preset_last_5");
     const presetTPNMinor = box.querySelector("#lab_preset_TPN_minor");
     const displayHorizontal = box.querySelector("#lab_display_horizontal");
+    const trendOff = box.querySelector("#lab_trend_off");
     if (datePresetLast5) datePresetLast5.checked = true;
     if (presetTPNMinor) presetTPNMinor.checked = true;
     if (displayHorizontal) displayHorizontal.checked = true;
+    if (trendOff) trendOff.checked = true;
+
+    ensureOrderAreaVisibility();
   });
 
-  // ---- intro (UPDATED)
+  // ---- intro (same as your current)
   introBtn?.addEventListener("click", () => {
     if (typeof introJs === "undefined") return;
 
-    // ✅ Example updated: includes multiple dates and multiple specimens (B / U / CSF)
     const example = `
 選取\t項目代號\t項目\t檢體別\t20250129\t0125\t20250126\t0025\t20250125\t2328\t單位\t參考值
 True\t72A001\tWBC\tB\t3.5\t4.4\t9.3\t\t\t1000/uL\t5.2~13.4(>1d-8d)
@@ -1674,82 +2042,66 @@ True\t72B530\tPCO2\tCSF\t\t\t\t45\t48\t\tmmHg\t-
   `.trim();
 
     if (rawEl) rawEl.value = example;
+    
+    const trendOn = box.querySelector("#lab_trend_on");
+    if (trendOn) trendOn.checked = true;
+
     process();
 
-    // ✅ Steps updated: include specimen / presets / trend chart / output copy
     const steps = [
       {
         element: `[data-tool="${TOOL_KEY}"] [data-role="rawArea"]`,
-        intro:
-          `<p><b>(1) HIS 4.0 檢驗頁面</b></p>
-          <p>建議用「全部彙總」後再複製貼上。</p>`,
+        intro: `<p><b>(1) HIS 4.0 檢驗頁面</b></p><p>建議用「全部彙總」後再複製貼上。</p>`,
       },
       {
         element: `[data-tool="${TOOL_KEY}"] [data-role="rawArea"]`,
-        intro:
-          `<p><b>(2) 複製資料</b></p>
-          <p>Ctrl + A 全選 → Ctrl + C 複製</p>
-          <img src="./img/intro_lab_step_0_全部彙總.png" style="width:100%;height:auto;">`,
+        intro: `<p><b>(2) 複製資料</b></p><p>Ctrl + A 全選 → Ctrl + C 複製</p>
+               <img src="./img/intro_lab_step_0_全部彙總.png" style="width:100%;height:auto;">`,
       },
       {
         element: `[data-tool="${TOOL_KEY}"] [data-role="rawArea"]`,
-        intro:
-          `<p><b>(3) 貼上 Raw Lab</b></p>
-          <p>Ctrl + V 貼到 Raw Lab，系統會即時解析、生成日期/檢體別/項目。</p>`,
+        intro: `<p><b>(3) 貼上 Raw Lab</b></p><p>Ctrl + V 貼到 Raw Lab，系統會即時解析。</p>`,
       },
       {
         element: `[data-tool="${TOOL_KEY}"] [data-role="presetArea"]`,
-        intro:
-          `<p><b>(4) 選擇顯示方式</b></p>
-          <p>橫式/直式切換：只影響輸出排版，不影響選取內容。</p>`,
+        intro: `<p><b>(4) 選擇顯示方式</b></p><p>橫式/直式切換。</p><p>顯示/不顯示圖表</p>`,
       },
       {
         element: `[data-tool="${TOOL_KEY}"] [data-role="specimenArea"]`,
-        intro:
-          `<p><b>(5) 選擇檢體別</b></p>
-          <p>預設會偏好勾選 B / BV（若存在）。</p>
-          <p>切換檢體別會重建「可選項目清單」，並保留仍存在的已選項目。</p>`,
+        intro: `<p><b>(5) 選擇檢體別</b></p><p>預設偏好 B / BV（若存在）。</p>`,
       },
       {
         element: `[data-tool="${TOOL_KEY}"] [data-role="dateArea"]`,
-        intro:
-          `<p><b>(6) 選擇日期（預設：近5次）</b></p>
-          <p>可用：全選 / 近15 / 近10 / 近5 / 全不選 / 自選。</p>
-          <p>近N次會優先抓「被選取項目」在該日期有值的欄位。</p>`,
+        intro: `<p><b>(6) 選擇日期（預設：近5次）</b></p>`,
       },
       {
         element: `[data-tool="${TOOL_KEY}"] [data-role="presetsArea"]`,
-        intro:
-          `<p><b>(7) 選擇套組</b></p>
-          <p>TPN小抽/大抽、Gas、CV、GI、Inf、Hema、TPN固定格式、或自選。</p>
-          <p>切換套組會覆寫項目勾選（自選除外）。</p>`,
+        intro: `<p><b>(7) 選擇套組</b></p>`,
       },
       {
         element: `[data-tool="${TOOL_KEY}"] [data-role="itemArea"]`,
-        intro:
-          `<p><b>(8) 客製化日期、檢驗項目</b></p>
-          <p>項目依 Date / CBC / Coag / Chemistry / Gas 分類顯示。</p>
-          <p>手動調整項目後，套組會自動切換為「最符合」或「自選」。</p>`,
+        intro: `<p><b>(8) 自訂項目</b></p><p>可手動勾選/取消。</p>`,
+      },
+      {
+        element: `[data-tool="${TOOL_KEY}"] [data-role="orderArea"]`,
+        intro: `<p><b>(9) Order (NEW) </b></p>
+                <p>拖曳可改輸出順序。</p>
+                <p>+Bar：在最後新增「|」。</p>
+                <p>- All Bar：移除所有「|」</p>
+                <p>重置：回到預設順序</p>
+                <p>把「|」移到最左邊時會自動刪除</p>`,
       },
       {
         element: `[data-tool="${TOOL_KEY}"] [data-role="outputs"]`,
-        intro:
-          `<p><b>(9) 輸出與複製</b></p>
-          <p>輸出內容為等寬對齊文字，點選內容即可複製（你原本的 copy 行為）。</p>
-          <p>若只選到單一非血液檢體（如 Urine），會顯示 Specimen header 並省略每列前綴。</p>`,
+        intro: `<p><b>(10) 輸出與複製</b></p><p>點選輸出即可複製。</p>`,
       },
       {
         element: `[data-tool="${TOOL_KEY}"] [data-role="trendCanvas"]`,
-        intro:
-          `<p><b>(10) Trend 圖</b></p>
-          <p>會根據「目前勾選的日期 + 勾選的項目」畫出趨勢（需 Chart.js）。</p>
-          <p>若沒有足夠日期或沒有可轉數值的資料，趨勢圖會自動隱藏/不畫。</p>`,
+        intro: `<p><b>(11) Trend 圖</b></p><p>依勾選日期+項目繪圖（需 Chart.js）。</p>`,
       },
       {
         element: `[data-tool="${TOOL_KEY}"] [data-role="reset"]`,
-        intro:
-          `<p><b>(11) Reset</b></p>
-          <p>清空資料與所有狀態，回到預設（近5次 + TPN小抽 + 橫式）。</p>`,
+        intro: `<p><b>(12) Reset</b></p><p>清空資料與狀態。</p>`,
       },
     ];
 
@@ -1763,14 +2115,12 @@ True\t72B530\tPCO2\tCSF\t\t\t\t45\t48\t\tmmHg\t-
       scrollToElement: true,
     });
 
-    // ✅ keep your previous cleanup behavior
-    intro.oncomplete(() => resetBtn?.click());
-    intro.onexit(() => resetBtn?.click());
+    // intro.oncomplete(() => resetBtn?.click());
+    // intro.onexit(() => resetBtn?.click());
     intro.start();
   });
 
   // ---- initial
   clearToBr(outEl);
+  ensureOrderAreaVisibility();
 }
-
-
