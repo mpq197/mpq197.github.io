@@ -1,6 +1,12 @@
 // tools/lab.js
-// updated: 2026-03-05
-// note: add Order/Bar area with drag-reorder + add/clear/reset bars (horizontal only)
+// updated: 2026-03-16
+// note:
+// - fix order UI double-render bug
+// - preserve manual item selection across specimen rebuilds
+// - fix preset detection with duplicate lab names across specimens
+// - fix horizontal output when duplicate labels exist
+// - fix extra blank line before specimen legend
+// - normalize output reset behavior
 
 import { createScheduler } from "../core/utils.js";
 
@@ -93,8 +99,8 @@ export function render() {
 
       [data-tool="lab"] .lab-order-list{
         display:flex;
-        flex-wrap:nowrap;      /* ✅ 不換行 */
-        overflow-x:auto;       /* ✅ 超出用水平捲動 */
+        flex-wrap:nowrap;
+        overflow-x:auto;
         overflow-y:hidden;
         gap:2px;
         align-items:center;
@@ -121,8 +127,6 @@ export function render() {
         color:#000000;
       }
 
-
-      /* since you are using bootstrap dark mode, keep neutral */
       [data-tool="lab"] .lab-order-chip:active{
         cursor:grabbing;
       }
@@ -171,13 +175,11 @@ export function render() {
 
                   <!-- Trend 開關 -->
                   <div class="btn-group mb-2" role="group" aria-label="trend toggle" data-role="trendModeGroup">
-
                     <input type="radio" class="btn-check" name="lab_trend_mode" id="lab_trend_on" autocomplete="off">
                     <label class="btn btn-outline-secondary" for="lab_trend_on">Chart</label>
 
                     <input type="radio" class="btn-check" name="lab_trend_mode" id="lab_trend_off" autocomplete="off" checked>
                     <label class="btn btn-outline-secondary" for="lab_trend_off">No Chart</label>
-
                   </div>
 
                 </div>
@@ -278,7 +280,6 @@ export function render() {
           <div class="row" data-role="itemArea">
             <div class="col">
               <div class="lab-items-panel">
-                <!-- ✅ Date group -->
                 <div class="lab-cat-group is-date">
                   <div class="lab-cat-left">Date</div>
                   <div class="lab-cat-right">
@@ -286,13 +287,12 @@ export function render() {
                   </div>
                 </div>
 
-                <!-- ✅ Items group -->
                 <div class="lab-items-panel__body" data-role="itemSelection"><br></div>
               </div>
             </div>
           </div>
 
-          <!-- ✅ Order/Bar area (NEW) -->
+          <!-- Order/Bar area -->
           <div class="lab-order-panel mt-2" data-role="orderArea">
             <div class="lab-order-header">
               <div class="lab-order-title">Order</div>
@@ -312,7 +312,6 @@ export function render() {
                 <li class="list-group-item copy-item" data-role="outputs"><br></li>
               </ul>
 
-              <!-- Trend chart -->
               <div class="mt-2">
                 <canvas data-role="trendCanvas" height="160"></canvas>
               </div>
@@ -348,33 +347,29 @@ export function init(root) {
   const resetBtn = box.querySelector('[data-role="reset"]');
   const introBtn = box.querySelector('[data-role="introBtn"]');
 
-  // Order/Bar (NEW)
   const orderAreaEl = box.querySelector('[data-role="orderArea"]');
   const orderListEl = box.querySelector('[data-role="orderList"]');
   const addBarBtn = box.querySelector('[data-role="addBarBtn"]');
   const clearBarsBtn = box.querySelector('[data-role="clearBarsBtn"]');
   const resetOrderBtn = box.querySelector('[data-role="resetOrderBtn"]');
 
-  // Trend chart
   const trendCanvas = box.querySelector('[data-role="trendCanvas"]');
   let trendChart = null;
 
-  // ---- state (kept inside module instance)
-  let abbrHeaders = null; // array for UI (idx0 [Lab], others MM/DD)
-  let abbrRows = null; // array of arrays (idx0 lab, others values)
-  let dateIsoKeys = null; // array same len as headers, idx0 null, others ISO "YYYY-MM-DDTHH:mm"
-  let rowSpecimens = null; // array same len as rows, each specimen string
-  let specimens = null; // unique specimen list (sorted)
+  // ---- state
+  let abbrHeaders = null;
+  let abbrRows = null;
+  let dateIsoKeys = null;
+  let rowSpecimens = null;
+  let specimens = null;
 
-  // keep user's manual item selection across specimen UI rebuilds (store ORIGINAL row indices)
+  // store ORIGINAL row indices, across specimen UI rebuilds
   let selectedItemIdxSet = new Set();
 
-  // Order tokens (NEW)
   // token: { t:'item', idx:number } or { t:'bar', id:string }
   let orderTokens = [];
   let barSeq = 0;
 
-  // ---- constants (same as your original)
   const labHeaderAbbrDict = {
     "項目": "[Lab]",
     "Hemoglobin": "Hb",
@@ -432,18 +427,12 @@ export function init(root) {
 
   const excludingRowKeywords = {
     "項目代號": [
-      //刪除 NBS 1 & 2
       "72A285","72B285","72C285","72D285","72E285","72F285","72G285","72H285","72I285","72J285","72K285","72L285","72M285","72N285","72O285","72P285","72Q285","72R285","72S285","72T285","72U285","72V285","72W285","72X285","72Y285","72Z285",
       "72a285","72b285","72c285","72d285","72e285","72f285","72g285","72h285","72i285",
-      //刪除 INR/aPTT的MNPT
       "72B037","72B038",
-      //刪除 Dbil/Tbil ratio
       "72A513",
-      //刪除 G6PD
       "72-065",
-      //刪除 gas 多餘項目
       "72A530","72G530","72L530","72M530","72A530","72A530","72K530","72L530","72M530",
-      //刪除 RBC, MCV, MCH, MCHC, RDW, PDW, MPV
       "72B001","72E001","72F001","72G001","72H001","72K001","72L001",
     ],
   };
@@ -458,7 +447,6 @@ export function init(root) {
     "lab_preset_hema": ["Hb","Hct","Plt","PT","INR","aPTT","aPTT/m","Fibrinogen","D-dimer","FDP"],
   };
 
-  // 合併 minor + major，順序 = minor 在前、major 在後，並去重
   const uniq = (arr) => Array.from(new Set(arr));
   presetSelectionsMap["lab_preset_tpn_fixed"] = uniq([
     ...(presetSelectionsMap["lab_preset_TPN_minor"] || []),
@@ -474,7 +462,6 @@ export function init(root) {
     "TG","Chol","TP","Alb","ALP","γGT","iPTH","fT4","TSH",
   ];
 
-  // ---- helpers
   function getCheckedRadioId(name) {
     const el = box.querySelector(`input[name="${name}"]:checked`);
     return el ? el.id : null;
@@ -486,19 +473,31 @@ export function init(root) {
   }
 
   function isTrendEnabled() {
-    const id = getCheckedRadioId("lab_trend_mode");
-    return id === "lab_trend_on";
+    return getCheckedRadioId("lab_trend_mode") === "lab_trend_on";
   }
 
-  function syncSelectedItemsFromDOM() {
+  // FIX:
+  // only sync currently visible item checkboxes into the global selected set.
+  // hidden specimen items are preserved.
+  function syncVisibleSelectedItemsFromDOM() {
     const cbs = Array.from(box.querySelectorAll('[data-role="itemCb"]'));
-    const next = new Set();
+    const visibleIdxs = new Set();
+
+    for (const cb of cbs) {
+      const idx = Number(cb.dataset.index);
+      if (!Number.isFinite(idx)) continue;
+      visibleIdxs.add(idx);
+    }
+
+    for (const idx of visibleIdxs) {
+      selectedItemIdxSet.delete(idx);
+    }
+
     for (const cb of cbs) {
       if (!cb.checked) continue;
       const idx = Number(cb.dataset.index);
-      if (Number.isFinite(idx)) next.add(idx);
+      if (Number.isFinite(idx)) selectedItemIdxSet.add(idx);
     }
-    selectedItemIdxSet = next;
   }
 
   function applySavedItemSelectionToDOM() {
@@ -552,7 +551,6 @@ export function init(root) {
 
     specimenSelEl.replaceChildren();
 
-    // default: prefer B + BV (if exist). If neither exists, fallback to all checked.
     const preferred = new Set(["B", "BV"]);
     const hasPreferred = specList.some((sp) => preferred.has(String(sp ?? "").trim()));
 
@@ -563,11 +561,9 @@ export function init(root) {
       input.dataset.role = "specimenCb";
       input.dataset.value = sp;
       input.id = `lab_specimen_${idx}`;
-      if (hasPreferred) {
-        input.checked = preferred.has(String(sp ?? "").trim());
-      } else {
-        input.checked = true;
-      }
+      input.checked = hasPreferred
+        ? preferred.has(String(sp ?? "").trim())
+        : true;
 
       const label = document.createElement("label");
       label.className = "btn btn-outline-secondary btn-check-label mt-1 ml-1";
@@ -609,7 +605,6 @@ export function init(root) {
     return "Other";
   }
 
-  // NOTE: rows/specimensByRow can be filtered view; origIndices maps view-rowIdx -> original abbrRows index
   function buildItemCheckboxes(headers, rows, specimensByRow, origIndices = null) {
     if (!headers || !rows) {
       clearToBr(itemSelEl);
@@ -618,7 +613,7 @@ export function init(root) {
 
     itemSelEl.replaceChildren();
 
-    const groups = new Map(); // cat -> [rowIdx...]
+    const groups = new Map();
     rows.forEach((row, idx) => {
       const lab = String(row[0] ?? "").trim();
       const cat = getLabCategory(lab);
@@ -649,12 +644,12 @@ export function init(root) {
         const lab = String(rows[rowIdx]?.[0] ?? "").trim() || `Lab${rowIdx + 1}`;
         const sp = String(specimensByRow?.[rowIdx] ?? "").trim() || "(空)";
 
+        const originalIndex = origIndices ? origIndices[rowIdx] : rowIdx;
+
         const input = document.createElement("input");
         input.type = "checkbox";
         input.className = "btn-check";
         input.dataset.role = "itemCb";
-
-        const originalIndex = origIndices ? origIndices[rowIdx] : rowIdx;
         input.dataset.index = String(originalIndex);
         input.dataset.lab = lab;
         input.dataset.specimen = sp;
@@ -685,16 +680,17 @@ export function init(root) {
     return new Set(selected);
   }
 
+  // FIX:
+  // use persistent state instead of only current DOM
   function getSelectedRowIndicesForCurrentFilters() {
     const selectedSpecimens = getSelectedSpecimensSet();
-    const selectedRows = Array.from(box.querySelectorAll('[data-role="itemCb"]:checked'))
-      .map((cb) => Number(cb.dataset.index))
+
+    return Array.from(selectedItemIdxSet)
       .filter(Number.isFinite)
       .filter((rowIdx) => {
         const sp = rowSpecimens?.[rowIdx] || "(空)";
         return selectedSpecimens.size ? selectedSpecimens.has(sp) : true;
       });
-    return selectedRows;
   }
 
   function computeLastNDateColsWithAnyValue(n) {
@@ -708,7 +704,10 @@ export function init(root) {
       let hasAny = false;
       for (const rIdx of selectedRows) {
         const v = String(abbrRows?.[rIdx]?.[col] ?? "").trim();
-        if (v !== "") { hasAny = true; break; }
+        if (v !== "") {
+          hasAny = true;
+          break;
+        }
       }
       if (hasAny) candidates.push({ col, iso: dateIsoKeys[col] || "" });
     }
@@ -788,12 +787,23 @@ export function init(root) {
     if (presetId === "lab_date_preset_custom") return;
 
     switch (presetId) {
-      case "lab_date_preset_all": setChecked(() => true); break;
-      case "lab_date_preset_last_15": applyLastNWithAnyValue(15); break;
-      case "lab_date_preset_last_10": applyLastNWithAnyValue(10); break;
-      case "lab_date_preset_last_5": applyLastNWithAnyValue(5); break;
-      case "lab_date_preset_none": setChecked(() => false); break;
-      default: break;
+      case "lab_date_preset_all":
+        setChecked(() => true);
+        break;
+      case "lab_date_preset_last_15":
+        applyLastNWithAnyValue(15);
+        break;
+      case "lab_date_preset_last_10":
+        applyLastNWithAnyValue(10);
+        break;
+      case "lab_date_preset_last_5":
+        applyLastNWithAnyValue(5);
+        break;
+      case "lab_date_preset_none":
+        setChecked(() => false);
+        break;
+      default:
+        break;
     }
   }
 
@@ -802,30 +812,16 @@ export function init(root) {
     if (el) el.checked = true;
   }
 
-  function getSelectedLabsFromState() {
-    const labs = [];
-    for (const idx of selectedItemIdxSet) {
-      const lab = String(abbrRows?.[idx]?.[0] ?? "").trim();
-      if (lab) labs.push(lab);
-    }
-    return new Set(labs);
-  }
-
+  // FIX:
+  // compare against current visible checkbox pattern instead of unique lab-name set
   function detectPresetFromCurrentSelection() {
-    const selected = getSelectedLabsFromState();
-    const allCbs = Array.from(box.querySelectorAll('[data-role="itemCb"]'));
-    const total = allCbs.length;
-    const count = selected.size;
+    const cbs = Array.from(box.querySelectorAll('[data-role="itemCb"]'));
+    const total = cbs.length;
+    if (!total) return "lab_preset_none";
 
-    if (count === 0) return "lab_preset_none";
-    if (count === total && total > 0) return "lab_preset_all";
-
-    const isEqualSet = (a, arr) => {
-      const b = new Set(arr || []);
-      if (a.size !== b.size) return false;
-      for (const x of a) if (!b.has(x)) return false;
-      return true;
-    };
+    const checkedCount = cbs.filter((cb) => cb.checked).length;
+    if (checkedCount === 0) return "lab_preset_none";
+    if (checkedCount === total) return "lab_preset_all";
 
     const presetIds = [
       "lab_preset_TPN_minor",
@@ -839,8 +835,9 @@ export function init(root) {
     ];
 
     for (const pid of presetIds) {
-      const allow = presetSelectionsMap[pid] || [];
-      if (isEqualSet(selected, allow)) return pid;
+      const allow = new Set(presetSelectionsMap[pid] || []);
+      const matched = cbs.every((cb) => cb.checked === allow.has(cb.dataset.lab || ""));
+      if (matched) return pid;
     }
 
     return "lab_preset_custom";
@@ -856,19 +853,16 @@ export function init(root) {
       cbs.forEach((cb) => (cb.checked = false));
       return;
     }
+
     if (presetId === "lab_preset_all") {
       cbs.forEach((cb) => (cb.checked = true));
       return;
     }
 
-    let allow = presetSelectionsMap[presetId] || [];
-    if (presetId === "lab_preset_tpn_fixed") {
-      allow = presetSelectionsMap["lab_preset_tpn_fixed"] || [];
-    }
-
+    const allow = new Set(presetSelectionsMap[presetId] || []);
     cbs.forEach((cb) => {
       const lab = cb.dataset.lab || "";
-      cb.checked = allow.includes(lab);
+      cb.checked = allow.has(lab);
     });
   }
 
@@ -935,6 +929,7 @@ export function init(root) {
 
     let headerLine = "";
     let headerLegend = null;
+
     if (singleNonBloodOnly) {
       const m = specimenMeta(nonBlood[0]);
       headerLine = `Specimen: ${m.code} (${m.meaning})`;
@@ -966,6 +961,7 @@ export function init(root) {
     return `${m.prefix}${lab}`;
   }
 
+  // FIX: remove leading newline
   function buildLegendLine(usedLegendSet, ctx) {
     const items = [];
 
@@ -981,11 +977,11 @@ export function init(root) {
     }
 
     if (!items.length) return "";
-    return `\nSpecimen legend: ${items.join(", ")}`;
+    return `Specimen legend: ${items.join(", ")}`;
   }
 
   // -----------------------------
-  // Order/Bar logic (NEW)
+  // Order / Bar logic
   // -----------------------------
   function tokenId(tok) {
     return tok.t === "item" ? `i:${tok.idx}` : `b:${tok.id}`;
@@ -997,8 +993,6 @@ export function init(root) {
 
   function ensureOrderAreaVisibility() {
     if (!orderAreaEl) return;
-    // Spec requirement: bars only affect horizontal output; but order area is still meaningful.
-    // However, for TPN fixed format, we hide the order area to avoid confusion.
     orderAreaEl.style.display = isTPNFixed() ? "none" : "";
   }
 
@@ -1034,21 +1028,19 @@ export function init(root) {
     return out;
   }
 
+  // FIX:
+  // pure state sync only; no UI render side effects
   function syncOrderTokensFromSelection({ reset = false } = {}) {
-    // If no data yet
     if (!abbrRows) {
       orderTokens = [];
-      rebuildOrderUI();
       return;
     }
 
     if (reset || !orderTokens.length) {
       orderTokens = buildDefaultTokensWithBars();
-      rebuildOrderUI();
       return;
     }
 
-    // Keep existing order + bars, remove unselected items, append new items by default order.
     const selectedSet = new Set(Array.from(selectedItemIdxSet).filter(Number.isFinite));
 
     const kept = [];
@@ -1068,20 +1060,17 @@ export function init(root) {
     const missing = getDefaultOrderedSelectedItemIndices().filter((idx) => !seenItems.has(idx));
     for (const idx of missing) kept.push({ t: "item", idx });
 
-    // If all items removed (rare), drop leading/trailing bars:
     orderTokens = compactBars(kept);
-    rebuildOrderUI();
   }
 
   function compactBars(tokens) {
-    // remove duplicate bars, and remove bars at start/end, and bars adjacent
     const out = [];
     let prevWasBar = false;
 
     for (const tok of tokens) {
       if (tok.t === "bar") {
-        if (out.length === 0) continue; // no leading bar
-        if (prevWasBar) continue;       // no double bar
+        if (out.length === 0) continue;
+        if (prevWasBar) continue;
         out.push(tok);
         prevWasBar = true;
       } else {
@@ -1090,11 +1079,11 @@ export function init(root) {
       }
     }
 
-    // remove trailing bar
-    // while (out.length && out[out.length - 1].t === "bar") out.pop();
     return out;
   }
 
+  // FIX:
+  // render only; no recursive state mutation
   function rebuildOrderUI() {
     if (!orderListEl) return;
     orderListEl.replaceChildren();
@@ -1111,13 +1100,12 @@ export function init(root) {
       return;
     }
 
-    // Ensure tokens are synced before building UI
-    if (!orderTokens.length) syncOrderTokensFromSelection({ reset: true });
+    if (!orderTokens.length) {
+      orderTokens = buildDefaultTokensWithBars();
+    }
 
-    // Build chips
     for (const tok of orderTokens) {
       if (tok.t === "item") {
-        // if item not selected, skip rendering (should not happen, but safe)
         if (!selectedItemIdxSet.has(tok.idx)) continue;
 
         const lab = getRowLabName(tok.idx) || `Lab${tok.idx + 1}`;
@@ -1139,11 +1127,11 @@ export function init(root) {
         chip.dataset.role = "orderChip";
         chip.dataset.tok = tokenId(tok);
         chip.textContent = "|";
+
         orderListEl.appendChild(chip);
       }
     }
 
-    // If everything got filtered out (shouldn't), show empty
     if (!orderListEl.children.length) {
       const msg = document.createElement("div");
       msg.className = "lab-order-empty";
@@ -1155,6 +1143,7 @@ export function init(root) {
   function readTokensFromOrderDOM() {
     const els = Array.from(orderListEl?.querySelectorAll?.('[data-role="orderChip"]') || []);
     const next = [];
+
     for (const el of els) {
       const s = String(el.dataset.tok || "");
       if (s.startsWith("i:")) {
@@ -1165,12 +1154,12 @@ export function init(root) {
         if (id) next.push({ t: "bar", id });
       }
     }
+
     orderTokens = compactBars(next);
   }
 
   function addBarTokenAtEnd() {
     if (isTPNFixed()) return;
-    // Ensure current tokens reflect selection
     syncOrderTokensFromSelection({ reset: false });
     orderTokens.push({ t: "bar", id: `bar${++barSeq}` });
     orderTokens = compactBars(orderTokens);
@@ -1187,7 +1176,7 @@ export function init(root) {
     rebuildOrderUI();
   }
 
-  // drag & drop (NEW)
+  // drag & drop
   let draggingEl = null;
 
   function getDragAfterElement(container, x) {
@@ -1195,12 +1184,13 @@ export function init(root) {
     let closest = { offset: Number.NEGATIVE_INFINITY, element: null };
 
     for (const child of draggableEls) {
-      const box = child.getBoundingClientRect();
-      const offset = x - (box.left + box.width / 2);
+      const boxRect = child.getBoundingClientRect();
+      const offset = x - (boxRect.left + boxRect.width / 2);
       if (offset < 0 && offset > closest.offset) {
         closest = { offset, element: child };
       }
     }
+
     return closest.element;
   }
 
@@ -1220,9 +1210,7 @@ export function init(root) {
       t.classList.remove("dragging");
       draggingEl = null;
 
-      // commit orderTokens
       readTokensFromOrderDOM();
-      // output update
       scheduleOutput();
     });
 
@@ -1239,12 +1227,13 @@ export function init(root) {
   }
 
   // -----------------------------
-  // Rebuild items for specimen changes (same as before)
+  // Specimen rebuild
   // -----------------------------
   function rebuildItemsForSpecimens() {
     if (!abbrHeaders || !abbrRows || !rowSpecimens) return;
 
-    syncSelectedItemsFromDOM();
+    // FIX: preserve current visible selections before rebuilding
+    syncVisibleSelectedItemsFromDOM();
 
     const sel = getSelectedSpecimensSet();
     const filteredRows = [];
@@ -1265,7 +1254,7 @@ export function init(root) {
   }
 
   // -----------------------------
-  // Parser (unchanged)
+  // Parser
   // -----------------------------
   function parseRawToTable(rawText) {
     const raw = String(rawText ?? "");
@@ -1320,7 +1309,8 @@ export function init(root) {
       const m = t.slice(4, 6);
       const d = t.slice(6, 8);
 
-      let hh = "00", mm = "00";
+      let hh = "00";
+      let mm = "00";
       const next = dateTokens[i + 1];
       if (isHHmm(next)) {
         hh = String(next).slice(0, 2);
@@ -1393,13 +1383,12 @@ export function init(root) {
   }
 
   // -----------------------------
-  // Output building with Order/Bar (UPDATED)
+  // Output
   // -----------------------------
   function getOrderedSelectedRowIndicesForOutput() {
     const selectedSpecimens = getSelectedSpecimensSet();
     const selected = new Set(
-      Array.from(box.querySelectorAll('[data-role="itemCb"]:checked'))
-        .map((cb) => Number(cb.dataset.index))
+      Array.from(selectedItemIdxSet)
         .filter(Number.isFinite)
         .filter((rowIdx) => {
           const sp = rowSpecimens?.[rowIdx] || "(空)";
@@ -1407,7 +1396,6 @@ export function init(root) {
         })
     );
 
-    // Ensure orderTokens is synced (keeps bars)
     syncOrderTokensFromSelection({ reset: false });
 
     const ordered = [];
@@ -1420,13 +1408,14 @@ export function init(root) {
       seen.add(tok.idx);
     }
 
-    // Any selected but missing in tokens -> append by default order
     const rest = getDefaultOrderedSelectedItemIndices().filter((idx) => selected.has(idx) && !seen.has(idx));
     ordered.push(...rest);
 
     return ordered;
   }
 
+  // FIX:
+  // horizontal matrix is built directly from tokens, not by label->col mapping
   function buildFilteredArray(headers, rows, ctx, usedLegendSet) {
     if (!headers || !rows) return null;
 
@@ -1434,14 +1423,34 @@ export function init(root) {
       .map((cb) => Number(cb.dataset.index))
       .filter(Number.isFinite);
 
+    if (!selectedCols.length) return null;
+
     const displayModeId = getCheckedRadioId("lab_display_mode");
     const isHorizontal = displayModeId === "lab_display_horizontal";
 
-    // ordered rows (UPDATED)
     const selectedRowsOrdered = getOrderedSelectedRowIndicesForOutput();
 
-    // vertical matrix first
-    let arr = [
+    // build row tokens for current output
+    syncOrderTokensFromSelection({ reset: false });
+    const rowTokensForOutput = [];
+    for (const tok of orderTokens) {
+      if (tok.t === "bar") {
+        rowTokensForOutput.push(tok);
+        continue;
+      }
+      if (selectedRowsOrdered.includes(tok.idx)) rowTokensForOutput.push(tok);
+    }
+
+    // if selectedRowsOrdered has missing items not in tokens, append
+    const included = new Set(
+      rowTokensForOutput.filter((t) => t.t === "item").map((t) => t.idx)
+    );
+    for (const idx of selectedRowsOrdered) {
+      if (!included.has(idx)) rowTokensForOutput.push({ t: "item", idx });
+    }
+
+    // first build a vertical matrix
+    let vertical = [
       headers.filter((_, i) => selectedCols.includes(i)),
       ...selectedRowsOrdered.map((i) => {
         const sp = rowSpecimens?.[i] || "(空)";
@@ -1452,9 +1461,9 @@ export function init(root) {
       }),
     ];
 
-    let [h, ...r] = arr;
+    let [h, ...r] = vertical;
 
-    // limit label length <= 12
+    // truncate visible cell length
     r = r.map((row) =>
       row.map((cell) => {
         const s = String(cell ?? "");
@@ -1462,87 +1471,48 @@ export function init(root) {
       })
     );
 
-    // remove empty columns (except header col)
+    // remove empty date columns in vertical form
     const emptyCols = h.map((_, i) => r.every((row) => (row[i] ?? "") === ""));
     h = h.filter((_, i) => !emptyCols[i]);
     r = r.map((row) => row.filter((_, i) => !emptyCols[i]));
-    arr = [h, ...r];
+    vertical = [h, ...r];
 
-    // horizontal display (transpose)
-    if (isHorizontal) {
-      arr = arr[0].map((_, i) => arr.map((row) => row[i] ?? ""));
+    if (!isHorizontal) return vertical;
 
-      // ✅ bars based on orderTokens (only horizontal; vertical ignores)
-      // Insert bar columns where bar tokens exist between item tokens.
-      // arr currently has:
-      //  - row0: [Lab] + lab labels...
-      //  - row1..: dates + values...
-      // We will build a new matrix by walking orderTokens and mapping to columns.
-      const headerRow = arr[0] || [];
-      const colCount = headerRow.length;
+    // direct horizontal build
+    const keptColIndices = selectedCols.filter((_, idx) => !emptyCols[idx]);
+    const matrix = keptColIndices.map((colIdx) => {
+      const isLabHeaderRow = colIdx === 0;
+      const row = [headers[colIdx] ?? ""];
 
-      // Map lab label -> column index in current horizontal matrix.
-      // Because labels may include prefixes (u-/v-) depending on ctx, we use the ACTUAL text in headerRow.
-      const labelToCol = new Map();
-      for (let c = 1; c < colCount; c++) {
-        const labLabel = String(headerRow[c] ?? "");
-        if (!labelToCol.has(labLabel)) labelToCol.set(labLabel, c);
-      }
-
-      // Build the desired lab-label list in current ctx:
-      // For each token item idx, compute the formatted label (must match headerRow label)
-      const desired = [];
-      const tokensForBars = [];
-
-      for (const tok of orderTokens) {
+      for (const tok of rowTokensForOutput) {
         if (tok.t === "bar") {
-          tokensForBars.push({ t: "bar", id: tok.id });
+          row.push(isLabHeaderRow ? "|" : "");
           continue;
         }
-        if (!selectedItemIdxSet.has(tok.idx)) continue;
 
         const sp = rowSpecimens?.[tok.idx] || "(空)";
-        const lbl = formatLabLabel(rows[tok.idx]?.[0] ?? "", sp, ctx, null);
-        tokensForBars.push({ t: "item", label: lbl });
-      }
-
-      // Build new columns: col0 always kept; then follow tokensForBars, inserting bar columns
-      const newArr = arr.map((row) => [row[0]]);
-
-      for (const tok of tokensForBars) {
-        if (tok.t === "bar") {
-          for (let rIdx = 0; rIdx < arr.length; rIdx++) {
-            newArr[rIdx].push(rIdx === 0 ? "|" : "");
-          }
-          continue;
-        }
-
-        const col = labelToCol.get(tok.label);
-        if (Number.isFinite(col)) {
-          for (let rIdx = 0; rIdx < arr.length; rIdx++) {
-            newArr[rIdx].push(arr[rIdx][col] ?? "");
-          }
+        if (isLabHeaderRow) {
+          row.push(formatLabLabel(rows[tok.idx]?.[0] ?? "", sp, ctx, null));
+        } else {
+          row.push(rows[tok.idx]?.[colIdx] ?? "");
         }
       }
 
-      // Replace
-      arr = newArr;
-    }
+      return row;
+    });
 
-    return arr;
+    return matrix;
   }
 
   function toAlignedText(matrix) {
     if (!matrix || !matrix[0]) return "";
 
     const MIN_VALUE_COL_WIDTH = 3;
-
-    // ✅ 以「header row 是否為 |」判斷 bar 欄
     const isBarCol = (i) => String(matrix[0][i] ?? "") === "|";
 
     const widths = matrix[0].map((_, i) => {
-      if (isBarCol(i)) return 1; // ✅ bar 欄固定寬度 1
-
+      if (isBarCol(i)) return 1;
       const maxLen = Math.max(...matrix.map((row) => String(row[i] ?? "").length));
       return i === 0 ? maxLen : Math.max(maxLen, MIN_VALUE_COL_WIDTH);
     });
@@ -1552,10 +1522,7 @@ export function init(root) {
         row
           .map((cell, i) => {
             const s = String(cell ?? "");
-
-            // ✅ bar 欄整欄都只 pad 1 格（包含空字串）
             if (isBarCol(i)) return s.padEnd(1);
-
             return s.padEnd(widths[i]);
           })
           .join(" ")
@@ -1669,7 +1636,7 @@ export function init(root) {
   }
 
   // -----------------------------
-  // Trend chart (order respected by selection orderTokens for dataset ordering)
+  // Trend chart
   // -----------------------------
   function cleanNumeric(cell) {
     let s = String(cell ?? "").trim();
@@ -1690,8 +1657,7 @@ export function init(root) {
     const selectedSpecimens = getSelectedSpecimensSet();
 
     const selectedRowSet = new Set(
-      Array.from(box.querySelectorAll('[data-role="itemCb"]:checked'))
-        .map((cb) => Number(cb.dataset.index))
+      Array.from(selectedItemIdxSet)
         .filter(Number.isFinite)
         .filter((rowIdx) => {
           const sp = rowSpecimens?.[rowIdx] || "(空)";
@@ -1707,16 +1673,18 @@ export function init(root) {
 
     colMeta.sort((a, b) => a.iso.localeCompare(b.iso));
 
-    // keep dataset order aligned with orderTokens (bars ignored)
     syncOrderTokensFromSelection({ reset: false });
+
     const rowOrder = [];
     const seen = new Set();
+
     for (const tok of orderTokens) {
       if (tok.t !== "item") continue;
       if (!selectedRowSet.has(tok.idx)) continue;
       rowOrder.push(tok.idx);
       seen.add(tok.idx);
     }
+
     for (const idx of getDefaultOrderedSelectedItemIndices()) {
       if (selectedRowSet.has(idx) && !seen.has(idx)) rowOrder.push(idx);
     }
@@ -1831,13 +1799,12 @@ export function init(root) {
     if (legendLine) lines.push(legendLine);
 
     setOutputText(lines.join("\n"));
+
     if (isTrendEnabled()) {
       renderTrendChart();
-    } else {
-      if (trendChart) {
-        trendChart.destroy();
-        trendChart = null;
-      }
+    } else if (trendChart) {
+      trendChart.destroy();
+      trendChart = null;
     }
   }
 
@@ -1854,10 +1821,7 @@ export function init(root) {
     rowSpecimens = parsed.rowSpecimens;
     specimens = parsed.specimens;
 
-    // reset manual selection on new raw input
     selectedItemIdxSet = new Set();
-
-    // reset order state on new raw input
     orderTokens = [];
     barSeq = 0;
 
@@ -1869,16 +1833,13 @@ export function init(root) {
 
     buildDateCheckboxes(abbrHeaders);
     buildSpecimenCheckboxes(specimens);
-
     rebuildItemsForSpecimens();
 
     applyItemPreset();
-    syncSelectedItemsFromDOM();
+    syncVisibleSelectedItemsFromDOM();
 
-    // initialize orderTokens with default bars after Plt/P/TB
     syncOrderTokensFromSelection({ reset: true });
-
-    applyDatePreset(); // default: 近5次
+    applyDatePreset();
 
     rebuildOrderUI();
     renderOutput();
@@ -1908,9 +1869,8 @@ export function init(root) {
 
     if (t?.name === "lab_presets_selection") {
       applyItemPreset();
-      syncSelectedItemsFromDOM();
+      syncVisibleSelectedItemsFromDOM();
 
-      // preset change may change selected items -> resync order tokens (keep bars)
       syncOrderTokensFromSelection({ reset: false });
       rebuildOrderUI();
 
@@ -1925,13 +1885,11 @@ export function init(root) {
     }
 
     if (t?.matches?.('[data-role="itemCb"]')) {
-      syncSelectedItemsFromDOM();
+      syncVisibleSelectedItemsFromDOM();
 
-      // update preset UI
       const detected = detectPresetFromCurrentSelection();
       setPresetRadio(detected);
 
-      // selection changed -> resync order tokens (keep bars)
       syncOrderTokensFromSelection({ reset: false });
       rebuildOrderUI();
 
@@ -1943,9 +1901,9 @@ export function init(root) {
     if (t?.matches?.('[data-role="specimenCb"]')) {
       rebuildItemsForSpecimens();
 
-      // specimen change -> selection might effectively reduce available items
-      syncSelectedItemsFromDOM();
-      setPresetRadio(detectPresetFromCurrentSelection());
+      // re-check preset based on rebuilt visible DOM
+      const detected = detectPresetFromCurrentSelection();
+      setPresetRadio(detected);
 
       syncOrderTokensFromSelection({ reset: false });
       rebuildOrderUI();
@@ -1968,7 +1926,6 @@ export function init(root) {
     }
   });
 
-  // Order/Bar buttons (NEW)
   addBarBtn?.addEventListener("click", () => {
     addBarTokenAtEnd();
     scheduleOutput();
@@ -2000,9 +1957,9 @@ export function init(root) {
     clearToBr(dateSelEl);
     clearToBr(specimenSelEl);
     clearToBr(itemSelEl);
-    clearToBr(outEl);
-
     if (orderListEl) orderListEl.replaceChildren();
+
+    setOutputText("");
 
     if (trendChart) {
       trendChart.destroy();
@@ -2021,7 +1978,7 @@ export function init(root) {
     ensureOrderAreaVisibility();
   });
 
-  // ---- intro (same as your current)
+  // ---- intro
   introBtn?.addEventListener("click", () => {
     if (typeof introJs === "undefined") return;
 
@@ -2042,7 +1999,7 @@ True\t72B530\tPCO2\tCSF\t\t\t\t45\t48\t\tmmHg\t-
   `.trim();
 
     if (rawEl) rawEl.value = example;
-    
+
     const trendOn = box.querySelector("#lab_trend_on");
     if (trendOn) trendOn.checked = true;
 
@@ -2084,12 +2041,12 @@ True\t72B530\tPCO2\tCSF\t\t\t\t45\t48\t\tmmHg\t-
       },
       {
         element: `[data-tool="${TOOL_KEY}"] [data-role="orderArea"]`,
-        intro: `<p><b>(9) Order (NEW) </b></p>
+        intro: `<p><b>(9) Order</b></p>
                 <p>拖曳可改輸出順序。</p>
                 <p>+Bar：在最後新增「|」。</p>
-                <p>- All Bar：移除所有「|」</p>
-                <p>重置：回到預設順序</p>
-                <p>把「|」移到最左邊時會自動刪除</p>`,
+                <p>- All Bar：移除所有「|」。</p>
+                <p>重置：回到預設順序。</p>
+                <p>把「|」移到最左邊時會自動刪除。</p>`,
       },
       {
         element: `[data-tool="${TOOL_KEY}"] [data-role="outputs"]`,
@@ -2115,12 +2072,10 @@ True\t72B530\tPCO2\tCSF\t\t\t\t45\t48\t\tmmHg\t-
       scrollToElement: true,
     });
 
-    // intro.oncomplete(() => resetBtn?.click());
-    // intro.onexit(() => resetBtn?.click());
     intro.start();
   });
 
   // ---- initial
-  clearToBr(outEl);
+  setOutputText("");
   ensureOrderAreaVisibility();
 }
