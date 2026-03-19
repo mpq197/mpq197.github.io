@@ -213,7 +213,7 @@ const TIMING_MAP = {
 };
 
 // dose units (expandable)
-const DOSE_UNITS = ["MG", "MCG", "G", "IU", "U", "UN", "MU", "ML", "PC", "PK", "PU", "GT", "QS", "PI", "BT", "SP"];
+const DOSE_UNITS = ["MG", "MCG", "G", "IU", "U", "KU", "UN", "MU", "ML", "PC", "PK", "PU", "GT", "QS", "PI", "BT", "SP"];
 
 
 // 自備藥特殊處理：同藥名但不同劑型（針劑、水劑、外用、口服）不視為同種藥（避免誤配對）
