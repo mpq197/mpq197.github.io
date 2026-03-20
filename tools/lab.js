@@ -1107,7 +1107,9 @@ export function init(root) {
     ensureOrderAreaVisibility();
     if (isTPNFixed()) return;
 
-    const selectedItems = Array.from(selectedItemIdxSet).filter(Number.isFinite);
+    const selectedItems = getSelectedRowIndicesForCurrentFilters();
+    const selectedSet = new Set(selectedItems);
+
     if (!selectedItems.length) {
       const msg = document.createElement("div");
       msg.className = "lab-order-empty";
@@ -1122,7 +1124,7 @@ export function init(root) {
 
     for (const tok of orderTokens) {
       if (tok.t === "item") {
-        if (!selectedItemIdxSet.has(tok.idx)) continue;
+        if (!selectedSet.has(tok.idx)) continue;
 
         const lab = getRowLabName(tok.idx) || `Lab${tok.idx + 1}`;
         const sp = String(rowSpecimens?.[tok.idx] ?? "").trim() || "(空)";
