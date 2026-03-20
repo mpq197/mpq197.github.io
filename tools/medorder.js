@@ -1368,7 +1368,7 @@ export function render() {
           <div class="d-flex align-items-center gap-2">
             <label class="neo-toggle small neo-muted d-flex align-items-center gap-1 mb-0">
               <input type="checkbox" data-role="show_year_toggle" />
-              年份
+              year
             </label>
           
             <label class="neo-toggle small neo-muted d-flex align-items-center gap-1 mb-0">
