@@ -1342,24 +1342,40 @@ export function init(root) {
     const rows = [];
     const rowSpecimensOut = [];
     const specimenSet = new Set();
-
+    
+    const mergedRowMap = new Map();
+    
+    const gasDuplicateMergeCodes = new Set([
+      "72A530", // Temp
+      "72C530", // pH
+      "72D530", // pCO2
+      "72E530", // pO2
+      "72F530", // HCO3
+      "72G530", // ctCO2
+      "72I530", // SBE
+      "72K530", // SAT
+      "72L530", // Po2(A-a)
+      "72M530", // FIO2
+    ]);
+    
     for (const line of lines.slice(dataStartIdx)) {
       const cells = line.split("\t");
       if (!isBool(cells[0])) continue;
-
+    
       const itemCode = String(cells[1] ?? "").trim();
       const itemNameRaw = String(cells[2] ?? "").trim();
       const specimen = String(cells[3] ?? "").trim() || "(空)";
-
+    
       specimenSet.add(specimen);
-
+    
       if ((excludingRowKeywords["項目代號"] || []).includes(itemCode)) continue;
-
+    
+      // 這裡已經統一名稱
       const itemName = labHeaderAbbrDict[itemNameRaw] || itemNameRaw;
       if (!itemName) continue;
-
+    
       const rawValues = cells.slice(4, 4 + dateMeta.length);
-
+    
       const values = valueOrder.map((k) => {
         let s = String(rawValues[k] ?? "")
           .replace(/( [H,L])$/, "")
@@ -1368,11 +1384,57 @@ export function init(root) {
         s = trimTrailingZeros(s);
         return s;
       });
-
-      rows.push([itemName, ...values]);
-      rowSpecimensOut.push(specimen);
+    
+      // 只處理 gas duplicate merge
+      if (!gasDuplicateMergeCodes.has(itemCode)) {
+        rows.push([itemName, ...values]);
+        rowSpecimensOut.push(specimen);
+        continue;
+      }
+    
+      const mergeKey = `${itemCode}__${specimen}`;
+    
+      if (!mergedRowMap.has(mergeKey)) {
+        mergedRowMap.set(mergeKey, {
+          itemCode,
+          itemName,
+          specimen,
+          values: [...values],
+        });
+        continue;
+      }
+    
+      const existing = mergedRowMap.get(mergeKey);
+    
+      for (let i = 0; i < values.length; i++) {
+        const oldVal = String(existing.values[i] ?? "").trim();
+        const newVal = String(values[i] ?? "").trim();
+    
+        if (oldVal && newVal && oldVal !== newVal) {
+          console.warn("[lab gas conflict]", {
+            itemCode,
+            itemName,
+            specimen,
+            valueIndex: i,
+            date: dateIsoKeys?.[i + 1] || null,
+            oldVal,
+            newVal,
+          });
+        }
+    
+        // 只補空值
+        if (!oldVal && newVal) {
+          existing.values[i] = newVal;
+        }
+      }
     }
-
+    
+    // gas merge 完再補回 rows
+    for (const entry of mergedRowMap.values()) {
+      rows.push([entry.itemName, ...entry.values]);
+      rowSpecimensOut.push(entry.specimen);
+    }
+    
     return {
       headers,
       rows,
