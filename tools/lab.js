@@ -423,6 +423,22 @@ export function init(root) {
     "BEecf(Vein)": "SBE",
     "Uric Acid (B)": "Uric acid",
     "Lactate(B)": "Lactate",
+    "Osmolality(B)": "Osmo",
+
+    "Urea N (U)": "Urea",
+    "Ca(Calcium)(U)": "Ca",
+    "Inorganic P (U)": "P",
+    "Uric Acid (U)": "Uric acid",
+    "Mg(Magnes.)(U)": "Mg",
+    "Na(Sodium)(U)": "Na",
+    "K(Potassium)-U": "K",
+    "Cl(Chloride)(U)": "Cl",
+    "Creatinine(U)": "Cr",
+    "Osmolality(U)": "Osmo",
+    "MALB(U)": "MALB",
+    "CREA(U)": "CREA",
+    "WBC esterase": "WBCe",
+    
   };
 
   const excludingRowKeywords = {
@@ -1339,6 +1355,15 @@ export function init(root) {
       return str.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
     };
 
+    function normalizeLabName(text) {
+      return String(text ?? "")
+        .replace(/[\u4e00-\u9fff]/g, "") // 去中文
+        .replace(/（/g, "(")             // 全形括號變成半形
+        .replace(/）/g, ")")             // 全形括號變成半形
+        .replace(/\(\s*\)/g, "")         // 只刪空括號
+        .trim();
+    }
+
     const rows = [];
     const rowSpecimensOut = [];
     const specimenSet = new Set();
@@ -1363,14 +1388,14 @@ export function init(root) {
       if (!isBool(cells[0])) continue;
     
       const itemCode = String(cells[1] ?? "").trim();
-      const itemNameRaw = String(cells[2] ?? "").trim();
+      let itemNameRaw = String(cells[2] ?? "").trim();
       const specimen = String(cells[3] ?? "").trim() || "(空)";
-    
+
       specimenSet.add(specimen);
-    
+      
       if ((excludingRowKeywords["項目代號"] || []).includes(itemCode)) continue;
     
-      // 這裡已經統一名稱
+      itemNameRaw = normalizeLabName(itemNameRaw);
       const itemName = labHeaderAbbrDict[itemNameRaw] || itemNameRaw;
       if (!itemName) continue;
     
