@@ -236,8 +236,10 @@ const MATCH_POLICY = {
 function pad2(n) {
   return String(n).padStart(2, "0");
 }
-function fmtMD(d) {
-  return `${d.getMonth() + 1}/${d.getDate()}`;
+function fmtMD(d, showYear = false) {
+  if (!d) return "?";
+  const md = `${d.getMonth() + 1}/${d.getDate()}`;
+  return showYear ? `${d.getFullYear()}/${md}` : md;
 }
 function fmtYMDHM(d) {
   return `${d.getFullYear()}/${pad2(d.getMonth() + 1)}/${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(
@@ -1109,13 +1111,22 @@ function bindCopy(root) {
     }
   });
 }
-function intervalLabel(itv) {
-  const s = itv.start ? fmtMD(itv.start) : "?";
-  const e = itv.end ? fmtMD(itv.end) : "ONGOING";
+function intervalLabel(itv, showYear = false) {
+  const s = itv.start ? fmtMD(itv.start, showYear) : "?";
+  const e = itv.end ? fmtMD(itv.end, showYear) : "ONGOING";
+  // 同一天：2/1-2/1 → 2/1
+  if (itv.start && itv.end) {
+    const sameDay =
+      itv.start.getFullYear() === itv.end.getFullYear() &&
+      itv.start.getMonth() === itv.end.getMonth() &&
+      itv.start.getDate() === itv.end.getDate();
+
+    if (sameDay) return s;
+  }
   return `${s}-${e}`;
 }
-function makeSummaryLine(drug, route, itv) {
-  return `${drug} ${route} ${intervalLabel(itv)}`;
+function makeSummaryLine(drug, route, itv, showYear = false) {
+  return `${drug} ${route} ${intervalLabel(itv, showYear)}`;
 }
 
 // ------------------------------
@@ -1209,7 +1220,7 @@ function renderResults(root, state) {
           .map(([route, intervals]) => {
             const chips = intervals
               .map((itv) => {
-                const label = intervalLabel(itv);
+                const label = intervalLabel(itv, state.showYear);
 
                 const src = (itv.sources || []).slice(0, 8).map((r) => {
                   const start = r.printTime ? fmtYMDHM(r.printTime) : "?";
@@ -1232,9 +1243,9 @@ function renderResults(root, state) {
 
             const copyText =
               intervals.length === 1
-                ? makeSummaryLine(d.drugDisplay, route, intervals[0])
-                : `${d.drugDisplay} ${route} ${intervals.map((itv) => intervalLabel(itv)).join(", ")}`;
-
+                ? makeSummaryLine(d.drugDisplay, route, intervals[0], state.showYear)
+                : `${d.drugDisplay} ${route} ${intervals.map((itv) => intervalLabel(itv, state.showYear)).join(", ")}`;
+            
             return `
               <div class="d-flex align-items-start gap-2 py-1">
                 <div class="neo-route flex-shrink-0">${escapeHtml(route)}</div>
@@ -1354,10 +1365,17 @@ export function render() {
             <button class="btn neo-btn-outline" type="button" data-role="clear_q" title="清除">✕</button>
           </div>
 
-          <label class="neo-toggle small neo-muted d-flex align-items-center gap-1">
-            <input type="checkbox" data-role="debug_toggle" />
-            Debug
-          </label>
+          <div class="d-flex align-items-center gap-2">
+            <label class="neo-toggle small neo-muted d-flex align-items-center gap-1 mb-0">
+              <input type="checkbox" data-role="show_year_toggle" />
+              年份
+            </label>
+          
+            <label class="neo-toggle small neo-muted d-flex align-items-center gap-1 mb-0">
+              <input type="checkbox" data-role="debug_toggle" />
+              Debug
+            </label>
+          </div>          
         </div>
 
         <textarea class="form-control neo-kbd" data-role="src" placeholder="把列印出的醫囑整段貼在這裡…（需含列印時間與藥品表格）"></textarea>
@@ -1386,13 +1404,15 @@ export function init(root) {
   const elQ = root.querySelector('[data-role="q"]');
   const btnClearQ = root.querySelector('[data-role="clear_q"]');
   const btnClearAll = root.querySelector('[data-role="clear_all"]');
+  const elShowYear = root.querySelector('[data-role="show_year_toggle"]');
   const elDbg = root.querySelector('[data-role="debug_toggle"]');
   const btnIntro = root.querySelector('[data-role="intro"]');
-
+  
   const state = {
     raw: "",
     query: "",
     debug: false,
+    showYear: false,
     rows: [],
     unmatchedDc: [],
     agg: [],
@@ -1531,6 +1551,11 @@ NEW   Heparin sodium 25,000u/5mL/vial           0.05MLIRRE        IVF   7天
     elSrc.focus();
   });
 
+  elShowYear?.addEventListener("change", () => {
+    state.showYear = !!elShowYear.checked;
+    renderResults(root, state);
+  });
+  
   elDbg.addEventListener("change", () => {
     state.debug = !!elDbg.checked;
     renderResults(root, state);
