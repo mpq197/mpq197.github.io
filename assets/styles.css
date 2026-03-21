@@ -346,7 +346,7 @@ input[type=number]{ -moz-appearance: textfield; }
   background-color: var(--neo-card);
   border-color: var(--neo-border);
   cursor: pointer;
-  user-select: none;
+  user-select: text;
 }
 
 /* IMPORTANT: limit hover effects to main area only */
