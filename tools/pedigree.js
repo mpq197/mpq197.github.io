@@ -1,1365 +1,1137 @@
 // /tools/pedigree.js
-// NeoAssist Tool Module Spec v1 compliant
-// Professional click-first pedigree builder (3-generation limit: I/II/III)
-// updated: 2026-03-03
-
-import { createScheduler } from "../core/utils.js";
+// updated: 2026-03-22
 
 const TOOL_KEY = "pedigree";
-const SEX = { M: "M", F: "F", U: "U" };
-const GEN = ["I", "II", "III"]; // hard limit
+const DEFAULT_INFO = "請先選取一位成員，再選圖示或新增手足。";
+const BOARD_ROWS = 7;
+const BOARD_PADDING = 2;
 
-// ---------- utils ----------
-function uid() {
-  return Math.random().toString(16).slice(2, 10);
+const MARKERS = Object.freeze([
+  { key: "male-open", symbol: "□", sex: "male", title: "男性・空心方形" },
+  { key: "male-filled", symbol: "■", sex: "male", title: "男性・實心方形" },
+  // { key: "male-field", symbol: "田", sex: "male", title: "男性・田" },
+  { key: "female-open", symbol: "○", sex: "female", title: "女性・空心圓形" },
+  { key: "female-filled", symbol: "●", sex: "female", title: "女性・實心圓形" },
+  // { key: "female-cross", symbol: "⊕", sex: "female", title: "女性・十字圓" },
+  { key: "unknown-open-diamond", symbol: "◇", sex: "unknown", title: "未知性別・空心菱形" },
+  { key: "unknown-filled-diamond", symbol: "◆", sex: "unknown", title: "未知性別・實心菱形" },
+]);
+
+const MARKER_MAP = Object.freeze(Object.fromEntries(MARKERS.map((item) => [item.key, item])));
+
+const FIXED_RULES = Object.freeze({
+  pgf: { label: "爺爺", allowed: ["male"] },
+  pgm: { label: "奶奶", allowed: ["female"] },
+  mgf: { label: "外公", allowed: ["male"] },
+  mgm: { label: "外婆", allowed: ["female"] },
+  father: { label: "爸爸", allowed: ["male"] },
+  mother: { label: "媽媽", allowed: ["female"] },
+  proband: { label: "個案", allowed: ["male", "female"] },
+});
+
+const DIR = Object.freeze({ N: 1, E: 2, S: 4, W: 8 });
+
+const CONNECTOR_TO_CHAR = Object.freeze({
+  [DIR.E | DIR.W]: "─",
+  [DIR.N | DIR.S]: "│",
+  [DIR.S | DIR.E]: "┌",
+  [DIR.S | DIR.W]: "┐",
+  [DIR.N | DIR.E]: "└",
+  [DIR.N | DIR.W]: "┘",
+  [DIR.E | DIR.W | DIR.S]: "┬",
+  [DIR.E | DIR.W | DIR.N]: "┴",
+  [DIR.N | DIR.S | DIR.E]: "├",
+  [DIR.N | DIR.S | DIR.W]: "┤",
+  [DIR.N | DIR.S | DIR.E | DIR.W]: "┼",
+});
+
+const INSTANCES = new WeakMap();
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
-function esc(s) {
-  return String(s ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+
+function markerByKey(key) {
+  return MARKER_MAP[key] || MARKER_MAP["male-open"];
 }
-function shape(sex, affected) {
-  const a = !!affected;
-  if (sex === SEX.M) return a ? "■" : "□";
-  if (sex === SEX.F) return a ? "●" : "○";
-  return a ? "◆" : "◇";
+
+function markerSex(key) {
+  return markerByKey(key).sex;
 }
-function sexLabel(sex) {
-  if (sex === SEX.M) return "Male";
-  if (sex === SEX.F) return "Female";
-  return "Unknown";
+
+function midpoint(a, b) {
+  return Math.floor((a + b) / 2);
 }
-function bool01(v) {
-  return v ? "1" : "0";
+
+function makeRelative(id, markerKey) {
+  return { id, markerKey };
 }
-function findById(state, id) {
-  return state.people.find((p) => p.id === id) || null;
-}
-function ensurePerson(state, p) {
-  if (!state.people.some((x) => x.id === p.id)) state.people.push(p);
-  return p;
-}
-function nextCode(state, gen) {
-  const g = GEN.includes(gen) ? gen : "II";
-  const used = state.people
-    .map((p) => p.code)
-    .filter(Boolean)
-    .filter((c) => c.startsWith(g + "-"));
-  let n = 1;
-  while (used.includes(`${g}-${n}`)) n++;
-  return `${g}-${n}`;
-}
-function defaultPerson(state, gen = "II", name = "") {
-  const g = GEN.includes(gen) ? gen : "II";
+
+function createInitialState() {
   return {
-    id: uid(),
-    gen: g,
-    code: nextCode(state, g),
-    name,
-    sex: SEX.U,
-    affected: false,
-    deceased: false,
-    fatherId: null,
-    motherId: null,
-    partnerId: null,
-    childrenIds: [],
+    seq: 1,
+    selectedId: null,
+    hoverId: null,
+    activeMarkerKey: "male-open",
+    flash: null,
+    model: {
+      grandparents: {
+        pgf: { id: "pgf", markerKey: "male-open" },
+        pgm: { id: "pgm", markerKey: "female-open" },
+        mgf: { id: "mgf", markerKey: "male-open" },
+        mgm: { id: "mgm", markerKey: "female-open" },
+      },
+      tracks: {
+        father: {
+          left: [],
+          self: { id: "father", markerKey: "male-open" },
+          right: [],
+        },
+        mother: {
+          left: [],
+          self: { id: "mother", markerKey: "female-open" },
+          right: [],
+        },
+        child: {
+          left: [],
+          self: { id: "proband", markerKey: "male-open" },
+          right: [],
+        },
+      },
+    },
   };
 }
-function addChildLink(parent, childId) {
-  if (!parent.childrenIds.includes(childId)) parent.childrenIds.push(childId);
-}
-function marry(a, b) {
-  if (!a || !b) return;
-  a.partnerId = b.id;
-  b.partnerId = a.id;
-}
-function setParent(child, parent, kind) {
-  if (kind === "father") child.fatherId = parent.id;
-  if (kind === "mother") child.motherId = parent.id;
-}
-function compactLabel(p, isProband) {
-  const s = shape(p.sex, p.affected) + (p.deceased ? "†" : "");
-  const arrow = isProband ? "→" : "";
-  const name = p.name?.trim() ? p.name.trim() : p.code;
-  return `${arrow}${s} ${name}`;
-}
-function parentIdsOf(p) {
-  return { fatherId: p.fatherId || null, motherId: p.motherId || null };
-}
-function siblingsOf(state, person) {
-  const { fatherId, motherId } = parentIdsOf(person);
-  if (!fatherId && !motherId) return [];
-  return state.people.filter((p) => {
-    if (p.id === person.id) return false;
-    const sameFa = fatherId && p.fatherId === fatherId;
-    const sameMo = motherId && p.motherId === motherId;
-    return fatherId && motherId ? sameFa && sameMo : sameFa || sameMo;
-  });
-}
-function childrenOf(state, person) {
-  return person.childrenIds.map((id) => findById(state, id)).filter(Boolean);
-}
-function genIndex(gen) {
-  return GEN.indexOf(gen);
-}
-function genUp(gen) {
-  const i = genIndex(gen);
-  if (i <= 0) return null;
-  return GEN[i - 1];
-}
-function genDown(gen) {
-  const i = genIndex(gen);
-  if (i < 0 || i >= GEN.length - 1) return null;
-  return GEN[i + 1];
+
+function nextRelativeId(state) {
+  const id = `rel-${state.seq}`;
+  state.seq += 1;
+  return id;
 }
 
-// ---------- model normalization (keep within 3 gens) ----------
-function normalize3Gen(state) {
-  // Minimal propagation: parents are one gen up; children one gen down; partner same gen.
-  for (let k = 0; k < 4; k++) {
-    for (const p of state.people) {
-      // partner
-      const pt = p.partnerId ? findById(state, p.partnerId) : null;
-      if (pt && pt.gen !== p.gen) pt.gen = p.gen;
+function trackDisplay(track) {
+  return [...track.left, track.self, ...track.right];
+}
 
-      // parents
-      const up = genUp(p.gen);
-      if (p.fatherId) {
-        const fa = findById(state, p.fatherId);
-        if (fa && up) fa.gen = up;
-      }
-      if (p.motherId) {
-        const mo = findById(state, p.motherId);
-        if (mo && up) mo.gen = up;
-      }
-
-      // children
-      const down = genDown(p.gen);
-      if (down) {
-        for (const cid of p.childrenIds) {
-          const c = findById(state, cid);
-          if (c) c.gen = down;
-        }
-      }
+function locatePerson(model, id) {
+  const gpKeys = ["pgf", "pgm", "mgf", "mgm"];
+  for (const key of gpKeys) {
+    if (model.grandparents[key].id === id) {
+      return { kind: "grandparent", key };
     }
   }
 
-  // Keep codes aligned to gen
-  for (const p of state.people) {
-    const g = GEN.includes(p.gen) ? p.gen : "II";
-    p.gen = g;
-    if (!String(p.code || "").startsWith(g + "-")) {
-      p.code = nextCode(state, g);
+  const trackNames = ["father", "mother", "child"];
+  for (const trackName of trackNames) {
+    const track = model.tracks[trackName];
+
+    if (track.self.id === id) {
+      return { kind: "track", track: trackName, segment: "self", index: 0 };
+    }
+
+    const leftIndex = track.left.findIndex((item) => item.id === id);
+    if (leftIndex >= 0) {
+      return { kind: "track", track: trackName, segment: "left", index: leftIndex };
+    }
+
+    const rightIndex = track.right.findIndex((item) => item.id === id);
+    if (rightIndex >= 0) {
+      return { kind: "track", track: trackName, segment: "right", index: rightIndex };
     }
   }
+
+  return null;
 }
 
-// ---------- export ----------
-function renderTextOutput(state) {
-  const proband = findById(state, state.probandId);
-  if (!proband) return "No proband.";
-
-  const father = proband.fatherId ? findById(state, proband.fatherId) : null;
-  const mother = proband.motherId ? findById(state, proband.motherId) : null;
-  const partner = proband.partnerId ? findById(state, proband.partnerId) : null;
-
-  const sibs = siblingsOf(state, proband).sort((a, b) =>
-    (a.code || "").localeCompare(b.code || "")
-  );
-  const kids = childrenOf(state, proband).sort((a, b) =>
-    (a.code || "").localeCompare(b.code || "")
-  );
-
-  const lines = [];
-  lines.push("PEDIGREE (text)");
-  lines.push("=".repeat(72));
-  lines.push(`Proband: ${compactLabel(proband, true)}`);
-  if (partner) lines.push(`Partner: ${compactLabel(partner, false)}`);
-  if (father || mother) {
-    lines.push(
-      `Parents: ${father ? compactLabel(father, false) : "—"}  +  ${
-        mother ? compactLabel(mother, false) : "—"
-      }`
-    );
+function getPersonByLocation(model, location) {
+  if (!location) return null;
+  if (location.kind === "grandparent") {
+    return model.grandparents[location.key];
   }
-  if (sibs.length)
-    lines.push(`Siblings: ${sibs.map((p) => compactLabel(p, false)).join("  ")}`);
-  if (kids.length)
-    lines.push(`Children: ${kids.map((p) => compactLabel(p, false)).join("  ")}`);
 
-  lines.push("");
-  lines.push("Legend: □/○/◇ unaffected; ■/●/◆ affected; † deceased; → proband");
-  lines.push("");
-  lines.push("People:");
-  const list = [...state.people].sort((a, b) => (a.code || "").localeCompare(b.code || ""));
-  for (const p of list) {
-    lines.push(`  ${p.code}: ${compactLabel(p, p.id === state.probandId)}`);
+  const track = model.tracks[location.track];
+  if (location.segment === "self") return track.self;
+  if (location.segment === "left") return track.left[location.index] || null;
+  if (location.segment === "right") return track.right[location.index] || null;
+  return null;
+}
+
+function getPerson(model, id) {
+  const location = locatePerson(model, id);
+  return getPersonByLocation(model, location);
+}
+
+function getSelectionMeta(state, personId) {
+  const location = locatePerson(state.model, personId);
+  const person = getPersonByLocation(state.model, location);
+  if (!location || !person) return null;
+
+  const sex = markerSex(person.markerKey);
+
+  if (location.kind === "grandparent") {
+    const rule = FIXED_RULES[location.key];
+    return {
+      label: rule.label,
+      allowedSexes: [...rule.allowed],
+      canInsert: false,
+      canDelete: false,
+      location,
+      person,
+      sex,
+    };
   }
-  return lines.join("\n");
-}
 
-function renderTSV(state) {
-  const header = [
-    "code",
-    "name",
-    "gen",
-    "sex",
-    "affected",
-    "deceased",
-    "father",
-    "mother",
-    "partner",
-    "children",
-    "proband",
-  ].join("\t");
+  if (location.segment === "self") {
+    const key = location.track === "child" ? "proband" : location.track;
+    const rule = FIXED_RULES[key];
+    return {
+      label: rule.label,
+      allowedSexes: [...rule.allowed],
+      canInsert: true,
+      canDelete: false,
+      location,
+      person,
+      sex,
+    };
+  }
 
-  const byCode = [...state.people].sort((a, b) => (a.code || "").localeCompare(b.code || ""));
-  const idToCode = new Map(byCode.map((p) => [p.id, p.code]));
-
-  const rows = byCode.map((p) => {
-    const children = (p.childrenIds || [])
-      .map((id) => idToCode.get(id) || "")
-      .filter(Boolean)
-      .join(",");
-    return [
-      p.code || "",
-      (p.name || "").replaceAll("\t", " "),
-      p.gen || "",
-      p.sex || "",
-      bool01(p.affected),
-      bool01(p.deceased),
-      p.fatherId ? idToCode.get(p.fatherId) || "" : "",
-      p.motherId ? idToCode.get(p.motherId) || "" : "",
-      p.partnerId ? idToCode.get(p.partnerId) || "" : "",
-      children,
-      bool01(p.id === state.probandId),
-    ].join("\t");
-  });
-
-  return [header, ...rows].join("\n");
-}
-
-function renderJSON(state) {
-  // stable, minimal
-  const payload = {
-    tool: TOOL_KEY,
-    version: "20260303",
-    probandId: state.probandId,
-    people: state.people.map((p) => ({
-      id: p.id,
-      gen: p.gen,
-      code: p.code,
-      name: p.name,
-      sex: p.sex,
-      affected: !!p.affected,
-      deceased: !!p.deceased,
-      fatherId: p.fatherId,
-      motherId: p.motherId,
-      partnerId: p.partnerId,
-      childrenIds: [...(p.childrenIds || [])],
-    })),
-  };
-  return JSON.stringify(payload, null, 2);
-}
-
-// ---------- professional canvas rendering (family groups) ----------
-function canonicalCoupleKey(aId, bId) {
-  if (!aId || !bId) return null;
-  return [aId, bId].sort().join("|");
-}
-function coupleOf(state, p) {
-  if (!p.partnerId) return null;
-  const pt = findById(state, p.partnerId);
-  if (!pt) return null;
-  return { a: p, b: pt, key: canonicalCoupleKey(p.id, pt.id) };
-}
-function familyKeyByParents(child) {
-  const fa = child.fatherId || "";
-  const mo = child.motherId || "";
-  if (!fa && !mo) return null;
-  return [fa, mo].sort().join("|");
-}
-
-function renderNode(state, p) {
-  const isActive = p.id === state.activeId;
-  const isProband = p.id === state.probandId;
-  const s = shape(p.sex, p.affected);
-  const dead = p.deceased ? "†" : "";
-  const name = p.name?.trim() ? p.name.trim() : p.code;
-
-  return `
-    <button type="button"
-      class="ped-node ${isActive ? "is-active" : ""}"
-      data-role="node"
-      data-person-id="${esc(p.id)}"
-      title="Click to select">
-      <span class="ped-icon">${esc(s + dead)}</span>
-      <span class="ped-name">${esc(name)}</span>
-      ${isProband ? `<span class="ped-badge">proband</span>` : ``}
-    </button>
-  `;
-}
-
-function renderCouple(state, a, b) {
-  return `
-    <div class="ped-couple">
-      ${renderNode(state, a)}
-      <div class="ped-couple-link" aria-hidden="true"></div>
-      ${renderNode(state, b)}
-    </div>
-  `;
-}
-
-function renderGenI(state) {
-  // show couples (unique) + singles
-  const genI = state.people.filter((p) => p.gen === "I");
-  const seenCouples = new Set();
-
-  const couples = [];
-  const singles = [];
-
-  for (const p of genI) {
-    const c = coupleOf(state, p);
-    if (c && !seenCouples.has(c.key)) {
-      seenCouples.add(c.key);
-      couples.push(c);
-    } else if (!p.partnerId) {
-      singles.push(p);
+  let label = "親屬";
+  if (location.track === "father") {
+    if (location.segment === "left") {
+      if (sex === "male") label = "伯伯";
+      else if (sex === "female") label = "姑姑";
+      else label = "父系年長手足";
     } else {
-      // partner exists but couple already counted; skip
+      if (sex === "male") label = "叔叔";
+      else if (sex === "female") label = "姑姑";
+      else label = "父系年幼手足";
+    }
+  } else if (location.track === "mother") {
+    if (sex === "male") label = "舅舅";
+    else if (sex === "female") label = "阿姨";
+    else label = "母系手足";
+  } else if (location.track === "child") {
+    if (location.segment === "left") {
+      if (sex === "male") label = "哥哥";
+      else if (sex === "female") label = "姊姊";
+      else label = "年長手足";
+    } else {
+      if (sex === "male") label = "弟弟";
+      else if (sex === "female") label = "妹妹";
+      else label = "年幼手足";
     }
   }
 
-  couples.sort((x, y) => (x.a.code || "").localeCompare(y.a.code || ""));
-  singles.sort((x, y) => (x.code || "").localeCompare(y.code || ""));
-
-  return `
-    <div class="ped-gen">
-      <div class="ped-gen-title mono">Gen I</div>
-      <div class="ped-gen-body">
-        ${couples
-          .map((c) => `<div class="ped-family">${renderCouple(state, c.a, c.b)}</div>`)
-          .join("")}
-        ${singles.map((p) => `<div class="ped-family">${renderNode(state, p)}</div>`).join("")}
-        ${
-          couples.length === 0 && singles.length === 0
-            ? `<div class="ped-empty text-muted small">—</div>`
-            : ``
-        }
-      </div>
-    </div>
-  `;
+  return {
+    label,
+    allowedSexes: ["male", "female", "unknown"],
+    canInsert: true,
+    canDelete: true,
+    location,
+    person,
+    sex,
+  };
 }
 
-function renderGenII(state) {
-  // Group Gen II by parents where possible to show sibling sets (family blocks)
-  const genII = state.people.filter((p) => p.gen === "II");
-  const groups = new Map(); // familyKey -> { key, members: [] }
-  const orphans = [];
+function canUseMarker(selectionMeta, markerKey) {
+  if (!selectionMeta) return false;
+  return selectionMeta.allowedSexes.includes(markerSex(markerKey));
+}
 
-  for (const p of genII) {
-    const k = familyKeyByParents(p);
-    if (!k) {
-      orphans.push(p);
+function replaceSelectedMarker(state) {
+  const meta = getSelectionMeta(state, state.selectedId);
+  if (!meta) {
+    state.flash = { kind: "muted", text: DEFAULT_INFO };
+    return;
+  }
+
+  if (!canUseMarker(meta, state.activeMarkerKey)) {
+    state.flash = { kind: "danger", text: `${meta.label} 不能使用目前選定的圖示。` };
+    return;
+  }
+
+  meta.person.markerKey = state.activeMarkerKey;
+  state.flash = null;
+}
+
+function displayIndexForLocation(track, location) {
+  if (location.segment === "left") return location.index;
+  if (location.segment === "self") return track.left.length;
+  return track.left.length + 1 + location.index;
+}
+
+function insertIntoTrack(state, side) {
+  const meta = getSelectionMeta(state, state.selectedId);
+  if (!meta) {
+    state.flash = { kind: "muted", text: DEFAULT_INFO };
+    return;
+  }
+
+  if (!meta.canInsert || meta.location.kind !== "track") {
+    state.flash = { kind: "danger", text: "這個位置不能新增親屬。" };
+    return;
+  }
+
+  const track = state.model.tracks[meta.location.track];
+  const selectedDisplayIndex = displayIndexForLocation(track, meta.location);
+  const insertionPoint = side === "left" ? selectedDisplayIndex : selectedDisplayIndex + 1;
+  const person = makeRelative(nextRelativeId(state), state.activeMarkerKey);
+
+  if (insertionPoint <= track.left.length) {
+    track.left.splice(insertionPoint, 0, person);
+  } else {
+    track.right.splice(insertionPoint - track.left.length - 1, 0, person);
+  }
+
+  state.selectedId = person.id;
+  state.flash = null;
+}
+
+function deleteSelectedPerson(state) {
+  const meta = getSelectionMeta(state, state.selectedId);
+  if (!meta) {
+    state.flash = { kind: "muted", text: DEFAULT_INFO };
+    return;
+  }
+
+  if (!meta.canDelete || meta.location.kind !== "track") {
+    state.flash = { kind: "danger", text: "這個位置不能刪除。" };
+    return;
+  }
+
+  const track = state.model.tracks[meta.location.track];
+  if (meta.location.segment === "left") {
+    track.left.splice(meta.location.index, 1);
+  } else if (meta.location.segment === "right") {
+    track.right.splice(meta.location.index, 1);
+  }
+
+  state.selectedId = null;
+  state.flash = null;
+}
+
+function getStatusMessage(state) {
+  if (state.flash) return state.flash;
+
+  if (state.selectedId) {
+    const meta = getSelectionMeta(state, state.selectedId);
+    if (!meta) return { kind: "muted", text: DEFAULT_INFO };
+    return { kind: "success", text: `目前選取：${meta.label}` };
+  }
+
+  if (state.hoverId) {
+    const meta = getSelectionMeta(state, state.hoverId);
+    if (!meta) return { kind: "muted", text: DEFAULT_INFO };
+    return { kind: "muted", text: `滑鼠所在：${meta.label}。點一下即可選取。` };
+  }
+
+  return { kind: "muted", text: DEFAULT_INFO };
+}
+
+function addMask(map, x, y, bit) {
+  const key = `${x},${y}`;
+  map.set(key, (map.get(key) || 0) | bit);
+}
+
+function addLine(maskMap, x1, y1, x2, y2) {
+  if (x1 !== x2 && y1 !== y2) {
+    throw new Error("Only orthogonal lines are supported.");
+  }
+
+  if (x1 === x2) {
+    const step = y2 > y1 ? 1 : -1;
+    for (let y = y1; y !== y2; y += step) {
+      addMask(maskMap, x1, y, step > 0 ? DIR.S : DIR.N);
+      addMask(maskMap, x1, y + step, step > 0 ? DIR.N : DIR.S);
+    }
+    return;
+  }
+
+  const step = x2 > x1 ? 1 : -1;
+  for (let x = x1; x !== x2; x += step) {
+    addMask(maskMap, x, y1, step > 0 ? DIR.E : DIR.W);
+    addMask(maskMap, x + step, y1, step > 0 ? DIR.W : DIR.E);
+  }
+}
+
+function writePeople(glyphMap, row, positions, people, placementMap) {
+  positions.forEach((x, index) => {
+    const person = people[index];
+    const symbol = markerByKey(person.markerKey).symbol;
+    glyphMap.set(`${x},${row}`, symbol);
+    placementMap.set(person.id, { x, y: row });
+  });
+}
+
+function drawSiblingGroup(maskMap, childXs, connectorRow, peopleRow) {
+  if (!childXs.length) return;
+
+  if (childXs.length === 1) {
+    addLine(maskMap, childXs[0], connectorRow, childXs[0], peopleRow);
+    return;
+  }
+
+  addLine(maskMap, childXs[0], connectorRow, childXs[childXs.length - 1], connectorRow);
+  childXs.forEach((x) => {
+    addLine(maskMap, x, connectorRow, x, peopleRow);
+  });
+}
+
+function drawGrandparentBlock(maskMap, glyphMap, placementMap, leftGrandparent, rightGrandparent, childXs, rows) {
+  const { grandparentRow, siblingConnectorRow, childRow } = rows;
+  const centerX = midpoint(childXs[0], childXs[childXs.length - 1]);
+  const leftX = centerX - 1;
+  const rightX = centerX + 1;
+
+  glyphMap.set(`${leftX},${grandparentRow}`, markerByKey(leftGrandparent.markerKey).symbol);
+  glyphMap.set(`${rightX},${grandparentRow}`, markerByKey(rightGrandparent.markerKey).symbol);
+  placementMap.set(leftGrandparent.id, { x: leftX, y: grandparentRow });
+  placementMap.set(rightGrandparent.id, { x: rightX, y: grandparentRow });
+
+  addLine(maskMap, leftX, grandparentRow, centerX, grandparentRow);
+  addLine(maskMap, centerX, grandparentRow, rightX, grandparentRow);
+  addLine(maskMap, centerX, grandparentRow, centerX, siblingConnectorRow);
+  drawSiblingGroup(maskMap, childXs, siblingConnectorRow, childRow);
+}
+
+function previewCellText(cell) {
+  const ch = cell.char || " ";
+  // 空白補成兩格，其餘字元維持原樣（因為本身已經是雙寬）
+  return ch === " " ? "  " : ch;
+}
+
+function buildSymbolReferenceLine() {
+  return "符號:□■○●◇◆↑─│└┘┌┐┬┴├┤┼／＼";
+}
+
+function buildLayout(model) {
+  const glyphMap = new Map();
+  const maskMap = new Map();
+  const placementMap = new Map();
+
+  const fatherTrack = model.tracks.father;
+  const motherTrack = model.tracks.mother;
+  const childTrack = model.tracks.child;
+
+  const fatherPeople = trackDisplay(fatherTrack);
+  const motherPeople = trackDisplay(motherTrack);
+  const childPeople = trackDisplay(childTrack);
+
+  const fatherStartX = 0;
+  const fatherXs = fatherPeople.map((_, index) => fatherStartX + index * 2);
+  const fatherLastX = fatherXs[fatherXs.length - 1] ?? 0;
+
+  const motherStartX = fatherLastX + 4;
+  const motherXs = motherPeople.map((_, index) => motherStartX + index * 2);
+
+  writePeople(glyphMap, 2, fatherXs, fatherPeople, placementMap);
+  writePeople(glyphMap, 2, motherXs, motherPeople, placementMap);
+
+  drawGrandparentBlock(
+    maskMap,
+    glyphMap,
+    placementMap,
+    model.grandparents.pgf,
+    model.grandparents.pgm,
+    fatherXs,
+    { grandparentRow: 0, siblingConnectorRow: 1, childRow: 2 },
+  );
+
+  drawGrandparentBlock(
+    maskMap,
+    glyphMap,
+    placementMap,
+    model.grandparents.mgf,
+    model.grandparents.mgm,
+    motherXs,
+    { grandparentRow: 0, siblingConnectorRow: 1, childRow: 2 },
+  );
+
+  const fatherSelfX = fatherStartX + fatherTrack.left.length * 2;
+  const motherSelfX = motherStartX + motherTrack.left.length * 2;
+  const unionX = midpoint(fatherSelfX, motherSelfX);
+
+  // 爸爸、媽媽各自往下接到婚配線
+  addLine(maskMap, fatherSelfX, 2, fatherSelfX, 3);
+  addLine(maskMap, motherSelfX, 2, motherSelfX, 3);
+
+  // 婚配線
+  addLine(maskMap, fatherSelfX, 3, motherSelfX, 3);
+
+  const childStartX = unionX - (childPeople.length - 1);
+  const childXs = childPeople.map((_, index) => childStartX + index * 2);
+
+  drawSiblingGroup(maskMap, childXs, 4, 5);
+  addLine(maskMap, unionX, 3, unionX, 4);
+  writePeople(glyphMap, 5, childXs, childPeople, placementMap);
+
+  const probandX = childStartX + childTrack.left.length * 2;
+  glyphMap.set(`${probandX},${BOARD_ROWS - 1}`, "↑");
+
+  let minX = Infinity;
+  let maxX = -Infinity;
+
+  for (const key of [...glyphMap.keys(), ...maskMap.keys()]) {
+    const [x] = key.split(",").map(Number);
+    minX = Math.min(minX, x);
+    maxX = Math.max(maxX, x);
+  }
+
+  if (!Number.isFinite(minX) || !Number.isFinite(maxX)) {
+    minX = 0;
+    maxX = 0;
+  }
+
+  const shiftX = BOARD_PADDING - minX;
+  const width = maxX - minX + 1 + BOARD_PADDING * 2;
+  const cells = Array.from({ length: BOARD_ROWS }, () => Array.from({ length: width }, () => ({ type: "blank", char: " " })));
+
+  for (const [key, mask] of maskMap.entries()) {
+    const [x, y] = key.split(",").map(Number);
+    const boardX = x + shiftX;
+    if (y < 0 || y >= BOARD_ROWS || boardX < 0 || boardX >= width) continue;
+    const char = CONNECTOR_TO_CHAR[mask] || (mask === (DIR.E | DIR.W) ? "─" : mask === (DIR.N | DIR.S) ? "│" : " ");
+    cells[y][boardX] = { type: "connector", char };
+  }
+
+  for (const [key, char] of glyphMap.entries()) {
+    const [x, y] = key.split(",").map(Number);
+    const boardX = x + shiftX;
+    if (y < 0 || y >= BOARD_ROWS || boardX < 0 || boardX >= width) continue;
+
+    if (char === "↑") {
+      cells[y][boardX] = { type: "indicator", char };
       continue;
     }
-    if (!groups.has(k)) groups.set(k, { key: k, members: [] });
-    groups.get(k).members.push(p);
-  }
 
-  const groupList = [...groups.values()];
-  groupList.forEach((g) =>
-    g.members.sort((a, b) => (a.code || "").localeCompare(b.code || ""))
-  );
-  groupList.sort((a, b) => (a.members[0]?.code || "").localeCompare(b.members[0]?.code || ""));
-  orphans.sort((a, b) => (a.code || "").localeCompare(b.code || ""));
-
-  // Render: each group in one family row; keep it clean (no line drawing between parents here)
-  const groupHtml = groupList
-    .map((g) => {
-      const first = g.members[0];
-      const fa = first?.fatherId ? findById(state, first.fatherId) : null;
-      const mo = first?.motherId ? findById(state, first.motherId) : null;
-      const parents =
-        fa && mo
-          ? `<div class="ped-parents-line">
-               <span class="ped-parents-label mono">Parents</span>
-               ${renderCouple(state, fa, mo)}
-             </div>`
-          : ``;
-
-      return `
-        <div class="ped-family">
-          ${parents}
-          <div class="ped-sibs">
-            <span class="ped-sibs-label mono">Gen II</span>
-            <div class="ped-sibs-nodes">
-              ${g.members.map((p) => renderNode(state, p)).join("")}
-            </div>
-          </div>
-        </div>
-      `;
-    })
-    .join("");
-
-  const orphanHtml =
-    orphans.length > 0
-      ? `
-        <div class="ped-family">
-          <div class="ped-sibs">
-            <span class="ped-sibs-label mono">Gen II</span>
-            <div class="ped-sibs-nodes">
-              ${orphans.map((p) => renderNode(state, p)).join("")}
-            </div>
-          </div>
-        </div>
-      `
-      : ``;
-
-  return `
-    <div class="ped-gen">
-      <div class="ped-gen-title mono">Gen II</div>
-      <div class="ped-gen-body">
-        ${groupHtml}${orphanHtml}
-        ${
-          groupList.length === 0 && orphans.length === 0
-            ? `<div class="ped-empty text-muted small">—</div>`
-            : ``
-        }
-      </div>
-    </div>
-  `;
-}
-
-function renderGenIII(state) {
-  // Group Gen III by their parents (couple or single parent)
-  const genIII = state.people.filter((p) => p.gen === "III");
-  const groups = new Map();
-  const orphans = [];
-
-  for (const p of genIII) {
-    const k = familyKeyByParents(p);
-    if (!k) {
-      orphans.push(p);
-      continue;
-    }
-    if (!groups.has(k)) groups.set(k, { key: k, members: [] });
-    groups.get(k).members.push(p);
-  }
-
-  const groupList = [...groups.values()];
-  groupList.forEach((g) =>
-    g.members.sort((a, b) => (a.code || "").localeCompare(b.code || ""))
-  );
-  groupList.sort((a, b) => (a.members[0]?.code || "").localeCompare(b.members[0]?.code || ""));
-  orphans.sort((a, b) => (a.code || "").localeCompare(b.code || ""));
-
-  const groupHtml = groupList
-    .map((g) => {
-      const first = g.members[0];
-      const fa = first?.fatherId ? findById(state, first.fatherId) : null;
-      const mo = first?.motherId ? findById(state, first.motherId) : null;
-
-      const parents =
-        fa && mo
-          ? `<div class="ped-parents-line">
-               <span class="ped-parents-label mono">Parents</span>
-               ${renderCouple(state, fa, mo)}
-             </div>`
-          : fa || mo
-          ? `<div class="ped-parents-line">
-               <span class="ped-parents-label mono">Parent</span>
-               ${renderNode(state, fa || mo)}
-             </div>`
-          : ``;
-
-      return `
-        <div class="ped-family">
-          ${parents}
-          <div class="ped-sibs">
-            <span class="ped-sibs-label mono">Gen III</span>
-            <div class="ped-sibs-nodes">
-              ${g.members.map((p) => renderNode(state, p)).join("")}
-            </div>
-          </div>
-        </div>
-      `;
-    })
-    .join("");
-
-  const orphanHtml =
-    orphans.length > 0
-      ? `
-        <div class="ped-family">
-          <div class="ped-sibs">
-            <span class="ped-sibs-label mono">Gen III</span>
-            <div class="ped-sibs-nodes">
-              ${orphans.map((p) => renderNode(state, p)).join("")}
-            </div>
-          </div>
-        </div>
-      `
-      : ``;
-
-  return `
-    <div class="ped-gen">
-      <div class="ped-gen-title mono">Gen III</div>
-      <div class="ped-gen-body">
-        ${groupHtml}${orphanHtml}
-        ${
-          groupList.length === 0 && orphans.length === 0
-            ? `<div class="ped-empty text-muted small">—</div>`
-            : ``
-        }
-      </div>
-    </div>
-  `;
-}
-
-function renderCanvas(state) {
-  return `${renderGenI(state)}${renderGenII(state)}${renderGenIII(state)}`;
-}
-
-// ---------- UI ----------
-export function render() {
-  return `
-    <div class="container mt-2" data-tool="${TOOL_KEY}">
-      <div class="card h-100">
-        <div class="card-header text-center">Pedigree Builder</div>
-
-        <div class="card-body pt-2">
-          <style>
-            [data-tool="${TOOL_KEY}"]{
-              --neo-text: rgba(0,0,0,.86);
-              --neo-muted: rgba(0,0,0,.55);
-              --neo-border: rgba(0,0,0,.10);
-              --neo-strong: rgba(0,0,0,.55);
-              --neo-surface: rgba(255,255,255,.35);
-              --neo-surface-strong: rgba(255,255,255,.55);
-              --neo-brown: #3A2A1C;
-            }
-            [data-tool="${TOOL_KEY}"] .mono{
-              font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
-            }
-
-            [data-tool="${TOOL_KEY}"] .shell{
-              display: grid;
-              grid-template-columns: 1fr;
-              gap: 12px;
-            }
-            @media (min-width: 992px){
-              [data-tool="${TOOL_KEY}"] .shell{
-                grid-template-columns: 1.6fr 1fr;
-                align-items: start;
-              }
-            }
-
-            /* Canvas */
-            [data-tool="${TOOL_KEY}"] .canvas{
-              border: 1px solid var(--neo-border);
-              border-radius: 12px;
-              background: transparent;
-              padding: 10px;
-            }
-            [data-tool="${TOOL_KEY}"] .canvas-top{
-              display:flex;
-              align-items:center;
-              justify-content: space-between;
-              gap: 8px;
-              margin-bottom: 8px;
-            }
-            [data-tool="${TOOL_KEY}"] .canvas-title{
-              font-weight: 600;
-              color: var(--neo-text);
-            }
-            [data-tool="${TOOL_KEY}"] .ped-gen{
-              border: 1px solid var(--neo-border);
-              border-radius: 12px;
-              padding: 10px;
-              margin-bottom: 10px;
-              background: transparent;
-            }
-            [data-tool="${TOOL_KEY}"] .ped-gen:last-child{ margin-bottom: 0; }
-            [data-tool="${TOOL_KEY}"] .ped-gen-title{
-              color: var(--neo-muted);
-              font-size: 12px;
-              margin-bottom: 8px;
-            }
-            [data-tool="${TOOL_KEY}"] .ped-gen-body{
-              display: grid;
-              grid-template-columns: 1fr;
-              gap: 10px;
-            }
-
-            .text-muted{ color: var(--neo-muted) !important; }
-
-            /* Family blocks */
-            [data-tool="${TOOL_KEY}"] .ped-family{
-              border: 1px dashed var(--neo-border);
-              border-radius: 12px;
-              padding: 10px;
-              background: transparent;
-            }
-            [data-tool="${TOOL_KEY}"] .ped-parents-line{
-              display:flex;
-              align-items:center;
-              gap: 10px;
-              margin-bottom: 8px;
-              flex-wrap: wrap;
-            }
-            [data-tool="${TOOL_KEY}"] .ped-parents-label{
-              color: var(--neo-muted);
-              font-size: 12px;
-              min-width: 56px;
-            }
-            [data-tool="${TOOL_KEY}"] .ped-sibs{
-              display:flex;
-              gap: 10px;
-              align-items:flex-start;
-              flex-wrap: wrap;
-            }
-            [data-tool="${TOOL_KEY}"] .ped-sibs-label{
-              color: var(--neo-muted);
-              font-size: 12px;
-              min-width: 56px;
-              padding-top: 4px;
-            }
-            [data-tool="${TOOL_KEY}"] .ped-sibs-nodes{
-              display:flex;
-              flex-wrap: wrap;
-              gap: 8px;
-            }
-
-            /* Couple */
-            [data-tool="${TOOL_KEY}"] .ped-couple{
-              display:inline-flex;
-              align-items:center;
-              gap: 8px;
-              flex-wrap: nowrap;
-            }
-            [data-tool="${TOOL_KEY}"] .ped-couple-link{
-              width: 22px;
-              height: 0;
-              border-bottom: 2px solid var(--neo-border);
-              opacity: .9;
-            }
-
-            /* Node */
-            [data-tool="${TOOL_KEY}"] .ped-node{
-              display:inline-flex;
-              align-items:center;
-              gap: 8px;
-              border: 1px solid var(--neo-border);
-              border-radius: 999px;
-              padding: 6px 10px;
-              background: transparent;
-              cursor: pointer;
-              user-select: none;
-              max-width: 260px;
-            }
-            [data-tool="${TOOL_KEY}"] .ped-node:hover{
-              background: var(--neo-surface);
-            }
-            [data-tool="${TOOL_KEY}"] .ped-node.is-active{
-              border-color: var(--neo-strong);
-              background: var(--neo-surface-strong);
-              box-shadow: 0 0 0 .2rem rgba(0,0,0,.08);
-            }
-            [data-tool="${TOOL_KEY}"] .ped-icon{
-              font-size: 16px;
-              line-height: 1;
-            }
-            [data-tool="${TOOL_KEY}"] .ped-name{
-              overflow:hidden;
-              text-overflow: ellipsis;
-              white-space: nowrap;
-              font-size: 13px;
-              color: var(--neo-text);
-              max-width: 160px;
-            }
-            [data-tool="${TOOL_KEY}"] .ped-badge{
-              font-size: 11px;
-              padding: 2px 8px;
-              border-radius: 999px;
-              border: 1px solid rgba(58,42,28,.35);
-              color: rgba(58,42,28,.9);
-              background: rgba(58,42,28,.06);
-            }
-            [data-tool="${TOOL_KEY}"] .ped-empty{
-              padding: 6px 2px;
-            }
-
-            /* Inspector */
-            [data-tool="${TOOL_KEY}"] .inspector{
-              border: 1px solid var(--neo-border);
-              border-radius: 12px;
-              padding: 10px;
-              background: transparent;
-            }
-            [data-tool="${TOOL_KEY}"] .ins-top{
-              display:flex;
-              align-items:flex-start;
-              justify-content: space-between;
-              gap: 10px;
-              margin-bottom: 10px;
-            }
-            [data-tool="${TOOL_KEY}"] .ins-title{
-              font-weight: 600;
-              color: var(--neo-text);
-              overflow:hidden;
-              text-overflow: ellipsis;
-              white-space: nowrap;
-              max-width: 100%;
-            }
-            [data-tool="${TOOL_KEY}"] .ins-sub{
-              color: var(--neo-muted);
-              font-size: 12px;
-              margin-top: 2px;
-            }
-            [data-tool="${TOOL_KEY}"] .section{
-              border-top: 1px solid var(--neo-border);
-              padding-top: 10px;
-              margin-top: 10px;
-            }
-            [data-tool="${TOOL_KEY}"] .section:first-of-type{
-              border-top: 0;
-              padding-top: 0;
-              margin-top: 0;
-            }
-            [data-tool="${TOOL_KEY}"] .section-title{
-              font-weight: 600;
-              color: var(--neo-text);
-              font-size: 13px;
-              margin-bottom: 8px;
-            }
-
-            /* Segmented control */
-            [data-tool="${TOOL_KEY}"] .seg{
-              display:inline-flex;
-              border: 1px solid var(--neo-border);
-              border-radius: 10px;
-              overflow: hidden;
-            }
-            [data-tool="${TOOL_KEY}"] .seg button{
-              border: 0;
-              background: transparent;
-              padding: 6px 10px;
-              font-size: 12px;
-              color: var(--neo-muted);
-              cursor: pointer;
-            }
-            [data-tool="${TOOL_KEY}"] .seg button.is-on{
-              background: rgba(0,0,0,.06);
-              color: var(--neo-text);
-            }
-            [data-tool="${TOOL_KEY}"] .pill{
-              border: 1px solid var(--neo-border);
-              border-radius: 999px;
-              padding: 6px 10px;
-              font-size: 12px;
-              background: transparent;
-              cursor: pointer;
-              color: var(--neo-muted);
-            }
-            [data-tool="${TOOL_KEY}"] .pill.is-on{
-              background: rgba(0,0,0,.06);
-              color: var(--neo-text);
-              border-color: var(--neo-strong);
-            }
-
-            /* Form inputs */
-            [data-tool="${TOOL_KEY}"] .tight .input-group-text{
-              padding-top: .35rem;
-              padding-bottom: .35rem;
-            }
-            [data-tool="${TOOL_KEY}"] .tight .form-control{
-              padding-top: .35rem;
-              padding-bottom: .35rem;
-            }
-
-            /* Export */
-            [data-tool="${TOOL_KEY}"] .export{
-              border: 1px solid var(--neo-border);
-              border-radius: 12px;
-              padding: 10px;
-              background: transparent;
-              margin-top: 10px;
-            }
-            [data-tool="${TOOL_KEY}"] pre.out{
-              white-space: pre;
-              font-size: 12px;
-              line-height: 1.25;
-              border: 1px solid var(--neo-border);
-              border-radius: 12px;
-              padding: 12px;
-              margin: 0;
-              background: transparent;
-              overflow: auto;
-              min-height: 220px;
-            }
-
-            /* Toast */
-            [data-tool="${TOOL_KEY}"] .toast{
-              position: fixed;
-              right: 14px;
-              bottom: 14px;
-              z-index: 9999;
-              border: 1px solid var(--neo-border);
-              border-radius: 12px;
-              padding: 10px 12px;
-              background: rgba(255,255,255,.75);
-              backdrop-filter: blur(6px);
-              color: var(--neo-text);
-              box-shadow: 0 6px 24px rgba(0,0,0,.12);
-              display:none;
-              max-width: min(360px, calc(100vw - 28px));
-            }
-            [data-tool="${TOOL_KEY}"] .toast.show{ display:block; }
-            [data-tool="${TOOL_KEY}"] .toast .t-title{ font-weight: 600; font-size: 13px; }
-            [data-tool="${TOOL_KEY}"] .toast .t-msg{ color: var(--neo-muted); font-size: 12px; margin-top: 2px; }
-          </style>
-
-          <div class="shell">
-            <!-- Canvas -->
-            <div class="canvas">
-              <div class="canvas-top">
-                <div class="canvas-title">Pedigree Canvas (Gen I–III)</div>
-                <div class="d-flex gap-1">
-                  <button type="button" class="btn btn-sm btn-outline-secondary" data-role="demo">Demo</button>
-                  <button type="button" class="btn btn-sm btn-outline-secondary" data-role="reset">Reset</button>
-                </div>
-              </div>
-
-              <div data-role="canvasArea"></div>
-
-              <div class="text-muted small mt-2">
-                Click node to select → use Inspector to edit / add relationships. (No dragging, mouse-first.)
-              </div>
-            </div>
-
-            <!-- Inspector + Export -->
-            <div>
-              <div class="inspector">
-                <div class="ins-top">
-                  <div style="min-width:0;">
-                    <div class="ins-title" data-role="selTitle"></div>
-                    <div class="ins-sub" data-role="selMeta"></div>
-                  </div>
-                  <button type="button" class="btn btn-sm btn-outline-secondary" data-role="setProband">Set proband</button>
-                </div>
-
-                <div class="section">
-                  <div class="section-title">Properties</div>
-
-                  <div class="tight">
-                    <div class="input-group mb-2">
-                      <span class="input-group-text" style="width: 30%;">Name</span>
-                      <input class="form-control text-center" data-role="nameInput" placeholder="e.g., Father" />
-                    </div>
-                  </div>
-
-                  <div class="d-flex align-items-center justify-content-between mb-2">
-                    <div class="text-muted small">Sex</div>
-                    <div class="seg" data-role="sexSeg">
-                      <button type="button" data-role="sexBtn" data-sex="M">Male</button>
-                      <button type="button" data-role="sexBtn" data-sex="F">Female</button>
-                      <button type="button" data-role="sexBtn" data-sex="U">Unknown</button>
-                    </div>
-                  </div>
-
-                  <div class="d-flex gap-2 flex-wrap">
-                    <button type="button" class="pill" data-role="toggleAffected">Affected</button>
-                    <button type="button" class="pill" data-role="toggleDeceased">Deceased</button>
-                  </div>
-                </div>
-
-                <div class="section">
-                  <div class="section-title">Relationships</div>
-                  <div class="d-grid gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" data-role="addFather">Add Father (Gen I)</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" data-role="addMother">Add Mother (Gen I)</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" data-role="addPartner">Add Partner (Same Gen)</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" data-role="addSibling">Add Sibling (Gen II only)</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" data-role="addChild">Add Child (Gen III only)</button>
-                  </div>
-
-                  <div class="text-muted small mt-2" data-role="relHint"></div>
-                </div>
-
-                <div class="section">
-                  <div class="section-title">Actions</div>
-                  <div class="d-grid gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-danger" data-role="deletePerson">Delete selected</button>
-                  </div>
-                  <div class="text-muted small mt-2">
-                    Deleting will unlink relationships. Proband will fall back to the first person if deleted.
-                  </div>
-                </div>
-              </div>
-
-              <div class="export">
-                <div class="d-flex align-items-center justify-content-between">
-                  <div class="fw-semibold">Export</div>
-                  <div class="d-flex gap-1 flex-wrap justify-content-end">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" data-role="viewText">Text</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" data-role="viewTSV">TSV</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" data-role="viewJSON">JSON</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" data-role="copyExport">Copy</button>
-                  </div>
-                </div>
-
-                <div class="mt-2">
-                  <pre class="out mono copy-item" data-role="exportOut"></pre>
-                </div>
-
-                <div class="text-muted small mt-2">
-                  Symbols: □/○/◇ unaffected, ■/●/◆ affected, † deceased, → proband
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="toast" data-role="toast">
-            <div class="t-title" data-role="toastTitle">Copied</div>
-            <div class="t-msg" data-role="toastMsg">Export copied to clipboard.</div>
-          </div>
-        </div>
-
-        <div class="card-footer text-center small text-muted">
-          Professional Pedigree | 3-generation limit (I–III)
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-// ---------- init ----------
-export function init(root) {
-  const $ = (role) => root.querySelector(`[data-role="${role}"]`);
-  const $$ = (role) => root.querySelectorAll(`[data-role="${role}"]`);
-
-  const state = {
-    people: [],
-    activeId: null,
-    probandId: null,
-    exportMode: "text", // text | tsv | json
-    _toastTimer: null,
-  };
-
-  function seed() {
-    state.people = [];
-    const p0 = defaultPerson(state, "II", "Proband");
-    state.people.push(p0);
-    state.activeId = p0.id;
-    state.probandId = p0.id;
-    normalize3Gen(state);
-  }
-
-  seed();
-
-  const schedule = createScheduler(() => {
-    if (!root.isConnected) return;
-    renderAll();
-  });
-
-  function active() {
-    return findById(state, state.activeId) || findById(state, state.probandId) || state.people[0] || null;
-  }
-
-  function toast(title, msg) {
-    const t = $("toast");
-    if (!t) return;
-    $("toastTitle").textContent = title || "Done";
-    $("toastMsg").textContent = msg || "";
-    t.classList.add("show");
-    if (state._toastTimer) clearTimeout(state._toastTimer);
-    state._toastTimer = setTimeout(() => t.classList.remove("show"), 1300);
-  }
-
-  function currentExportText() {
-    if (state.exportMode === "tsv") return renderTSV(state);
-    if (state.exportMode === "json") return renderJSON(state);
-    return renderTextOutput(state);
-  }
-
-  function rerender() {
-    normalize3Gen(state);
-    schedule();
-  }
-
-  function renderAll() {
-    // canvas
-    $("canvasArea").innerHTML = renderCanvas(state);
-
-    // inspector
-    const a = active();
-    if (a) {
-      $("selTitle").textContent = compactLabel(a, a.id === state.probandId);
-      $("selMeta").textContent = `${a.code} · ${a.gen} · ${sexLabel(a.sex)}`;
-
-      const nameInput = $("nameInput");
-      if (nameInput && nameInput.value !== (a.name || "")) nameInput.value = a.name || "";
-
-      // segmented sex buttons
-      $$("sexBtn").forEach((b) => {
-        const v = b.getAttribute("data-sex");
-        b.classList.toggle("is-on", v === a.sex);
-      });
-
-      // pills
-      $("toggleAffected").classList.toggle("is-on", !!a.affected);
-      $("toggleDeceased").classList.toggle("is-on", !!a.deceased);
-
-      // relationship hint + enable rules
-      // 3-gen rules:
-      // - Add Father/Mother only if gen != I
-      // - Add Child only if gen == II (child in III)
-      // - Add Sibling only if gen == II (same gen)
-      const canAddParent = a.gen !== "I";
-      const canAddChild = a.gen === "II";
-      const canAddSibling = a.gen === "II";
-      const canAddPartner = true;
-
-      $("addFather").disabled = !canAddParent;
-      $("addMother").disabled = !canAddParent;
-      $("addChild").disabled = !canAddChild;
-      $("addSibling").disabled = !canAddSibling;
-      $("addPartner").disabled = !canAddPartner;
-
-      const hintParts = [];
-      if (!canAddParent) hintParts.push("Gen I: cannot add parents (3-gen limit).");
-      if (!canAddChild) hintParts.push("Child can be added only from Gen II (to Gen III).");
-      if (!canAddSibling) hintParts.push("Sibling can be added only in Gen II.");
-      $("relHint").textContent = hintParts.length ? hintParts.join(" ") : "Relationship actions available.";
-    }
-
-    // export
-    const out = currentExportText();
-    $("exportOut").textContent = out;
-    $("exportOut").setAttribute("data-copy", out);
-
-    // export mode buttons visual
-    $("viewText").classList.toggle("btn-dark", state.exportMode === "text");
-    $("viewText").classList.toggle("btn-outline-secondary", state.exportMode !== "text");
-    $("viewTSV").classList.toggle("btn-dark", state.exportMode === "tsv");
-    $("viewTSV").classList.toggle("btn-outline-secondary", state.exportMode !== "tsv");
-    $("viewJSON").classList.toggle("btn-dark", state.exportMode === "json");
-    $("viewJSON").classList.toggle("btn-outline-secondary", state.exportMode !== "json");
-  }
-
-  // ---------- relationship helpers (3-gen) ----------
-  function ensureParentsFor(child) {
-    // only if child.gen is II or III (but III shouldn't be creatable as active parent add due to disabled)
-    const up = genUp(child.gen);
-    if (!up) return { fa: null, mo: null };
-
-    let fa = child.fatherId ? findById(state, child.fatherId) : null;
-    let mo = child.motherId ? findById(state, child.motherId) : null;
-
-    if (!fa) {
-      fa = defaultPerson(state, up, "Father");
-      fa.sex = SEX.M;
-      ensurePerson(state, fa);
-      setParent(child, fa, "father");
-    } else {
-      fa.gen = up;
-    }
-
-    if (!mo) {
-      mo = defaultPerson(state, up, "Mother");
-      mo.sex = SEX.F;
-      ensurePerson(state, mo);
-      setParent(child, mo, "mother");
-    } else {
-      mo.gen = up;
-    }
-
-    marry(fa, mo);
-    return { fa, mo };
-  }
-
-  function addFather() {
-    const c = active();
-    if (!c || c.gen === "I") return;
-    const up = genUp(c.gen);
-    if (!up) return;
-
-    if (c.fatherId) {
-      state.activeId = c.fatherId;
-      return rerender();
-    }
-
-    const fa = defaultPerson(state, up, "Father");
-    fa.sex = SEX.M;
-    ensurePerson(state, fa);
-    c.fatherId = fa.id;
-
-    // marry with mother if exists
-    const mo = c.motherId ? findById(state, c.motherId) : null;
-    if (mo) marry(fa, mo);
-
-    state.activeId = fa.id;
-    rerender();
-  }
-
-  function addMother() {
-    const c = active();
-    if (!c || c.gen === "I") return;
-    const up = genUp(c.gen);
-    if (!up) return;
-
-    if (c.motherId) {
-      state.activeId = c.motherId;
-      return rerender();
-    }
-
-    const mo = defaultPerson(state, up, "Mother");
-    mo.sex = SEX.F;
-    ensurePerson(state, mo);
-    c.motherId = mo.id;
-
-    // marry with father if exists
-    const fa = c.fatherId ? findById(state, c.fatherId) : null;
-    if (fa) marry(fa, mo);
-
-    state.activeId = mo.id;
-    rerender();
-  }
-
-  function addPartner() {
-    const a = active();
-    if (!a) return;
-
-    if (a.partnerId) {
-      state.activeId = a.partnerId;
-      return rerender();
-    }
-
-    const pt = defaultPerson(state, a.gen, "Partner");
-    ensurePerson(state, pt);
-    marry(a, pt);
-    state.activeId = pt.id;
-    rerender();
-  }
-
-  function addSibling() {
-    const a = active();
-    if (!a || a.gen !== "II") return;
-
-    // require parents (Gen I) for a clean family block
-    const { fa, mo } = ensureParentsFor(a);
-
-    const sib = defaultPerson(state, "II", "Sibling");
-    ensurePerson(state, sib);
-    sib.fatherId = fa ? fa.id : null;
-    sib.motherId = mo ? mo.id : null;
-
-    if (fa) addChildLink(fa, sib.id);
-    if (mo) addChildLink(mo, sib.id);
-
-    state.activeId = sib.id;
-    rerender();
-  }
-
-  function addChild() {
-    const a = active();
-    if (!a || a.gen !== "II") return;
-
-    const child = defaultPerson(state, "III", "Child");
-    ensurePerson(state, child);
-
-    // assign parent slots
-    if (a.sex === SEX.F) child.motherId = a.id;
-    else child.fatherId = a.id;
-
-    const pt = a.partnerId ? findById(state, a.partnerId) : null;
-    if (pt) {
-      if (pt.sex === SEX.F) child.motherId = pt.id;
-      else if (pt.sex === SEX.M) child.fatherId = pt.id;
-      else {
-        if (!child.motherId) child.motherId = pt.id;
-        else if (!child.fatherId) child.fatherId = pt.id;
+    let personId = null;
+    for (const [id, placement] of placementMap.entries()) {
+      if (placement.x === x && placement.y === y) {
+        personId = id;
+        break;
       }
-      addChildLink(pt, child.id);
     }
 
-    addChildLink(a, child.id);
-
-    state.activeId = child.id;
-    rerender();
+    cells[y][boardX] = { type: "person", char, personId };
   }
 
-  function deletePerson() {
-    const a = active();
-    if (!a) return;
-    if (state.people.length <= 1) return;
-
-    // unlink references
-    for (const p of state.people) {
-      if (p.fatherId === a.id) p.fatherId = null;
-      if (p.motherId === a.id) p.motherId = null;
-      if (p.partnerId === a.id) p.partnerId = null;
-      p.childrenIds = (p.childrenIds || []).filter((cid) => cid !== a.id);
-    }
-
-    state.people = state.people.filter((p) => p.id !== a.id);
-
-    if (state.probandId === a.id) state.probandId = state.people[0]?.id || null;
-    state.activeId = state.probandId;
-
-    rerender();
+  const positions = new Map();
+  for (const [id, placement] of placementMap.entries()) {
+    positions.set(id, { x: placement.x + shiftX, y: placement.y });
   }
 
-  // ---------- events ----------
-  root.addEventListener("click", (e) => {
-    const t = e.target.closest("[data-role]");
-    if (!t) return;
-    const role = t.getAttribute("data-role");
+  const previewLines = cells.map((row) =>
+    row
+      .map((cell) => previewCellText(cell))
+      .join("")
+      .replace(/\s+$/u, "")
+  );
 
-    if (role === "node") {
-      const id = t.getAttribute("data-person-id");
-      if (id) state.activeId = id;
-      return rerender();
-    }
+  const preview = previewLines.join("\n");
+  const symbolReferenceLine = buildSymbolReferenceLine();
+  const fullOutput = `${preview}\n\n${symbolReferenceLine}`;
 
-    if (role === "setProband") {
-      const a = active();
-      if (!a) return;
-      state.probandId = a.id;
-      toast("Proband set", compactLabel(a, true));
-      return rerender();
-    }
+  return { width, height: BOARD_ROWS, cells, positions, preview, fullOutput };
+}
 
-    if (role === "toggleAffected") {
-      const a = active();
-      if (!a) return;
-      a.affected = !a.affected;
-      return rerender();
-    }
+function markerButtonsHtml(state, selectionMeta) {
+  return MARKERS.map((marker) => {
+    const isActive = state.activeMarkerKey === marker.key;
+    const disabled = selectionMeta ? !canUseMarker(selectionMeta, marker.key) : true;
 
-    if (role === "toggleDeceased") {
-      const a = active();
-      if (!a) return;
-      a.deceased = !a.deceased;
-      return rerender();
-    }
+    return `
+      <button
+        class="btn btn-sm ${isActive ? "btn-primary" : "btn-outline-secondary"}"
+        type="button"
+        data-action="choose-marker"
+        data-marker-key="${marker.key}"
+        title="${escapeHtml(marker.title)}"
+        ${disabled ? "disabled" : ""}
+      >${marker.symbol}</button>
+    `;
+  }).join("");
+}
 
-    if (role === "sexBtn") {
-      const a = active();
-      if (!a) return;
-      const v = t.getAttribute("data-sex");
-      a.sex = v === "M" ? SEX.M : v === "F" ? SEX.F : SEX.U;
-      return rerender();
-    }
+function renderBoard(layout, state) {
+  const items = [];
 
-    if (role === "addFather") return addFather();
-    if (role === "addMother") return addMother();
-    if (role === "addPartner") return addPartner();
-    if (role === "addSibling") return addSibling();
-    if (role === "addChild") return addChild();
-    if (role === "deletePerson") return deletePerson();
+  for (let y = 0; y < layout.height; y += 1) {
+    for (let x = 0; x < layout.width; x += 1) {
+      const cell = layout.cells[y][x];
+      if (cell.type === "person") {
+        const meta = getSelectionMeta(state, cell.personId);
+        const marker = meta ? markerByKey(meta.person.markerKey) : null;
+        const ariaLabel = meta && marker ? `${meta.label}，${marker.title}` : "家族成員";
+        const selected = state.selectedId === cell.personId;
 
-    if (role === "viewText") {
-      state.exportMode = "text";
-      return rerender();
-    }
-    if (role === "viewTSV") {
-      state.exportMode = "tsv";
-      return rerender();
-    }
-    if (role === "viewJSON") {
-      state.exportMode = "json";
-      return rerender();
-    }
-
-    if (role === "copyExport") {
-      const txt = currentExportText();
-      // Prefer Clipboard API; fallback to copy-item binder if present
-      if (navigator?.clipboard?.writeText) {
-        navigator.clipboard
-          .writeText(txt)
-          .then(() => toast("Copied", "Export copied to clipboard."))
-          .catch(() => toast("Copy failed", "Clipboard permission denied."));
+        items.push(`
+          <button
+            type="button"
+            class="pedigree-cell pedigree-person ${selected ? "is-selected" : ""}"
+            data-action="select-person"
+            data-person-id="${cell.personId}"
+            aria-label="${escapeHtml(ariaLabel)}"
+          >${escapeHtml(cell.char)}</button>
+        `);
+      } else if (cell.type === "indicator") {
+        items.push(`<span class="pedigree-cell pedigree-indicator" aria-hidden="true">${escapeHtml(cell.char)}</span>`);
       } else {
-        // bindCopyItems may copy from [data-copy]; we set it already
-        toast("Copied", "Use the Copy feature of the page if needed.");
+        const isBlank = cell.char === " ";
+        items.push(`<span class="pedigree-cell pedigree-glyph ${isBlank ? "is-blank" : ""}" aria-hidden="true">${isBlank ? "&nbsp;" : escapeHtml(cell.char)}</span>`);
+      }
+    }
+  }
+
+  return `
+    <div class="pedigree-board" style="grid-template-columns: repeat(${layout.width}, 1.45rem);">
+      ${items.join("")}
+    </div>
+  `;
+}
+
+function renderSelectionSummary(state) {
+  const meta = getSelectionMeta(state, state.selectedId);
+  if (!meta) {
+    return {
+      label: "尚未選取",
+      symbol: "--",
+      markerTitle: "--",
+      canReplace: false,
+      canInsert: false,
+      canDelete: false,
+    };
+  }
+
+  const marker = markerByKey(meta.person.markerKey);
+  return {
+    label: meta.label,
+    symbol: marker.symbol,
+    markerTitle: marker.title,
+    canReplace: true,
+    canInsert: meta.canInsert,
+    canDelete: meta.canDelete,
+  };
+}
+
+function chooseNearestPerson(layout, currentId, direction) {
+  const current = layout.positions.get(currentId);
+  if (!current) return null;
+
+  let bestId = null;
+  let bestScore = Infinity;
+
+  for (const [id, pos] of layout.positions.entries()) {
+    if (id === currentId) continue;
+    const dx = pos.x - current.x;
+    const dy = pos.y - current.y;
+
+    let valid = false;
+    let primary = 0;
+    let secondary = 0;
+
+    if (direction === "left" && dx < 0) {
+      valid = true;
+      primary = Math.abs(dx);
+      secondary = Math.abs(dy);
+    } else if (direction === "right" && dx > 0) {
+      valid = true;
+      primary = dx;
+      secondary = Math.abs(dy);
+    } else if (direction === "up" && dy < 0) {
+      valid = true;
+      primary = Math.abs(dy);
+      secondary = Math.abs(dx);
+    } else if (direction === "down" && dy > 0) {
+      valid = true;
+      primary = dy;
+      secondary = Math.abs(dx);
+    }
+
+    if (!valid) continue;
+
+    const score = primary * 100 + secondary;
+    if (score < bestScore) {
+      bestScore = score;
+      bestId = id;
+    }
+  }
+
+  return bestId;
+}
+
+function focusSelectedButton(box, selectedId) {
+  if (!selectedId) return;
+  const button = box.querySelector(`[data-action="select-person"][data-person-id="${CSS.escape(selectedId)}"]`);
+  if (button instanceof HTMLElement) button.focus();
+}
+
+function applyAction(state, action) {
+  switch (action.type) {
+    case "select": {
+      state.selectedId = action.personId;
+      state.flash = null;
+      return;
+    }
+    case "hover": {
+      state.hoverId = action.personId;
+      return;
+    }
+    case "clear-hover": {
+      if (state.hoverId === action.personId || action.personId == null) {
+        state.hoverId = null;
       }
       return;
     }
-
-    if (role === "reset") {
-      seed();
-      toast("Reset", "Started with a fresh proband (Gen II).");
-      return rerender();
+    case "choose-marker": {
+      state.activeMarkerKey = action.markerKey;
+      state.flash = null;
+      return;
     }
-
-    if (role === "demo") {
-      // Clean demo within 3 gens
-      state.people = [];
-      const fa = defaultPerson(state, "I", "Father");
-      fa.sex = SEX.M;
-      const mo = defaultPerson(state, "I", "Mother");
-      mo.sex = SEX.F;
-      marry(fa, mo);
-
-      const prob = defaultPerson(state, "II", "Proband");
-      prob.sex = SEX.F;
-      prob.affected = true;
-      prob.fatherId = fa.id;
-      prob.motherId = mo.id;
-
-      addChildLink(fa, prob.id);
-      addChildLink(mo, prob.id);
-
-      const sib = defaultPerson(state, "II", "Sibling");
-      sib.sex = SEX.M;
-      sib.fatherId = fa.id;
-      sib.motherId = mo.id;
-      addChildLink(fa, sib.id);
-      addChildLink(mo, sib.id);
-
-      const pt = defaultPerson(state, "II", "Partner");
-      pt.sex = SEX.M;
-      marry(prob, pt);
-
-      const c1 = defaultPerson(state, "III", "Child1");
-      c1.fatherId = pt.id;
-      c1.motherId = prob.id;
-
-      const c2 = defaultPerson(state, "III", "Child2");
-      c2.sex = SEX.F;
-      c2.affected = true;
-      c2.fatherId = pt.id;
-      c2.motherId = prob.id;
-
-      addChildLink(prob, c1.id);
-      addChildLink(pt, c1.id);
-      addChildLink(prob, c2.id);
-      addChildLink(pt, c2.id);
-
-      state.people.push(fa, mo, prob, sib, pt, c1, c2);
-      state.probandId = prob.id;
-      state.activeId = prob.id;
-      normalize3Gen(state);
-      toast("Demo loaded", "Click nodes and try Inspector actions.");
-      return rerender();
+    case "replace": {
+      replaceSelectedMarker(state);
+      return;
     }
-  });
+    case "insert-left": {
+      insertIntoTrack(state, "left");
+      return;
+    }
+    case "insert-right": {
+      insertIntoTrack(state, "right");
+      return;
+    }
+    case "delete": {
+      deleteSelectedPerson(state);
+      return;
+    }
+    case "reset": {
+      const fresh = createInitialState();
+      Object.assign(state, fresh);
+      return;
+    }
+    default:
+      return;
+  }
+}
 
-  // Name input (live)
-  const nameInput = $("nameInput");
-  if (nameInput) {
-    nameInput.addEventListener("input", () => {
-      const a = active();
-      if (!a) return;
-      a.name = String(nameInput.value || "");
-      rerender();
-    });
+async function copyText(text) {
+  if (typeof navigator !== "undefined" && navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+    await navigator.clipboard.writeText(text);
+    return true;
+  }
+  return false;
+}
+
+function renderState(box, state) {
+  const layout = buildLayout(state.model);
+  const selectionMeta = getSelectionMeta(state, state.selectedId);
+  const summary = renderSelectionSummary(state);
+  const status = getStatusMessage(state);
+
+  const boardEl = box.querySelector('[data-role="board"]');
+  const paletteEl = box.querySelector('[data-role="marker-palette"]');
+  const outputEl = box.querySelector('[data-role="output"]');
+  const infoEl = box.querySelector('[data-role="info"]');
+  const selectedLabelEl = box.querySelector('[data-role="selected-label"]');
+  const selectedSymbolEl = box.querySelector('[data-role="selected-symbol"]');
+  const selectedMarkerEl = box.querySelector('[data-role="selected-marker-title"]');
+  const replaceBtn = box.querySelector('[data-action="replace"]');
+  const insertLeftBtn = box.querySelector('[data-action="insert-left"]');
+  const insertRightBtn = box.querySelector('[data-action="insert-right"]');
+  const deleteBtn = box.querySelector('[data-action="delete"]');
+
+  if (boardEl) boardEl.innerHTML = renderBoard(layout, state);
+  if (paletteEl) paletteEl.innerHTML = markerButtonsHtml(state, selectionMeta);
+  if (outputEl) outputEl.textContent = layout.fullOutput;
+
+  if (infoEl) {
+    infoEl.className = "alert py-2 mb-3";
+    infoEl.classList.add(
+      status.kind === "danger"
+        ? "alert-danger"
+        : status.kind === "success"
+          ? "alert-success"
+          : "alert-light",
+    );
+    infoEl.textContent = status.text;
   }
 
-  // First paint
+  if (selectedLabelEl) selectedLabelEl.textContent = summary.label;
+  if (selectedSymbolEl) selectedSymbolEl.textContent = summary.symbol;
+  if (selectedMarkerEl) selectedMarkerEl.textContent = summary.markerTitle;
+
+  if (replaceBtn) replaceBtn.disabled = !summary.canReplace || !canUseMarker(selectionMeta, state.activeMarkerKey);
+  if (insertLeftBtn) insertLeftBtn.disabled = !summary.canInsert;
+  if (insertRightBtn) insertRightBtn.disabled = !summary.canInsert;
+  if (deleteBtn) deleteBtn.disabled = !summary.canDelete;
+
+  box.dataset.preview = layout.fullOutput;
+  box.__pedigreeLayout = layout;
+}
+
+export function render() {
+  return `
+    <div class="container mt-2" data-tool="${TOOL_KEY}">
+      <style>
+        [data-tool="${TOOL_KEY}"] .pedigree-shell {
+          display: grid;
+          grid-template-columns: minmax(560px, 1fr) 340px;
+          gap: 16px;
+          align-items: start;
+        }
+
+        @media (max-width: 992px) {
+          [data-tool="${TOOL_KEY}"] .pedigree-shell {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        [data-tool="${TOOL_KEY}"] .pedigree-card,
+        [data-tool="${TOOL_KEY}"] .pedigree-side {
+          border: 1px solid #dee2e6;
+          border-radius: 14px;
+          background: #fff;
+        }
+
+        [data-tool="${TOOL_KEY}"] .pedigree-title {
+          font-size: .92rem;
+          font-weight: 700;
+          color: #495057;
+          margin-bottom: .5rem;
+        }
+
+        [data-tool="${TOOL_KEY}"] .pedigree-board-wrap {
+          overflow: auto;
+          padding: .75rem;
+          min-height: 17rem;
+          background: #fbfcfe;
+          border-radius: 12px;
+          border: 1px solid #eef2f6;
+        }
+
+        [data-tool="${TOOL_KEY}"] .pedigree-board {
+          display: grid;
+          gap: 0;
+          width: max-content;
+          margin: 0 auto;
+        }
+
+        [data-tool="${TOOL_KEY}"] .pedigree-cell {
+          width: 1.45rem;
+          height: 1.45rem;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-family: "Courier New", Consolas, Menlo, Monaco, monospace;
+          line-height: 1;
+          user-select: none;
+        }
+
+        [data-tool="${TOOL_KEY}"] .pedigree-glyph,
+        [data-tool="${TOOL_KEY}"] .pedigree-indicator {
+          color: #212529;
+        }
+
+        [data-tool="${TOOL_KEY}"] .pedigree-glyph.is-blank {
+          color: transparent;
+        }
+
+        [data-tool="${TOOL_KEY}"] .pedigree-person {
+          border: 1px solid transparent;
+          border-radius: 6px;
+          background: transparent;
+          padding: 0;
+          cursor: pointer;
+          transition: background-color .12s ease, border-color .12s ease, box-shadow .12s ease;
+        }
+
+        [data-tool="${TOOL_KEY}"] .pedigree-person:hover,
+        [data-tool="${TOOL_KEY}"] .pedigree-person:focus-visible {
+          background: #eef3fb;
+          border-color: #c8d7ee;
+          outline: none;
+        }
+
+        [data-tool="${TOOL_KEY}"] .pedigree-person.is-selected {
+          background: #d8dfea;
+          border-color: #90a4c3;
+          box-shadow: inset 0 0 0 1px rgba(61, 90, 128, .12);
+        }
+
+        [data-tool="${TOOL_KEY}"] .pedigree-side-sticky {
+          position: sticky;
+          top: 12px;
+        }
+
+        @media (max-width: 992px) {
+          [data-tool="${TOOL_KEY}"] .pedigree-side-sticky {
+            position: static;
+          }
+        }
+
+        [data-tool="${TOOL_KEY}"] .pedigree-meta {
+          display: grid;
+          grid-template-columns: auto 1fr;
+          gap: 4px 8px;
+          font-size: .875rem;
+        }
+
+        [data-tool="${TOOL_KEY}"] .pedigree-meta .k {
+          color: #6c757d;
+        }
+
+        [data-tool="${TOOL_KEY}"] .pedigree-meta .v {
+          font-weight: 600;
+          color: #212529;
+          word-break: break-word;
+        }
+
+        [data-tool="${TOOL_KEY}"] .pedigree-palette {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 6px;
+        }
+
+        [data-tool="${TOOL_KEY}"] .pedigree-palette .btn {
+          font-family: "Courier New", Consolas, Menlo, Monaco, monospace;
+          font-size: 1rem;
+          padding: .45rem .35rem;
+        }
+
+        [data-tool="${TOOL_KEY}"] .pedigree-actions {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 8px;
+        }
+
+        [data-tool="${TOOL_KEY}"] [data-role="output"] {
+          margin: 0;
+          min-height: 11rem;
+          white-space: pre;
+          font-family: "Courier New", Consolas, Menlo, Monaco, monospace;
+          font-size: .95rem;
+          line-height: 1.4;
+          background: #f8f9fa;
+          border: 1px solid #dee2e6;
+          border-radius: .5rem;
+          padding: .75rem;
+          overflow: auto;
+        }
+
+        [data-tool="${TOOL_KEY}"] .pedigree-help {
+          font-size: .85rem;
+          color: #6c757d;
+          line-height: 1.55;
+        }
+      </style>
+
+      <div class="card">
+        <div class="card-header text-center">Pedigree 家族史編輯器</div>
+
+        <div class="card-body pb-0">
+          <div class="alert alert-light py-2 mb-3" data-role="info" role="status" aria-live="polite">${DEFAULT_INFO}</div>
+
+          <div class="pedigree-shell">
+            <div class="pedigree-card p-3">
+              <div class="pedigree-title">家族圖預覽</div>
+              <div class="pedigree-board-wrap">
+                <div data-role="board"></div>
+              </div>
+
+              <div class="mt-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <div class="pedigree-title mb-0">純文字輸出</div>
+                  <button class="btn btn-outline-secondary btn-sm" type="button" data-action="copy-output">複製</button>
+                </div>
+                <pre data-role="output"></pre>
+              </div>
+            </div>
+
+            <div class="pedigree-side p-3">
+              <div class="pedigree-side-sticky">
+                <div class="pedigree-title">目前選取</div>
+                <div class="pedigree-meta mb-3">
+                  <div class="k">對象</div>
+                  <div class="v" data-role="selected-label">尚未選取</div>
+                  <div class="k">圖示</div>
+                  <div class="v"><span data-role="selected-symbol">--</span> <span class="text-muted small" data-role="selected-marker-title">--</span></div>
+                </div>
+
+                <div class="pedigree-title">1. 選擇要使用的圖示</div>
+                <div class="pedigree-palette mb-3" data-role="marker-palette"></div>
+
+                <div class="pedigree-title">2. 對目前選取成員執行操作</div>
+                <div class="pedigree-actions mb-3">
+                  <button class="btn btn-outline-secondary btn-sm" type="button" data-action="replace">替換圖示</button>
+                  <button class="btn btn-outline-secondary btn-sm" type="button" data-action="delete">刪除此人</button>
+                  <button class="btn btn-outline-secondary btn-sm" type="button" data-action="insert-left">左側新增</button>
+                  <button class="btn btn-outline-secondary btn-sm" type="button" data-action="insert-right">右側新增</button>
+                </div>
+
+                <div class="d-grid mb-3">
+                  <button class="btn btn-secondary btn-sm" type="button" data-action="reset">重設</button>
+                </div>
+
+                <div class="pedigree-help">
+                  先點選家族圖中的人物，再選圖示與操作。<br>
+                  核心角色（祖父母、父母、個案）不可刪除。<br>
+                  方向鍵可在圖上的成員之間移動。
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-footer text-muted small">
+          內部資料以語意化人物節點管理，畫面與純文字輸出都由同一個 layout engine 產生。
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+export function init(root, ctx) {
+  void ctx;
+
+  const box = root.querySelector(`[data-tool="${TOOL_KEY}"]`);
+  if (!box) return;
+
+  const previous = INSTANCES.get(box);
+  if (previous) previous.destroy();
+
+  const controller = new AbortController();
+  const { signal } = controller;
+  const state = createInitialState();
+
+  const rerender = (options = {}) => {
+    renderState(box, state);
+    if (options.focusSelected) {
+      focusSelectedButton(box, state.selectedId);
+    }
+  };
+
+  box.addEventListener("click", async (event) => {
+    const target = event.target instanceof Element ? event.target.closest("[data-action]") : null;
+    if (!target) return;
+
+    const action = target.getAttribute("data-action");
+
+    if (action === "select-person") {
+      const personId = target.getAttribute("data-person-id");
+      if (!personId) return;
+      applyAction(state, { type: "select", personId });
+      rerender({ focusSelected: false });
+      return;
+    }
+
+    if (action === "choose-marker") {
+      const markerKey = target.getAttribute("data-marker-key");
+      if (!markerKey || !MARKER_MAP[markerKey]) return;
+      applyAction(state, { type: "choose-marker", markerKey });
+      rerender();
+      return;
+    }
+
+    if (action === "copy-output") {
+      const text = box.dataset.preview || "";
+      try {
+        await copyText(text);
+        state.flash = { kind: "success", text: "已複製純文字輸出。" };
+      } catch {
+        state.flash = { kind: "danger", text: "複製失敗，請手動選取文字。" };
+      }
+      rerender();
+      return;
+    }
+
+    if (action === "replace") {
+      applyAction(state, { type: "replace" });
+      rerender({ focusSelected: true });
+      return;
+    }
+
+    if (action === "insert-left") {
+      applyAction(state, { type: "insert-left" });
+      rerender({ focusSelected: true });
+      return;
+    }
+
+    if (action === "insert-right") {
+      applyAction(state, { type: "insert-right" });
+      rerender({ focusSelected: true });
+      return;
+    }
+
+    if (action === "delete") {
+      applyAction(state, { type: "delete" });
+      rerender();
+      return;
+    }
+
+    if (action === "reset") {
+      applyAction(state, { type: "reset" });
+      rerender();
+    }
+  }, { signal });
+
+  box.addEventListener("mouseover", (event) => {
+    const button = event.target instanceof Element ? event.target.closest('[data-action="select-person"]') : null;
+    if (!button) return;
+    const personId = button.getAttribute("data-person-id");
+    if (!personId) return;
+    applyAction(state, { type: "hover", personId });
+    renderState(box, state);
+  }, { signal });
+
+  box.addEventListener("mouseout", (event) => {
+    const fromButton = event.target instanceof Element ? event.target.closest('[data-action="select-person"]') : null;
+    if (!fromButton) return;
+
+    const nextButton = event.relatedTarget instanceof Element ? event.relatedTarget.closest('[data-action="select-person"]') : null;
+    if (nextButton) return;
+
+    applyAction(state, { type: "clear-hover", personId: null });
+    renderState(box, state);
+  }, { signal });
+
+  box.addEventListener("keydown", (event) => {
+    const target = event.target instanceof Element ? event.target.closest('[data-action="select-person"]') : null;
+    if (!target) return;
+
+    const currentId = target.getAttribute("data-person-id");
+    if (!currentId) return;
+
+    let direction = null;
+    if (event.key === "ArrowLeft") direction = "left";
+    else if (event.key === "ArrowRight") direction = "right";
+    else if (event.key === "ArrowUp") direction = "up";
+    else if (event.key === "ArrowDown") direction = "down";
+    else return;
+
+    const layout = box.__pedigreeLayout;
+    if (!layout) return;
+
+    const nextId = chooseNearestPerson(layout, currentId, direction);
+    if (!nextId) return;
+
+    event.preventDefault();
+    applyAction(state, { type: "select", personId: nextId });
+    rerender({ focusSelected: true });
+  }, { signal });
+
+  const destroy = () => controller.abort();
+  INSTANCES.set(box, { destroy });
   rerender();
 }
+
+export const __test__ = {
+  createInitialState,
+  buildLayout,
+  getSelectionMeta,
+  applyAction,
+  markerByKey,
+  canUseMarker,
+};
