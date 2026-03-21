@@ -1536,8 +1536,8 @@ export function init(root) {
       const copyNode = e.target?.closest?.(".copy-item");
       if (!copyNode) return;
 
-      // 防止 focus/blur 後續造成的干擾（可留可不留，但建議留）
-      e.preventDefault();
+      // // 防止 focus/blur 後續造成的干擾（可留可不留，但建議留）
+      // e.preventDefault(); //因會造成使用者無法select text, 故刪掉
 
       copyTextToClipboard(copyNode.textContent || "");
       addSnapshot("copy");
