@@ -1005,6 +1005,7 @@ export function init(root, ctx) {
   const controller = new AbortController();
   const { signal } = controller;
   const state = createInitialState();
+  state.selectedId = "proband";
 
   const rerender = (options = {}) => {
     renderState(box, state);
