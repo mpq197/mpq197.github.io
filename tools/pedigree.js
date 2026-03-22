@@ -1,6 +1,3 @@
-// /tools/pedigree.js
-// updated: 2026-03-22
-
 const TOOL_KEY = "pedigree";
 const DEFAULT_INFO = "請先選取一位成員，再選圖示或新增手足。";
 const BOARD_ROWS = 7;
@@ -72,6 +69,78 @@ function makeRelative(id, markerKey) {
   return { id, markerKey };
 }
 
+function makeBirthNode(members) {
+  return { members };
+}
+
+function makeSingleBirthNode(person) {
+  return makeBirthNode([person]);
+}
+
+function birthNodeCount(node) {
+  return Array.isArray(node?.members) ? node.members.length : 0;
+}
+
+function childTrackPeople(track) {
+  return track.nodes.flatMap((node) => node.members);
+}
+
+function findChildPersonLocation(track, id) {
+  for (let nodeIndex = 0; nodeIndex < track.nodes.length; nodeIndex += 1) {
+    const memberIndex = track.nodes[nodeIndex].members.findIndex((item) => item.id === id);
+    if (memberIndex >= 0) {
+      return { nodeIndex, memberIndex };
+    }
+  }
+  return null;
+}
+
+function childDisplayIndex(track, personId) {
+  let index = 0;
+  for (const node of track.nodes) {
+    for (const member of node.members) {
+      if (member.id === personId) return index;
+      index += 1;
+    }
+  }
+  return -1;
+}
+
+function birthNodeWidth(node) {
+  const count = birthNodeCount(node);
+  if (count <= 1) return 1;
+  return 5; // 2胞胎、3胞胎都用 5
+}
+
+function birthNodeMemberXs(centerX, node) {
+  const count = birthNodeCount(node);
+  if (count <= 1) return [centerX];
+  if (count === 2) return [centerX - 2, centerX + 2];
+  return [centerX - 2, centerX, centerX + 2];
+}
+
+function buildChildNodeLayouts(track, centerX) {
+  const widths = track.nodes.map((node) => birthNodeWidth(node));
+  const totalWidth =
+    widths.reduce((sum, width) => sum + width, 0) + Math.max(0, widths.length - 1);
+
+  let cursor = centerX - Math.floor((totalWidth - 1) / 2);
+
+  return track.nodes.map((node, index) => {
+    const width = widths[index];
+    const nodeCenterX = cursor + Math.floor(width / 2);
+    const memberXs = birthNodeMemberXs(nodeCenterX, node);
+
+    cursor += width + 1;
+
+    return {
+      node,
+      centerX: nodeCenterX,
+      memberXs,
+    };
+  });
+}
+
 function createInitialState() {
   return {
     seq: 1,
@@ -80,6 +149,7 @@ function createInitialState() {
     activeMarkerKey: "male-open",
     flash: null,
     model: {
+      probandId: "proband",
       grandparents: {
         pgf: { id: "pgf", markerKey: "male-open" },
         pgm: { id: "pgm", markerKey: "female-open" },
@@ -98,9 +168,9 @@ function createInitialState() {
           right: [],
         },
         child: {
-          left: [],
-          self: { id: "proband", markerKey: "male-open" },
-          right: [],
+          nodes: [
+            makeSingleBirthNode({ id: "proband", markerKey: "male-open" }),
+          ],
         },
       },
     },
@@ -125,8 +195,8 @@ function locatePerson(model, id) {
     }
   }
 
-  const trackNames = ["father", "mother", "child"];
-  for (const trackName of trackNames) {
+  // father / mother 維持舊結構
+  for (const trackName of ["father", "mother"]) {
     const track = model.tracks[trackName];
 
     if (track.self.id === id) {
@@ -144,13 +214,31 @@ function locatePerson(model, id) {
     }
   }
 
+  // child 改成 birth node
+  const childTrack = model.tracks.child;
+  const found = findChildPersonLocation(childTrack, id);
+  if (found) {
+    return {
+      kind: "child-node",
+      track: "child",
+      nodeIndex: found.nodeIndex,
+      memberIndex: found.memberIndex,
+    };
+  }
+
   return null;
 }
 
 function getPersonByLocation(model, location) {
   if (!location) return null;
+
   if (location.kind === "grandparent") {
     return model.grandparents[location.key];
+  }
+
+  if (location.kind === "child-node") {
+    const node = model.tracks.child.nodes[location.nodeIndex];
+    return node?.members?.[location.memberIndex] || null;
   }
 
   const track = model.tracks[location.track];
@@ -163,6 +251,36 @@ function getPersonByLocation(model, location) {
 function getPerson(model, id) {
   const location = locatePerson(model, id);
   return getPersonByLocation(model, location);
+}
+
+function getProbandId(model) {
+  return model.probandId || "proband";
+}
+
+function isProband(model, personId) {
+  return getProbandId(model) === personId;
+}
+
+function setSelectedAsProband(state) {
+  const meta = getSelectionMeta(state, state.selectedId);
+  if (!meta) {
+    state.flash = { kind: "muted", text: DEFAULT_INFO };
+    return;
+  }
+
+  if (meta.location.kind !== "child-node") {
+    state.flash = { kind: "danger", text: "目前只支援將子代成員設為個案。" };
+    return;
+  }
+
+  const sex = markerSex(meta.person.markerKey);
+  if (sex === "unknown") {
+    state.flash = { kind: "danger", text: "個案只能是男性或女性。" };
+    return;
+  }
+
+  state.model.probandId = meta.person.id;
+  state.flash = { kind: "success", text: "已設為個案。" };
 }
 
 function getSelectionMeta(state, personId) {
@@ -179,6 +297,49 @@ function getSelectionMeta(state, personId) {
       allowedSexes: [...rule.allowed],
       canInsert: false,
       canDelete: false,
+      canSetMultiple: false,
+      location,
+      person,
+      sex,
+    };
+  }
+
+  if (location.kind === "child-node") {
+    const track = state.model.tracks.child;
+    const node = track.nodes[location.nodeIndex];
+    const count = birthNodeCount(node);
+    const isProbandPerson = isProband(state.model, person.id);
+    const probandLoc = findChildPersonLocation(track, getProbandId(state.model));
+    const sameBirthAsProband = !!probandLoc && probandLoc.nodeIndex === location.nodeIndex;
+
+    let label = "手足";
+
+    if (isProbandPerson) {
+      label = "個案";
+    } else if (sameBirthAsProband) {
+      label = count === 2 ? "雙胞胎手足" : count === 3 ? "三胞胎手足" : "手足";
+    } else {
+      const currentIndex = childDisplayIndex(track, personId);
+      const probandIndex = childDisplayIndex(track, getProbandId(state.model));
+
+      if (currentIndex < probandIndex) {
+        label = sex === "male" ? "哥哥" : sex === "female" ? "姊姊" : "年長手足";
+      } else if (currentIndex > probandIndex) {
+        label = sex === "male" ? "弟弟" : sex === "female" ? "妹妹" : "年幼手足";
+      }
+    }
+
+    if (isProbandPerson && count === 2) label = "個案（雙胞胎之一）";
+    if (isProbandPerson && count === 3) label = "個案（三胞胎之一）";
+    if (!isProbandPerson && !sameBirthAsProband && count === 2) label += "（雙胞胎之一）";
+    if (!isProbandPerson && !sameBirthAsProband && count === 3) label += "（三胞胎之一）";
+
+    return {
+      label,
+      allowedSexes: isProbandPerson ? [...FIXED_RULES.proband.allowed] : ["male", "female", "unknown"],
+      canInsert: true,
+      canDelete: !isProbandPerson,
+      canSetMultiple: true,
       location,
       person,
       sex,
@@ -193,6 +354,7 @@ function getSelectionMeta(state, personId) {
       allowedSexes: [...rule.allowed],
       canInsert: true,
       canDelete: false,
+      canSetMultiple: false,
       location,
       person,
       sex,
@@ -214,16 +376,6 @@ function getSelectionMeta(state, personId) {
     if (sex === "male") label = "舅舅";
     else if (sex === "female") label = "阿姨";
     else label = "母系手足";
-  } else if (location.track === "child") {
-    if (location.segment === "left") {
-      if (sex === "male") label = "哥哥";
-      else if (sex === "female") label = "姊姊";
-      else label = "年長手足";
-    } else {
-      if (sex === "male") label = "弟弟";
-      else if (sex === "female") label = "妹妹";
-      else label = "年幼手足";
-    }
   }
 
   return {
@@ -231,6 +383,7 @@ function getSelectionMeta(state, personId) {
     allowedSexes: ["male", "female", "unknown"],
     canInsert: true,
     canDelete: true,
+    canSetMultiple: false,
     location,
     person,
     sex,
@@ -271,7 +424,25 @@ function insertIntoTrack(state, side) {
     return;
   }
 
-  if (!meta.canInsert || meta.location.kind !== "track") {
+  if (!meta.canInsert) {
+    state.flash = { kind: "danger", text: "這個位置不能新增親屬。" };
+    return;
+  }
+
+  // child track：以「胎」為單位插入
+  if (meta.location.kind === "child-node") {
+    const track = state.model.tracks.child;
+    const insertionPoint = side === "left" ? meta.location.nodeIndex : meta.location.nodeIndex + 1;
+    const person = makeRelative(nextRelativeId(state), state.activeMarkerKey);
+
+    track.nodes.splice(insertionPoint, 0, makeSingleBirthNode(person));
+
+    state.selectedId = person.id;
+    state.flash = null;
+    return;
+  }
+
+  if (meta.location.kind !== "track") {
     state.flash = { kind: "danger", text: "這個位置不能新增親屬。" };
     return;
   }
@@ -298,7 +469,31 @@ function deleteSelectedPerson(state) {
     return;
   }
 
-  if (!meta.canDelete || meta.location.kind !== "track") {
+  if (!meta.canDelete) {
+    state.flash = { kind: "danger", text: "這個位置不能刪除。" };
+    return;
+  }
+
+  const beforeLayout = buildLayout(state.model);
+  const removedPos = beforeLayout.positions.get(meta.person.id) || null;
+
+  if (meta.location.kind === "child-node") {
+    const track = state.model.tracks.child;
+    const node = track.nodes[meta.location.nodeIndex];
+
+    node.members.splice(meta.location.memberIndex, 1);
+
+    if (node.members.length === 0) {
+      track.nodes.splice(meta.location.nodeIndex, 1);
+    }
+
+    const afterLayout = buildLayout(state.model);
+    state.selectedId = findNearestRemainingPerson(afterLayout, removedPos);
+    state.flash = null;
+    return;
+  }
+
+  if (meta.location.kind !== "track") {
     state.flash = { kind: "danger", text: "這個位置不能刪除。" };
     return;
   }
@@ -310,8 +505,46 @@ function deleteSelectedPerson(state) {
     track.right.splice(meta.location.index, 1);
   }
 
-  state.selectedId = null;
+  const afterLayout = buildLayout(state.model);
+  state.selectedId = findNearestRemainingPerson(afterLayout, removedPos);
   state.flash = null;
+}
+
+function setSelectedBirthMultiplicity(state, count) {
+  const meta = getSelectionMeta(state, state.selectedId);
+  if (!meta) {
+    state.flash = { kind: "muted", text: DEFAULT_INFO };
+    return;
+  }
+
+  if (meta.location.kind !== "child-node") {
+    state.flash = { kind: "danger", text: "目前只支援子代設定雙胞胎 / 三胞胎。" };
+    return;
+  }
+
+  if (count !== 2 && count !== 3) {
+    state.flash = { kind: "danger", text: "只支援 2 或 3。" };
+    return;
+  }
+
+  const node = state.model.tracks.child.nodes[meta.location.nodeIndex];
+  const templateMarkerKey = meta.person.markerKey;
+
+  while (node.members.length < count) {
+    node.members.push(makeRelative(nextRelativeId(state), templateMarkerKey));
+  }
+
+  while (node.members.length > count) {
+    const removed = node.members.pop();
+    if (removed?.id === state.selectedId) {
+      state.selectedId = node.members[0]?.id || null;
+    }
+  }
+
+  state.flash = {
+    kind: "success",
+    text: `已設定為${count === 2 ? "雙胞胎" : "三胞胎"}。`,
+  };
 }
 
 function getStatusMessage(state) {
@@ -405,12 +638,13 @@ function previewCellText(cell) {
 }
 
 function buildSymbolReferenceLine() {
-  return "符號:□■○●◇◆↑─│└┘┌┐┬┴├┤┼／＼";
+  return "符號:□■○●◇◆↖↑↗─│└┘┌┐┬┴├┤┼／＼";
 }
 
 function buildLayout(model) {
   const glyphMap = new Map();
   const maskMap = new Map();
+  const extraConnectorMap = new Map();
   const placementMap = new Map();
 
   const fatherTrack = model.tracks.father;
@@ -419,7 +653,6 @@ function buildLayout(model) {
 
   const fatherPeople = trackDisplay(fatherTrack);
   const motherPeople = trackDisplay(motherTrack);
-  const childPeople = trackDisplay(childTrack);
 
   const fatherStartX = 0;
   const fatherXs = fatherPeople.map((_, index) => fatherStartX + index * 2);
@@ -462,46 +695,112 @@ function buildLayout(model) {
   // 婚配線
   addLine(maskMap, fatherSelfX, 3, motherSelfX, 3);
 
-  const childStartX = unionX - (childPeople.length - 1);
-  const childXs = childPeople.map((_, index) => childStartX + index * 2);
+  // 子代區域：若有任何雙/三胞胎，全部子代人物統一落在同一列
+  const hasMultipleBirth = childTrack.nodes.some((node) => birthNodeCount(node) > 1);
+  const childConnectorRow = 4;
+  const childBranchRow = 5;
+  const childPeopleRow = hasMultipleBirth ? 6 : 5;
 
-  drawSiblingGroup(maskMap, childXs, 4, 5);
-  addLine(maskMap, unionX, 3, unionX, 4);
-  writePeople(glyphMap, 5, childXs, childPeople, placementMap);
+  const childLayouts = buildChildNodeLayouts(childTrack, unionX);
+  const childCenterXs = childLayouts.map((item) => item.centerX);
 
-  const probandX = childStartX + childTrack.left.length * 2;
-  glyphMap.set(`${probandX},${BOARD_ROWS - 1}`, "↑");
+  drawSiblingGroup(maskMap, childCenterXs, childConnectorRow, childBranchRow);
+  addLine(maskMap, unionX, 3, unionX, childConnectorRow);
+
+  for (const item of childLayouts) {
+    const count = birthNodeCount(item.node);
+
+    if (count === 1) {
+      const person = item.node.members[0];
+      const x = item.memberXs[0];
+
+      // 若同層存在雙/三胞胎，單胞胎也補一段垂直線，讓所有子代對齊
+      if (childPeopleRow > childBranchRow) {
+        addLine(maskMap, x, childBranchRow, x, childPeopleRow);
+      }
+
+      glyphMap.set(`${x},${childPeopleRow}`, markerByKey(person.markerKey).symbol);
+      placementMap.set(person.id, { x, y: childPeopleRow });
+      continue;
+    }
+
+    if (count === 2) {
+      extraConnectorMap.set(`${item.centerX - 1},${childBranchRow}`, "／");
+      extraConnectorMap.set(`${item.centerX + 1},${childBranchRow}`, "＼");
+
+      item.node.members.forEach((person, index) => {
+        const x = item.memberXs[index];
+        glyphMap.set(`${x},${childPeopleRow}`, markerByKey(person.markerKey).symbol);
+        placementMap.set(person.id, { x, y: childPeopleRow });
+      });
+      continue;
+    }
+
+    // 3胞胎
+    extraConnectorMap.set(`${item.centerX - 1},${childBranchRow}`, "／");
+    extraConnectorMap.set(`${item.centerX + 1},${childBranchRow}`, "＼");
+    addLine(maskMap, item.centerX, childBranchRow, item.centerX, childPeopleRow);
+
+    item.node.members.forEach((person, index) => {
+      const x = item.memberXs[index];
+      glyphMap.set(`${x},${childPeopleRow}`, markerByKey(person.markerKey).symbol);
+      placementMap.set(person.id, { x, y: childPeopleRow });
+    });
+  }
+
+  const probandPlacement = placementMap.get(getProbandId(model));
+  if (probandPlacement) {
+    glyphMap.set(`${probandPlacement.x},${probandPlacement.y + 1}`, "↑");
+  }
 
   let minX = Infinity;
   let maxX = -Infinity;
+  let maxY = -Infinity;
 
-  for (const key of [...glyphMap.keys(), ...maskMap.keys()]) {
-    const [x] = key.split(",").map(Number);
+  for (const key of [...glyphMap.keys(), ...maskMap.keys(), ...extraConnectorMap.keys()]) {
+    const [x, y] = key.split(",").map(Number);
     minX = Math.min(minX, x);
     maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
   }
 
   if (!Number.isFinite(minX) || !Number.isFinite(maxX)) {
     minX = 0;
     maxX = 0;
+    maxY = 0;
   }
 
   const shiftX = BOARD_PADDING - minX;
   const width = maxX - minX + 1 + BOARD_PADDING * 2;
-  const cells = Array.from({ length: BOARD_ROWS }, () => Array.from({ length: width }, () => ({ type: "blank", char: " " })));
+  const height = Math.max(BOARD_ROWS, maxY + 1);
+
+  const cells = Array.from({ length: height }, () =>
+    Array.from({ length: width }, () => ({ type: "blank", char: " " })),
+  );
 
   for (const [key, mask] of maskMap.entries()) {
     const [x, y] = key.split(",").map(Number);
     const boardX = x + shiftX;
-    if (y < 0 || y >= BOARD_ROWS || boardX < 0 || boardX >= width) continue;
-    const char = CONNECTOR_TO_CHAR[mask] || (mask === (DIR.E | DIR.W) ? "─" : mask === (DIR.N | DIR.S) ? "│" : " ");
+    if (y < 0 || y >= height || boardX < 0 || boardX >= width) continue;
+
+    const char =
+      CONNECTOR_TO_CHAR[mask] ||
+      (mask === (DIR.E | DIR.W) ? "─" : mask === (DIR.N | DIR.S) ? "│" : " ");
+
+    cells[y][boardX] = { type: "connector", char };
+  }
+
+  for (const [key, char] of extraConnectorMap.entries()) {
+    const [x, y] = key.split(",").map(Number);
+    const boardX = x + shiftX;
+    if (y < 0 || y >= height || boardX < 0 || boardX >= width) continue;
     cells[y][boardX] = { type: "connector", char };
   }
 
   for (const [key, char] of glyphMap.entries()) {
     const [x, y] = key.split(",").map(Number);
     const boardX = x + shiftX;
-    if (y < 0 || y >= BOARD_ROWS || boardX < 0 || boardX >= width) continue;
+    if (y < 0 || y >= height || boardX < 0 || boardX >= width) continue;
 
     if (char === "↑") {
       cells[y][boardX] = { type: "indicator", char };
@@ -528,14 +827,14 @@ function buildLayout(model) {
     row
       .map((cell) => previewCellText(cell))
       .join("")
-      .replace(/\s+$/u, "")
+      .replace(/\s+$/u, ""),
   );
 
   const preview = previewLines.join("\n");
   const symbolReferenceLine = buildSymbolReferenceLine();
   const fullOutput = `${preview}\n\n${symbolReferenceLine}`;
 
-  return { width, height: BOARD_ROWS, cells, positions, preview, fullOutput };
+  return { width, height, cells, positions, preview, fullOutput };
 }
 
 function markerButtonsHtml(state, selectionMeta) {
@@ -603,10 +902,17 @@ function renderSelectionSummary(state) {
       canReplace: false,
       canInsert: false,
       canDelete: false,
+      canSetMultiple: false,
+      canSetProband: false,
     };
   }
 
   const marker = markerByKey(meta.person.markerKey);
+  const canSetProband =
+    meta.location.kind === "child-node" &&
+    markerSex(meta.person.markerKey) !== "unknown" &&
+    !isProband(state.model, meta.person.id);
+
   return {
     label: meta.label,
     symbol: marker.symbol,
@@ -614,9 +920,10 @@ function renderSelectionSummary(state) {
     canReplace: true,
     canInsert: meta.canInsert,
     canDelete: meta.canDelete,
+    canSetMultiple: !!meta.canSetMultiple,
+    canSetProband,
   };
 }
-
 function chooseNearestPerson(layout, currentId, direction) {
   const current = layout.positions.get(currentId);
   if (!current) return null;
@@ -654,6 +961,28 @@ function chooseNearestPerson(layout, currentId, direction) {
     if (!valid) continue;
 
     const score = primary * 100 + secondary;
+    if (score < bestScore) {
+      bestScore = score;
+      bestId = id;
+    }
+  }
+
+  return bestId;
+}
+
+function findNearestRemainingPerson(layout, removedPos) {
+  if (!removedPos) return null;
+
+  let bestId = null;
+  let bestScore = Infinity;
+
+  for (const [id, pos] of layout.positions.entries()) {
+    const dx = pos.x - removedPos.x;
+    const dy = pos.y - removedPos.y;
+
+    const sameRowPenalty = dy === 0 ? 0 : 1000;
+    const score = sameRowPenalty + Math.abs(dx) * 10 + Math.abs(dy);
+
     if (score < bestScore) {
       bestScore = score;
       bestId = id;
@@ -703,6 +1032,14 @@ function applyAction(state, action) {
       insertIntoTrack(state, "right");
       return;
     }
+    case "set-multiple": {
+      setSelectedBirthMultiplicity(state, action.count);
+      return;
+    }
+    case "set-proband": {
+      setSelectedAsProband(state);
+      return;
+    }
     case "delete": {
       deleteSelectedPerson(state);
       return;
@@ -741,11 +1078,17 @@ function renderState(box, state) {
   const replaceBtn = box.querySelector('[data-action="replace"]');
   const insertLeftBtn = box.querySelector('[data-action="insert-left"]');
   const insertRightBtn = box.querySelector('[data-action="insert-right"]');
+  const setTwinBtn = box.querySelector('[data-action="set-twin"]');
+  const setTripletBtn = box.querySelector('[data-action="set-triplet"]');
+  const setProbandBtn = box.querySelector('[data-action="set-proband"]');
   const deleteBtn = box.querySelector('[data-action="delete"]');
 
   if (boardEl) boardEl.innerHTML = renderBoard(layout, state);
   if (paletteEl) paletteEl.innerHTML = markerButtonsHtml(state, selectionMeta);
   if (outputEl) outputEl.textContent = layout.fullOutput;
+  if (setTwinBtn) setTwinBtn.disabled = !summary.canSetMultiple;
+  if (setTripletBtn) setTripletBtn.disabled = !summary.canSetMultiple;
+  if (setProbandBtn) setProbandBtn.disabled = !summary.canSetProband;
 
   if (infoEl) {
     infoEl.className = "alert py-2 mb-3";
@@ -946,7 +1289,7 @@ export function render() {
                   <div class="pedigree-title mb-0">純文字輸出</div>
                   <button class="btn btn-outline-secondary btn-sm" type="button" data-action="copy-output">複製</button>
                 </div>
-                <pre data-role="output"></pre>
+                <pre data-role="output" class="copy-item"></pre>
               </div>
             </div>
 
@@ -969,6 +1312,9 @@ export function render() {
                   <button class="btn btn-outline-secondary btn-sm" type="button" data-action="delete">刪除此人</button>
                   <button class="btn btn-outline-secondary btn-sm" type="button" data-action="insert-left">左側新增</button>
                   <button class="btn btn-outline-secondary btn-sm" type="button" data-action="insert-right">右側新增</button>
+                  <button class="btn btn-outline-secondary btn-sm" type="button" data-action="set-twin">設為雙胞胎</button>
+                  <button class="btn btn-outline-secondary btn-sm" type="button" data-action="set-triplet">設為三胞胎</button>
+                  <button class="btn btn-outline-secondary btn-sm" type="button" data-action="set-proband">設為個案</button>
                 </div>
 
                 <div class="d-grid mb-3">
@@ -1005,7 +1351,7 @@ export function init(root, ctx) {
   const controller = new AbortController();
   const { signal } = controller;
   const state = createInitialState();
-  state.selectedId = "proband";
+  state.selectedId = getProbandId(state.model);
 
   const rerender = (options = {}) => {
     renderState(box, state);
@@ -1062,6 +1408,24 @@ export function init(root, ctx) {
 
     if (action === "insert-right") {
       applyAction(state, { type: "insert-right" });
+      rerender({ focusSelected: true });
+      return;
+    }
+
+    if (action === "set-twin") {
+      applyAction(state, { type: "set-multiple", count: 2 });
+      rerender({ focusSelected: true });
+      return;
+    }
+
+    if (action === "set-triplet") {
+      applyAction(state, { type: "set-multiple", count: 3 });
+      rerender({ focusSelected: true });
+      return;
+    }
+
+    if (action === "set-proband") {
+      applyAction(state, { type: "set-proband" });
       rerender({ focusSelected: true });
       return;
     }
@@ -1135,4 +1499,7 @@ export const __test__ = {
   applyAction,
   markerByKey,
   canUseMarker,
+  getProbandId,
+  isProband,
+  setSelectedAsProband,
 };
