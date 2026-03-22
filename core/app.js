@@ -1,5 +1,5 @@
 // core/app.js
-// updated: 2026-03-03
+// updated: 2026-03-23
 // note: remove legacy jQuery code
 
 import { bindCopyItems } from "./utils.js";
@@ -42,9 +42,10 @@ const GROUPS = [
     id: "grp-oth",
     title: "其他",
     items: [
-      { key: "icd10", label: "常用診斷碼", module: "../tools/icd10.js"  },
       { key: "lab", label: "Lab整理", module: "../tools/lab.js"  },
       { key: "med", label: "藥囑整理", module: "../tools/medorder.js"  },
+      { key: "icd10", label: "常用診斷碼", module: "../tools/icd10.js"  },
+      { key: "pedigree", label: "家族樹", module: "../tools/pedigree.js"  },
       { key: "docs", label: "常用文件", module: "../tools/files.js"  },
     ],
   },
