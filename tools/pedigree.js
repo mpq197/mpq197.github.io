@@ -1259,7 +1259,7 @@ export function render() {
           margin: 0;
           min-height: 11rem;
           white-space: pre;
-          font-family: "Courier New", Consolas, Menlo, Monaco, monospace;
+          font-family: "DFKai-SB", "BiauKai", "KaiTi", serif;
           font-size: .95rem;
           line-height: 1.4;
           background: #f8f9fa;
@@ -1268,7 +1268,7 @@ export function render() {
           padding: .75rem;
           overflow: auto;
         }
-
+        
         [data-tool="${TOOL_KEY}"] .pedigree-help {
           font-size: .85rem;
           color: #6c757d;
