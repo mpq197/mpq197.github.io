@@ -1370,7 +1370,7 @@ export function init(root, ctx) {
       const personId = target.getAttribute("data-person-id");
       if (!personId) return;
       applyAction(state, { type: "select", personId });
-      rerender({ focusSelected: false });
+      rerender({ focusSelected: true });
       return;
     }
 
