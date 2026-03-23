@@ -1062,16 +1062,31 @@ async function copyText(text) {
   return false;
 }
 
+function renderInfo(box, state) {
+  const infoEl = box.querySelector('[data-role="info"]');
+  if (!infoEl) return;
+
+  const status = getStatusMessage(state);
+
+  infoEl.className = "alert py-2 mb-3";
+  infoEl.classList.add(
+    status.kind === "danger"
+      ? "alert-danger"
+      : status.kind === "success"
+        ? "alert-success"
+        : "alert-light",
+  );
+  infoEl.textContent = status.text;
+}
+
 function renderState(box, state) {
   const layout = buildLayout(state.model);
   const selectionMeta = getSelectionMeta(state, state.selectedId);
   const summary = renderSelectionSummary(state);
-  const status = getStatusMessage(state);
 
   const boardEl = box.querySelector('[data-role="board"]');
   const paletteEl = box.querySelector('[data-role="marker-palette"]');
   const outputEl = box.querySelector('[data-role="output"]');
-  const infoEl = box.querySelector('[data-role="info"]');
   const selectedLabelEl = box.querySelector('[data-role="selected-label"]');
   const selectedSymbolEl = box.querySelector('[data-role="selected-symbol"]');
   const selectedMarkerEl = box.querySelector('[data-role="selected-marker-title"]');
@@ -1090,17 +1105,7 @@ function renderState(box, state) {
   if (setTripletBtn) setTripletBtn.disabled = !summary.canSetMultiple;
   if (setProbandBtn) setProbandBtn.disabled = !summary.canSetProband;
 
-  if (infoEl) {
-    infoEl.className = "alert py-2 mb-3";
-    infoEl.classList.add(
-      status.kind === "danger"
-        ? "alert-danger"
-        : status.kind === "success"
-          ? "alert-success"
-          : "alert-light",
-    );
-    infoEl.textContent = status.text;
-  }
+  renderInfo(box, state);
 
   if (selectedLabelEl) selectedLabelEl.textContent = summary.label;
   if (selectedSymbolEl) selectedSymbolEl.textContent = summary.symbol;
@@ -1432,38 +1437,51 @@ export function init(root, ctx) {
 
     if (action === "delete") {
       applyAction(state, { type: "delete" });
-      rerender();
+      rerender({ focusSelected: true });
       return;
     }
 
     if (action === "reset") {
       applyAction(state, { type: "reset" });
-      rerender();
+      rerender({ focusSelected: true });
     }
   }, { signal });
 
   box.addEventListener("mouseover", (event) => {
-    const button = event.target instanceof Element ? event.target.closest('[data-action="select-person"]') : null;
+    const button = event.target instanceof Element
+      ? event.target.closest('[data-action="select-person"]')
+      : null;
     if (!button) return;
+
     const personId = button.getAttribute("data-person-id");
     if (!personId) return;
+
+    if (state.hoverId === personId) return;
+
     applyAction(state, { type: "hover", personId });
-    renderState(box, state);
+    renderInfo(box, state);
   }, { signal });
 
   box.addEventListener("mouseout", (event) => {
-    const fromButton = event.target instanceof Element ? event.target.closest('[data-action="select-person"]') : null;
+    const fromButton = event.target instanceof Element
+      ? event.target.closest('[data-action="select-person"]')
+      : null;
     if (!fromButton) return;
 
-    const nextButton = event.relatedTarget instanceof Element ? event.relatedTarget.closest('[data-action="select-person"]') : null;
+    const nextButton = event.relatedTarget instanceof Element
+      ? event.relatedTarget.closest('[data-action="select-person"]')
+      : null;
+
     if (nextButton) return;
 
     applyAction(state, { type: "clear-hover", personId: null });
-    renderState(box, state);
+    renderInfo(box, state);
   }, { signal });
 
   box.addEventListener("keydown", (event) => {
-    const target = event.target instanceof Element ? event.target.closest('[data-action="select-person"]') : null;
+    const target = event.target instanceof Element
+      ? event.target.closest('[data-action="select-person"]')
+      : null;
     if (!target) return;
 
     const currentId = target.getAttribute("data-person-id");
@@ -1489,7 +1507,7 @@ export function init(root, ctx) {
 
   const destroy = () => controller.abort();
   INSTANCES.set(box, { destroy });
-  rerender();
+  rerender({ focusSelected: true });
 }
 
 export const __test__ = {
