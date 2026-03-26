@@ -994,10 +994,13 @@ function findNearestRemainingPerson(layout, removedPos) {
 
 function focusSelectedButton(box, selectedId) {
   if (!selectedId) return;
-  const button = box.querySelector(`[data-action="select-person"][data-person-id="${CSS.escape(selectedId)}"]`);
-  if (button instanceof HTMLElement) button.focus();
+  const button = box.querySelector(
+    `[data-action="select-person"][data-person-id="${CSS.escape(selectedId)}"]`
+  );
+  if (button instanceof HTMLElement) {
+    button.focus({ preventScroll: true });
+  }
 }
-
 function applyAction(state, action) {
   switch (action.type) {
     case "select": {
@@ -1268,7 +1271,7 @@ export function render() {
           padding: .75rem;
           overflow: auto;
         }
-        
+
         [data-tool="${TOOL_KEY}"] .pedigree-help {
           font-size: .85rem;
           color: #6c757d;
