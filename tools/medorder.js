@@ -25,7 +25,7 @@
 // 二、instance 切割（ORDER_TYPES）
 // -------------------------------------------------------------------------------------------------
 // 在 inMedTable 區塊內：
-//   - 每遇到一行以 ORDER_TYPES 開頭（NEW, CHG, PREP, REN, EXTN, St, DC-C, DC-D, DC-E, DC-R）
+//   - 每遇到一行以 ORDER_TYPES 開頭（NEW, CHG, PREP, REN, EXTN, St, NEWD, DC-C, DC-D, DC-E, DC-R, DC-V）
 //     即視為新 instance 開始
 //   - 直到下一個 ORDER_TYPES 或藥品資訊區塊結束
 //
@@ -103,8 +103,8 @@ const TOOL_KEY = "medorders";
 // ------------------------------
 // ORDER TYPES
 // ------------------------------
-const START_TYPES = new Set(["NEW", "CHG", "PREP", "REN", "EXTN", "St"]);
-const STOP_TYPES = new Set(["DC-C", "DC-D", "DC-E", "DC-R"]);
+const START_TYPES = new Set(["NEW", "CHG", "PREP", "REN", "EXTN", "St", "NEWD"]);
+const STOP_TYPES = new Set(["DC-C", "DC-D", "DC-E", "DC-R", "DC-V"]);
 const ORDER_TYPES = new Set([...START_TYPES, ...STOP_TYPES]);
 
 const ORDER_TYPE_RE = /^\s*(NEW|CHG|PREP|REN|EXTN|St|DC-C|DC-D|DC-E|DC-R)\b/;
