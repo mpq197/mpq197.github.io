@@ -133,7 +133,7 @@ const drugSpecs = {
   Ketamine:          { concentration: 50,   unit: "mg/ml",  rateUnit: "mcg/kg/min", decimalPlace: 1 },
   Propofol:          { concentration: 10,   unit: "mg/ml",  rateUnit: "mcg/kg/min", decimalPlace: 2 }, //小數點待確定
   MgSO4:             { concentration: 100,  unit: "mg/ml",  rateUnit: "mg/kg/hr",   decimalPlace: 1 },
-  Lidocaine:         { concentration: 50,   unit: "mg/ml",  rateUnit: "mcg/kg/min", decimalPlace: 2 }, //小數點待確定
+  Lidocaine:         { concentration: 20,   unit: "mg/ml",  rateUnit: "mcg/kg/min", decimalPlace: 2 }, //小數點待確定
   Insulin:           { concentration: 100,  unit: "U/ml",   rateUnit: "U/kg/hr",    decimalPlace: 0 },
   Heparin:           { concentration: 5000, unit: "U/ml",   rateUnit: "U/kg/hr",    decimalPlace: 1 },
   Jusomin:           { concentration: 0.83, unit: "mEq/ml", rateUnit: "mEq/kg/hr",  decimalPlace: 1 }, //小數點待確定
