@@ -337,7 +337,7 @@ export function render() {
             </table>
           </div>
           <div class="text-muted small mt-2">
-            註：此處只保存「快照」(手動儲存或點選複製自動存)，最多 200 筆。
+            註：此處只保存「快照」(手動儲存或點選複製自動存)，最多 30 筆。
           </div>
         </div>
       </div>
@@ -601,7 +601,7 @@ export function init(root) {
   // History (snapshots only, NO draft)
   // ============================================================
   const LS_KEY = "neoassist:fluid:snapshots:v1";
-  const MAX_SNAPSHOTS = 200;
+  const MAX_SNAPSHOTS = 30;
 
   const safeJsonParse = (s, fallback) => {
     try {
