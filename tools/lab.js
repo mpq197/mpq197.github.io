@@ -1,5 +1,5 @@
 // tools/lab.js
-// updated: 2026-03-16
+// updated: 2026-05-19
 // note:
 // - fix order UI double-render bug
 // - preserve manual item selection across specimen rebuilds
@@ -7,6 +7,10 @@
 // - fix horizontal output when duplicate labels exist
 // - fix extra blank line before specimen legend
 // - normalize output reset behavior
+// - add normal range parsing for trend charts
+// - render one chart per selected lab item
+// - optimize each chart y-axis using both values and normal range
+// - draw normal range band / limit lines on each chart
 
 import { createScheduler } from "../core/utils.js";
 
@@ -140,6 +144,30 @@ export function render() {
 
       [data-tool="lab"] .lab-order-chip.dragging{
         opacity:0.45;
+      }
+
+      /* -----------------------------
+         Trend chart cards
+      ----------------------------- */
+      [data-tool="lab"] .lab-chart-card{
+        height:220px;
+        margin-bottom:12px;
+        padding:8px;
+        border:1px solid #6c757d2e;
+        border-radius:10px;
+        background:#fff;
+      }
+
+      [data-tool="lab"] .lab-chart-title{
+        font-size:12px;
+        font-weight:700;
+        color:#444;
+        margin-bottom:4px;
+      }
+
+      [data-tool="lab"] .lab-chart-card canvas{
+        width:100%;
+        height:180px;
       }
     </style>
 
@@ -312,9 +340,7 @@ export function render() {
                 <li class="list-group-item copy-item" data-role="outputs"><br></li>
               </ul>
 
-              <div class="mt-2">
-                <canvas data-role="trendCanvas" height="160"></canvas>
-              </div>
+              <div class="mt-2" data-role="trendCharts"></div>
             </div>
 
             <div class="col-2" style="padding-left:0;">
@@ -353,8 +379,8 @@ export function init(root) {
   const clearBarsBtn = box.querySelector('[data-role="clearBarsBtn"]');
   const resetOrderBtn = box.querySelector('[data-role="resetOrderBtn"]');
 
-  const trendCanvas = box.querySelector('[data-role="trendCanvas"]');
-  let trendChart = null;
+  const trendChartsEl = box.querySelector('[data-role="trendCharts"]');
+  let trendCharts = new Map();
 
   // ---- state
   let abbrHeaders = null;
@@ -362,6 +388,7 @@ export function init(root) {
   let dateIsoKeys = null;
   let rowSpecimens = null;
   let specimens = null;
+  let rowNormalRanges = null;
 
   // store ORIGINAL row indices, across specimen UI rebuilds
   let selectedItemIdxSet = new Set();
@@ -438,7 +465,6 @@ export function init(root) {
     "MALB(U)": "MALB",
     "CREA(U)": "CREA",
     "WBC esterase": "WBCe",
-    
   };
 
   const excludingRowKeywords = {
@@ -492,9 +518,6 @@ export function init(root) {
     return getCheckedRadioId("lab_trend_mode") === "lab_trend_on";
   }
 
-  // FIX:
-  // only sync currently visible item checkboxes into the global selected set.
-  // hidden specimen items are preserved.
   function syncVisibleSelectedItemsFromDOM() {
     const cbs = Array.from(box.querySelectorAll('[data-role="itemCb"]'));
     const visibleIdxs = new Set();
@@ -696,8 +719,6 @@ export function init(root) {
     return new Set(selected);
   }
 
-  // FIX:
-  // use persistent state instead of only current DOM
   function getSelectedRowIndicesForCurrentFilters() {
     const selectedSpecimens = getSelectedSpecimensSet();
 
@@ -828,8 +849,6 @@ export function init(root) {
     if (el) el.checked = true;
   }
 
-  // FIX:
-  // compare against current visible checkbox pattern instead of unique lab-name set
   function detectPresetFromCurrentSelection() {
     const cbs = Array.from(box.querySelectorAll('[data-role="itemCb"]'));
     const total = cbs.length;
@@ -977,7 +996,6 @@ export function init(root) {
     return `${m.prefix}${lab}`;
   }
 
-  // FIX: remove leading newline
   function buildLegendLine(usedLegendSet, ctx) {
     const items = [];
 
@@ -1044,8 +1062,6 @@ export function init(root) {
     return out;
   }
 
-  // FIX:
-  // pure state sync only; no UI render side effects
   function syncOrderTokensFromSelection({ reset = false } = {}) {
     if (!abbrRows) {
       orderTokens = [];
@@ -1098,8 +1114,6 @@ export function init(root) {
     return out;
   }
 
-  // FIX:
-  // render only; no recursive state mutation
   function rebuildOrderUI() {
     if (!orderListEl) return;
     orderListEl.replaceChildren();
@@ -1250,7 +1264,6 @@ export function init(root) {
   function rebuildItemsForSpecimens() {
     if (!abbrHeaders || !abbrRows || !rowSpecimens) return;
 
-    // FIX: preserve current visible selections before rebuilding
     syncVisibleSelectedItemsFromDOM();
 
     const sel = getSelectedSpecimensSet();
@@ -1272,13 +1285,54 @@ export function init(root) {
   }
 
   // -----------------------------
+  // Parser helpers
+  // -----------------------------
+  function parseNormalRange(refText) {
+    let s = String(refText ?? "").trim();
+    if (!s || s === "-") return { low: null, high: null, raw: s };
+
+    const raw = s;
+    s = s
+      .replace(/[()（）].*?[)）]/g, "")
+      .replace(/,/g, "")
+      .replace(/[～〜﹣－]/g, "~")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    // 135~145, 3.5-5.5
+    let m = s.match(/(-?\d+(?:\.\d+)?)\s*[~\-]\s*(-?\d+(?:\.\d+)?)/);
+    if (m) {
+      const low = Number(m[1]);
+      const high = Number(m[2]);
+      if (Number.isFinite(low) && Number.isFinite(high)) {
+        return { low: Math.min(low, high), high: Math.max(low, high), raw };
+      }
+    }
+
+    // <5, <=5, ≦5, ≤5
+    m = s.match(/^(?:<|<=|≦|≤)\s*(-?\d+(?:\.\d+)?)/);
+    if (m) {
+      const high = Number(m[1]);
+      return { low: null, high: Number.isFinite(high) ? high : null, raw };
+    }
+
+    // >3.5, >=3.5, ≧3.5, ≥3.5
+    m = s.match(/^(?:>|>=|≧|≥)\s*(-?\d+(?:\.\d+)?)/);
+    if (m) {
+      const low = Number(m[1]);
+      return { low: Number.isFinite(low) ? low : null, high: null, raw };
+    }
+
+    return { low: null, high: null, raw };
+  }
+
+  // -----------------------------
   // Parser
   // -----------------------------
   function parseRawToTable(rawText) {
+    const empty = { headers: null, rows: null, dateIsoKeys: null, rowSpecimens: null, specimens: null, rowNormalRanges: null };
     const raw = String(rawText ?? "");
-    if (!raw.trim()) {
-      return { headers: null, rows: null, dateIsoKeys: null, rowSpecimens: null, specimens: null };
-    }
+    if (!raw.trim()) return empty;
 
     const lines = raw
       .split("\n")
@@ -1290,9 +1344,7 @@ export function init(root) {
       const cells = line.split("\t");
       return isBool(cells[0]) && cells.length >= 7;
     });
-    if (dataStartIdx < 0) {
-      return { headers: null, rows: null, dateIsoKeys: null, rowSpecimens: null, specimens: null };
-    }
+    if (dataStartIdx < 0) return empty;
 
     const headerTokens = [];
     for (const line of lines.slice(0, dataStartIdx)) {
@@ -1302,15 +1354,11 @@ export function init(root) {
 
     const refIdx = headerTokens.lastIndexOf("參考值");
     const unitIdx = headerTokens.lastIndexOf("單位");
-    if (refIdx < 0 || unitIdx < 0 || unitIdx > refIdx) {
-      return { headers: null, rows: null, dateIsoKeys: null, rowSpecimens: null, specimens: null };
-    }
+    if (refIdx < 0 || unitIdx < 0 || unitIdx > refIdx) return empty;
 
     const base = ["選取", "項目代號", "項目", "檢體別"];
     const baseIdx = base.map((k) => headerTokens.indexOf(k));
-    if (baseIdx.some((i) => i < 0)) {
-      return { headers: null, rows: null, dateIsoKeys: null, rowSpecimens: null, specimens: null };
-    }
+    if (baseIdx.some((i) => i < 0)) return empty;
 
     const afterSpecimen = baseIdx[3] + 1;
     const dateTokens = headerTokens.slice(afterSpecimen, unitIdx);
@@ -1341,9 +1389,7 @@ export function init(root) {
       dateMeta.push({ iso, display, src: dateMeta.length });
     }
 
-    if (!dateMeta.length) {
-      return { headers: null, rows: null, dateIsoKeys: null, rowSpecimens: null, specimens: null };
-    }
+    if (!dateMeta.length) return empty;
 
     dateMeta.sort((a, b) => a.iso.localeCompare(b.iso));
 
@@ -1368,10 +1414,11 @@ export function init(root) {
 
     const rows = [];
     const rowSpecimensOut = [];
+    const rowNormalRangesOut = [];
     const specimenSet = new Set();
-    
+
     const mergedRowMap = new Map();
-    
+
     const gasDuplicateMergeCodes = new Set([
       "72A530", // Temp
       "72C530", // pH
@@ -1384,25 +1431,27 @@ export function init(root) {
       "72L530", // Po2(A-a)
       "72M530", // FIO2
     ]);
-    
+
     for (const line of lines.slice(dataStartIdx)) {
       const cells = line.split("\t");
       if (!isBool(cells[0])) continue;
-    
+
       const itemCode = String(cells[1] ?? "").trim();
       let itemNameRaw = String(cells[2] ?? "").trim();
       const specimen = String(cells[3] ?? "").trim() || "(空)";
 
       specimenSet.add(specimen);
-      
+
       if ((excludingRowKeywords["項目代號"] || []).includes(itemCode)) continue;
-    
+
       itemNameRaw = normalizeLabName(itemNameRaw);
       const itemName = labHeaderAbbrDict[itemNameRaw] || itemNameRaw;
       if (!itemName) continue;
-    
+
       const rawValues = cells.slice(4, 4 + dateMeta.length);
-    
+      const refText = String(cells[5 + dateMeta.length] ?? "").trim();
+      const normalRange = parseNormalRange(refText);
+
       const values = valueOrder.map((k) => {
         let s = String(rawValues[k] ?? "")
           .replace(/( [H,L])$/, "")
@@ -1411,32 +1460,34 @@ export function init(root) {
         s = trimTrailingZeros(s);
         return s;
       });
-    
+
       // 只處理 gas duplicate merge
       if (!gasDuplicateMergeCodes.has(itemCode)) {
         rows.push([itemName, ...values]);
         rowSpecimensOut.push(specimen);
+        rowNormalRangesOut.push(normalRange);
         continue;
       }
-    
+
       const mergeKey = `${itemCode}__${specimen}`;
-    
+
       if (!mergedRowMap.has(mergeKey)) {
         mergedRowMap.set(mergeKey, {
           itemCode,
           itemName,
           specimen,
           values: [...values],
+          normalRange,
         });
         continue;
       }
-    
+
       const existing = mergedRowMap.get(mergeKey);
-    
+
       for (let i = 0; i < values.length; i++) {
         const oldVal = String(existing.values[i] ?? "").trim();
         const newVal = String(values[i] ?? "").trim();
-    
+
         if (oldVal && newVal && oldVal !== newVal) {
           console.warn("[lab gas conflict]", {
             itemCode,
@@ -1448,26 +1499,32 @@ export function init(root) {
             newVal,
           });
         }
-    
+
         // 只補空值
         if (!oldVal && newVal) {
           existing.values[i] = newVal;
         }
       }
+
+      if ((!existing.normalRange?.raw) && normalRange?.raw) {
+        existing.normalRange = normalRange;
+      }
     }
-    
+
     // gas merge 完再補回 rows
     for (const entry of mergedRowMap.values()) {
       rows.push([entry.itemName, ...entry.values]);
       rowSpecimensOut.push(entry.specimen);
+      rowNormalRangesOut.push(entry.normalRange || { low: null, high: null, raw: "" });
     }
-    
+
     return {
       headers,
       rows,
       dateIsoKeys: dateIsoKeysOut,
       rowSpecimens: rowSpecimensOut,
       specimens: Array.from(specimenSet).sort(),
+      rowNormalRanges: rowNormalRangesOut,
     };
   }
 
@@ -1503,8 +1560,6 @@ export function init(root) {
     return ordered;
   }
 
-  // FIX:
-  // horizontal matrix is built directly from tokens, not by label->col mapping
   function buildFilteredArray(headers, rows, ctx, usedLegendSet) {
     if (!headers || !rows) return null;
 
@@ -1735,8 +1790,89 @@ export function init(root) {
     return Number.isFinite(v) ? v : null;
   }
 
+  function destroyTrendCharts() {
+    for (const ch of trendCharts.values()) ch.destroy();
+    trendCharts.clear();
+    if (trendChartsEl) trendChartsEl.replaceChildren();
+  }
+
+  function getOptimizedYBounds(values, range) {
+    const nums = values.filter(Number.isFinite);
+    if (Number.isFinite(range?.low)) nums.push(range.low);
+    if (Number.isFinite(range?.high)) nums.push(range.high);
+
+    if (!nums.length) return { suggestedMin: undefined, suggestedMax: undefined };
+
+    let min = Math.min(...nums);
+    let max = Math.max(...nums);
+
+    if (min === max) {
+      const pad = Math.abs(min) * 0.15 || 1;
+      return { suggestedMin: min - pad, suggestedMax: max + pad };
+    }
+
+    const span = max - min;
+    const pad = span * 0.18;
+
+    return {
+      suggestedMin: min - pad,
+      suggestedMax: max + pad,
+    };
+  }
+
+  const normalRangePlugin = {
+    id: "normalRangePlugin",
+    beforeDatasetsDraw(chart) {
+      const range = chart.options.plugins?.normalRangePlugin?.range;
+      if (!range) return;
+
+      const { ctx, chartArea, scales } = chart;
+      const y = scales.y;
+      if (!y || !chartArea) return;
+
+      const hasLow = Number.isFinite(range.low);
+      const hasHigh = Number.isFinite(range.high);
+
+      if (!hasLow && !hasHigh) return;
+
+      ctx.save();
+
+      if (hasLow && hasHigh) {
+        const yLow = y.getPixelForValue(range.low);
+        const yHigh = y.getPixelForValue(range.high);
+        const top = Math.min(yLow, yHigh);
+        const bottom = Math.max(yLow, yHigh);
+
+        ctx.fillStyle = "rgba(25, 135, 84, 0.08)";
+        ctx.fillRect(chartArea.left, top, chartArea.right - chartArea.left, bottom - top);
+      }
+
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = "rgba(25, 135, 84, 0.65)";
+      ctx.lineWidth = 1;
+
+      if (hasLow) {
+        const py = y.getPixelForValue(range.low);
+        ctx.beginPath();
+        ctx.moveTo(chartArea.left, py);
+        ctx.lineTo(chartArea.right, py);
+        ctx.stroke();
+      }
+
+      if (hasHigh) {
+        const py = y.getPixelForValue(range.high);
+        ctx.beginPath();
+        ctx.moveTo(chartArea.left, py);
+        ctx.lineTo(chartArea.right, py);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    },
+  };
+
   function buildSelectedSeries(headers, rows) {
-    if (!headers || !rows) return { datasets: [] };
+    if (!headers || !rows) return { series: [] };
 
     const selectedCols = Array.from(box.querySelectorAll('[data-role="dateCb"]:checked'))
       .map((cb) => Number(cb.dataset.index))
@@ -1754,13 +1890,12 @@ export function init(root) {
         })
     );
 
-    if (!selectedCols.length || !selectedRowSet.size) return { datasets: [] };
+    if (!selectedCols.length || !selectedRowSet.size) return { series: [] };
 
     const colMeta = selectedCols
       .map((i) => ({ i, iso: dateIsoKeys?.[i] || null }))
-      .filter((c) => !!c.iso);
-
-    colMeta.sort((a, b) => a.iso.localeCompare(b.iso));
+      .filter((c) => !!c.iso)
+      .sort((a, b) => a.iso.localeCompare(b.iso));
 
     syncOrderTokensFromSelection({ reset: false });
 
@@ -1778,44 +1913,46 @@ export function init(root) {
       if (selectedRowSet.has(idx) && !seen.has(idx)) rowOrder.push(idx);
     }
 
-    const datasets = rowOrder.map((rIdx) => {
+    const series = rowOrder.map((rIdx) => {
       const lab = String(rows[rIdx]?.[0] ?? "").trim() || `Lab${rIdx + 1}`;
       const sp = rowSpecimens?.[rIdx] || "(空)";
+      const range = rowNormalRanges?.[rIdx] || { low: null, high: null, raw: "" };
 
       const data = colMeta
-        .map((c) => ({ x: Date.parse(c.iso), y: cleanNumeric(rows[rIdx]?.[c.i]) }))
-        .filter((p) => Number.isFinite(p.x));
+        .map((c) => ({
+          x: Date.parse(c.iso),
+          y: cleanNumeric(rows[rIdx]?.[c.i]),
+        }))
+        .filter((p) => Number.isFinite(p.x) && p.y !== null);
 
-      return { label: `${lab}(${sp})`, data };
+      return {
+        key: `${rIdx}`,
+        label: sp === "B" ? lab : `${lab}(${sp})`,
+        data,
+        range,
+      };
     });
 
-    return { datasets };
+    return { series };
   }
 
   function renderTrendChart() {
-    if (!trendCanvas) return;
+    if (!trendChartsEl) return;
 
     if (typeof Chart === "undefined") {
       if (DEBUG) console.warn("[lab] Chart.js not found. Skip trend chart rendering.");
       return;
     }
 
-    const { datasets } = buildSelectedSeries(abbrHeaders, abbrRows);
+    const { series } = buildSelectedSeries(abbrHeaders, abbrRows);
+    const validSeries = series.filter((s) => s.data && s.data.length);
 
-    if (!datasets.length || datasets.every((d) => !d.data || !d.data.length)) {
-      if (trendChart) {
-        trendChart.destroy();
-        trendChart = null;
-      }
+    if (!validSeries.length) {
+      destroyTrendCharts();
       return;
     }
 
-    const ds = datasets.map((d) => ({
-      label: d.label,
-      data: d.data,
-      spanGaps: true,
-      tension: 0.25,
-    }));
+    destroyTrendCharts();
 
     const fmtMMDD = (ts) => {
       const d = new Date(Number(ts));
@@ -1825,39 +1962,68 @@ export function init(root) {
       return `${mm}/${dd}`;
     };
 
-    const cfg = {
-      type: "line",
-      data: { datasets: ds },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        parsing: false,
-        interaction: { mode: "nearest", intersect: false },
-        plugins: {
-          legend: { display: true },
-          tooltip: {
-            enabled: true,
-            callbacks: {
-              title: (items) => {
-                const x = items?.[0]?.parsed?.x;
-                return fmtMMDD(x);
+    for (const s of validSeries) {
+      const card = document.createElement("div");
+      card.className = "lab-chart-card";
+
+      const title = document.createElement("div");
+      title.className = "lab-chart-title";
+      title.textContent = s.range?.raw
+        ? `${s.label}　normal: ${s.range.raw}`
+        : s.label;
+
+      const canvas = document.createElement("canvas");
+      canvas.height = 180;
+
+      card.appendChild(title);
+      card.appendChild(canvas);
+      trendChartsEl.appendChild(card);
+
+      const yValues = s.data.map((p) => p.y);
+      const yBounds = getOptimizedYBounds(yValues, s.range);
+
+      const chart = new Chart(canvas.getContext("2d"), {
+        type: "line",
+        data: {
+          datasets: [{
+            label: s.label,
+            data: s.data,
+            spanGaps: true,
+            tension: 0,
+            pointRadius: 3,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          parsing: false,
+          interaction: { mode: "nearest", intersect: false },
+          plugins: {
+            legend: { display: false },
+            normalRangePlugin: { range: s.range },
+            tooltip: {
+              enabled: true,
+              callbacks: {
+                title: (items) => fmtMMDD(items?.[0]?.parsed?.x),
               },
             },
           },
+          scales: {
+            x: {
+              type: "linear",
+              ticks: { callback: (v) => fmtMMDD(v) },
+            },
+            y: {
+              beginAtZero: false,
+              suggestedMin: yBounds.suggestedMin,
+              suggestedMax: yBounds.suggestedMax,
+            },
+          },
         },
-        scales: {
-          x: { type: "linear", ticks: { callback: (v) => fmtMMDD(v) } },
-          y: { beginAtZero: false },
-        },
-      },
-    };
+        plugins: [normalRangePlugin],
+      });
 
-    if (trendChart) {
-      trendChart.data = cfg.data;
-      trendChart.options = cfg.options;
-      trendChart.update();
-    } else {
-      trendChart = new Chart(trendCanvas.getContext("2d"), cfg);
+      trendCharts.set(s.key, chart);
     }
   }
 
@@ -1891,9 +2057,8 @@ export function init(root) {
 
     if (isTrendEnabled()) {
       renderTrendChart();
-    } else if (trendChart) {
-      trendChart.destroy();
-      trendChart = null;
+    } else {
+      destroyTrendCharts();
     }
   }
 
@@ -1909,6 +2074,7 @@ export function init(root) {
     dateIsoKeys = parsed.dateIsoKeys;
     rowSpecimens = parsed.rowSpecimens;
     specimens = parsed.specimens;
+    rowNormalRanges = parsed.rowNormalRanges;
 
     selectedItemIdxSet = new Set();
     orderTokens = [];
@@ -2038,6 +2204,7 @@ export function init(root) {
     dateIsoKeys = null;
     rowSpecimens = null;
     specimens = null;
+    rowNormalRanges = null;
 
     selectedItemIdxSet = new Set();
     orderTokens = [];
@@ -2049,11 +2216,7 @@ export function init(root) {
     if (orderListEl) orderListEl.replaceChildren();
 
     setOutputText("");
-
-    if (trendChart) {
-      trendChart.destroy();
-      trendChart = null;
-    }
+    destroyTrendCharts();
 
     const datePresetLast5 = box.querySelector("#lab_date_preset_last_5");
     const presetTPNMinor = box.querySelector("#lab_preset_TPN_minor");
@@ -2142,8 +2305,8 @@ True\t72B530\tPCO2\tCSF\t\t\t\t45\t48\t\tmmHg\t-
         intro: `<p><b>(10) 輸出與複製</b></p><p>點選輸出即可複製。</p>`,
       },
       {
-        element: `[data-tool="${TOOL_KEY}"] [data-role="trendCanvas"]`,
-        intro: `<p><b>(11) Trend 圖</b></p><p>依勾選日期+項目繪圖（需 Chart.js）。</p>`,
+        element: `[data-tool="${TOOL_KEY}"] [data-role="trendCharts"]`,
+        intro: `<p><b>(11) Trend 圖</b></p><p>每個 Lab item 各自繪圖，並顯示 normal range（需 Chart.js）。</p>`,
       },
       {
         element: `[data-tool="${TOOL_KEY}"] [data-role="reset"]`,
