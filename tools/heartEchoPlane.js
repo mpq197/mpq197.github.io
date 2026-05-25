@@ -212,8 +212,16 @@ export function render() {
                 <label class="form-label fw-bold mt-3">2D zoom: <span data-section-zoom-value>1.15</span></label>
                 <input class="form-range" type="range" min="0.65" max="2.2" step="0.01" value="1.15" data-section-zoom>
 
-                <div class="small text-muted mt-3">
-                  右側 thin-slab 用兩個 clipping planes 夾出目前 plane 附近的一層薄片；仍是 surface mesh，不是真正 CT/MRI volume slice。
+                <div class="small text-muted mt-3 border-top pt-2">
+                  <strong>模型來源：</strong>
+                  <em>Normal Neonatal Heart</em>，作者 E-learning UMCG，來源 <a href="https://sketchfab.com/3d-models/normal-neonatal-heart-9c0dcc64acd74f0aaa9847736a9a87af" target="_blank" rel="noopener noreferrer">
+                    Sketchfab
+                  </a>。
+                  授權：
+                  <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener noreferrer">
+                    CC BY-NC-SA 4.0
+                  </a>。
+                  本工具僅作非商業醫學教育用途。
                 </div>
               </div>
             </div>
