@@ -46,6 +46,7 @@ const GROUPS = [
       { key: "lab", label: "Lab整理", module: "../tools/lab.js"  },
       { key: "med", label: "藥囑整理", module: "../tools/medorder.js"  },
       { key: "docs", label: "常用文件", module: "../tools/files.js"  },
+      { key: "heartEchoPlane", label: "心超3D切面", module: "../tools/heartEchoPlane.js" },
       { key: "pedigree", label: "家族樹", module: "../tools/pedigree.js"  },
     ],
   },
