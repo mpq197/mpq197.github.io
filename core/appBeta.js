@@ -48,6 +48,7 @@ const GROUPS = [
       { key: "docs", label: "常用文件", module: "../tools/files.js"  },
       { key: "heartEchoPlane", label: "心超3D切面", module: "../tools/heartEchoPlane.js" },
       { key: "pedigree", label: "家族樹", module: "../tools/pedigree.js"  },
+      { key: "vitals", label: "生命徵象", module: "../tools/vitals.js"  },
     ],
   },
 ];
