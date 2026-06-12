@@ -10,44 +10,11 @@ import { bindCopyItems } from "./utils.js";
  * - #group=grp => group dashboard view (ALL tools in that group, single-column)
  */
 const GROUPS = [
-  {
-    id: "grp-fluid",
-    title: "水分",
-    items: [
-      { key: "fluid", label: "水分計算", module: `../tools/fluid.js`  },
-      { key: "gir", label: "GIR 計算", module: `../tools/gir.js`  },
-      { key: "dex", label: "Dex 濃度", module: `../tools/dex.js`  },
-      { key: "hypoNa", label: "低鈉矯正", module: `../tools/hypoNa.js`  },
-      { key: "jusomin", label: "酸中毒矯正", module: `../tools/jusomin.js`  },
-    ],
-  },
-  {
-    id: "grp-med",
-    title: "藥物",
-    items: [
-      { key: "drug", label: "藥物泡法", module: "../tools/drug.js"  },
-      { key: "anti_nb", label: "NB常用抗生素泡法", module: "../tools/anti_nb.js"  },
-    ],
-  },
-  {
-    id: "grp-growth",
-    title: "測量",
-    items: [
-      { key: "growth", label: "生長測量", module: "../tools/growth.js"  },
-      { key: "age", label: "年齡計算", module: "../tools/age.js"  },
-      { key: "umbilical_cath_len", label: "UA/UV 深度", module: "../tools/umbilical_cath_len.js"  },
-    ],
-  },
-  {
+{
     id: "grp-oth",
-    title: "其他",
+    title: "測試",
     items: [
-      { key: "icd10", label: "常用診斷碼", module: "../tools/icd10.js"  },
-      { key: "lab", label: "Lab整理", module: "../tools/lab.js"  },
-      { key: "med", label: "藥囑整理", module: "../tools/medorder.js"  },
-      { key: "docs", label: "常用文件", module: "../tools/files.js"  },
       { key: "heartEchoPlane", label: "心超3D切面", module: "../tools/heartEchoPlane.js" },
-      { key: "pedigree", label: "家族樹", module: "../tools/pedigree.js"  },
       { key: "vitals", label: "生命徵象", module: "../tools/vitals.js"  },
     ],
   },
