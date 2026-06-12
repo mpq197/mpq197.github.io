@@ -6,6 +6,30 @@ const TOOL_KEY = "vitals";
 
 let vitalsEventsBound = false;
 let vitalsMiniMapDrag = null;
+let vitalsResizeObserver = null;
+let vitalsResizeFrame = null;
+let vitalsLastObservedWidth = null;
+let vitalsAutoParseTimer = null;
+
+const VITALS_AUTO_PARSE_DELAY_MS = 350;
+const VITALS_DEFAULT_WINDOW_SIZE = "7d";
+const VITALS_DEFAULT_WINDOW_ANCHOR = "start";
+
+const VITALS_TIME_WINDOW_OPTIONS = {
+  "24h": 24 * 36e5,
+  "48h": 48 * 36e5,
+  "7d": 7 * 24 * 36e5,
+  "14d": 14 * 24 * 36e5,
+  "30d": 30 * 24 * 36e5,
+};
+
+const VITALS_TIME_WINDOW_LABELS = {
+  "24h": "24h",
+  "48h": "48h",
+  "7d": "7d",
+  "14d": "14d",
+  "30d": "30d",
+};
 
 const VITAL_META = {
   HR: {
@@ -73,6 +97,22 @@ const DEFAULT_VISIBLE_VITALS = [
   "ABPm",
 ];
 
+
+const VITAL_CHART_COLORS = {
+  HR: "#e03131",
+  RR: "#1971c2",
+  SpO2: "#2f9e44",
+  Temp: "#f08c00",
+  SBP: "#f8daff",
+  DBP: "#f8daff",
+  MAP: "#5f3dc4",
+  ABPs: "#ffd2d8",
+  ABPd: "#ffd2d8",
+  ABPm: "#be123c",
+  NBP: "#6741d9",
+  ABP: "#c2255c",
+};
+
 const CHART_BAND_META = {
   HR: { label: "HR", unit: "次/分", defaultRange: [100, 180], defaultOpacity: 0.06 },
   RR: { label: "RR", unit: "次/分", defaultRange: [30, 60], defaultOpacity: 0.06 },
@@ -85,12 +125,12 @@ const CHART_BAND_META = {
 const DEFAULT_CHART_BAND_RANGES = createDefaultChartBandRanges();
 
 const CHART_AXIS_META = {
-  HR: { label: "HR", defaultMin: 50, defaultMax: 250, defaultGrid: 20 },
+  HR: { label: "HR", defaultMin: 0, defaultMax: 250, defaultGrid: 20 },
   RR: { label: "RR", defaultMin: 0, defaultMax: 120, defaultGrid: 10 },
-  SpO2: { label: "SpO₂", defaultMin: 60, defaultMax: 100, defaultGrid: 5 },
-  Temp: { label: "Temp", defaultMin: 34, defaultMax: 40, defaultGrid: 0.5 },
-  NBP: { label: "周邊血壓 BP / NBPm", defaultMin: 20, defaultMax: 100, defaultGrid: 10 },
-  ABP: { label: "Aline 血壓 ABPs / ABPd / ABPm", defaultMin: 20, defaultMax: 100, defaultGrid: 10 },
+  SpO2: { label: "SpO₂", defaultMin: 0, defaultMax: 100, defaultGrid: 10 },
+  Temp: { label: "Temp", defaultMin: 0, defaultMax: 40, defaultGrid: 5 },
+  NBP: { label: "周邊血壓 BP / NBPm", defaultMin: 0, defaultMax: 100, defaultGrid: 10 },
+  ABP: { label: "Aline 血壓 ABPs / ABPd / ABPm", defaultMin: 0, defaultMax: 100, defaultGrid: 10 },
 };
 
 const DEFAULT_CHART_AXIS_SETTINGS = createDefaultChartAxisSettings();
@@ -104,6 +144,7 @@ const state = {
     maxTime: null,
     startTime: null,
     endTime: null,
+    pageSizeMs: null,
   },
   visibleVitals: new Set(DEFAULT_VISIBLE_VITALS),
   duplicateStrategy: "all",
@@ -121,7 +162,22 @@ export function render() {
   return `
     <style>
       [data-tool="${TOOL_KEY}"] {
+        --vitals-bg: #f6f8fb;
+        --vitals-card-bg: #ffffff;
+        --vitals-soft-bg: #f8fafc;
+        --vitals-border: #d8e1ec;
+        --vitals-border-soft: #e7edf4;
+        --vitals-text: #172033;
+        --vitals-muted: #667085;
+        --vitals-chart-surface: #ffffff;
+        --vitals-plot-bg: #fbfdff;
+        --vitals-chart-frame: #e6edf5;
+        --vitals-chart-grid: #dbe4ee;
+        --vitals-chart-axis: #526173;
+        --vitals-chart-title: #172033;
+        --vitals-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
         width: 100%;
+        color: var(--vitals-text);
       }
 
       [data-tool="${TOOL_KEY}"] .vitals-layout {
@@ -132,15 +188,17 @@ export function render() {
       }
 
       [data-tool="${TOOL_KEY}"] .vitals-panel {
-        border: 1px solid #6c757d2e;
-        border-radius: 10px;
-        padding: 12px;
-        background: #fff;
+        border: 1px solid var(--vitals-border);
+        border-radius: 14px;
+        padding: 14px;
+        background: var(--vitals-card-bg);
+        box-shadow: var(--vitals-shadow);
       }
 
       [data-tool="${TOOL_KEY}"] .vitals-panel h3 {
         margin: 0 0 10px;
         font-size: 16px;
+        letter-spacing: -0.01em;
       }
 
       [data-tool="${TOOL_KEY}"] .vitals-textarea {
@@ -151,9 +209,11 @@ export function render() {
         font-size: 12px;
         line-height: 1.45;
         padding: 10px;
-        border: 1px solid #ced4da;
-        border-radius: 8px;
+        border: 1px solid var(--vitals-border);
+        border-radius: 10px;
         box-sizing: border-box;
+        background: #fcfdff;
+        color: var(--vitals-text);
       }
 
       [data-tool="${TOOL_KEY}"] .vitals-controls {
@@ -165,17 +225,28 @@ export function render() {
 
       [data-tool="${TOOL_KEY}"] .vitals-btn,
       [data-tool="${TOOL_KEY}"] .vitals-select {
-        border: 1px solid #adb5bd;
-        border-radius: 8px;
-        background: #f8f9fa;
-        padding: 6px 10px;
+        border: 1px solid var(--vitals-border);
+        border-radius: 999px;
+        background: var(--vitals-soft-bg);
+        color: var(--vitals-text);
+        padding: 6px 11px;
         cursor: pointer;
         font-size: 13px;
+        transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
       }
 
       [data-tool="${TOOL_KEY}"] .vitals-btn:hover,
       [data-tool="${TOOL_KEY}"] .vitals-select:hover {
-        background: #e9ecef;
+        background: #eef4ff;
+        border-color: #b8c7dc;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+        transform: translateY(-1px);
+      }
+
+      [data-tool="${TOOL_KEY}"] .vitals-btn[aria-pressed="true"] {
+        background: #172033;
+        border-color: #172033;
+        color: #fff;
       }
 
       [data-tool="${TOOL_KEY}"] .vitals-series-list {
@@ -190,10 +261,10 @@ export function render() {
         align-items: center;
         gap: 5px;
         font-size: 13px;
-        padding: 4px 7px;
-        border-radius: 6px;
-        background: #f8f9fa;
-        border: 1px solid #e9ecef;
+        padding: 5px 8px;
+        border-radius: 999px;
+        background: var(--vitals-soft-bg);
+        border: 1px solid var(--vitals-border-soft);
       }
 
       [data-tool="${TOOL_KEY}"] .vitals-band-settings,
@@ -273,15 +344,16 @@ export function render() {
       }
 
       [data-tool="${TOOL_KEY}"] .vitals-summary-card {
-        border: 1px solid #6c757d2e;
-        border-radius: 8px;
-        padding: 8px;
-        background: #fff;
+        border: 1px solid var(--vitals-border);
+        border-radius: 12px;
+        padding: 10px;
+        background: linear-gradient(180deg, #fff 0%, #fbfdff 100%);
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
       }
 
       [data-tool="${TOOL_KEY}"] .vitals-summary-card .label {
         font-size: 12px;
-        color: #6c757d;
+        color: var(--vitals-muted);
       }
 
       [data-tool="${TOOL_KEY}"] .vitals-summary-card .value {
@@ -301,29 +373,42 @@ export function render() {
       }
 
       [data-tool="${TOOL_KEY}"] .vitals-chart-wrap {
-        border: 1px solid #6c757d2e;
-        border-radius: 10px;
-        background: #fff;
+        border: 1px solid var(--vitals-border);
+        border-radius: 16px;
+        background: var(--vitals-card-bg);
         overflow: hidden;
+        box-shadow: var(--vitals-shadow);
       }
 
       [data-tool="${TOOL_KEY}"] .vitals-chart-header {
         display: flex;
         justify-content: space-between;
         gap: 10px;
-        padding: 8px 10px;
-        border-bottom: 1px solid #6c757d2e;
-        background: #f8f9fa;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--vitals-border);
+        background: linear-gradient(180deg, #fbfdff 0%, #f6f8fb 100%);
         font-size: 13px;
+        font-weight: 700;
       }
 
       [data-tool="${TOOL_KEY}"] .vitals-chart-body {
-        overflow-x: auto;
+        overflow-x: hidden;
+        width: 100%;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+      }
+
+      [data-tool="${TOOL_KEY}"] .vitals-chart-body svg {
+        width: 100%;
+        max-width: 100%;
+      }
+
+      [data-tool="${TOOL_KEY}"] .vitals-chart-svg {
+        background: linear-gradient(180deg, var(--vitals-chart-surface) 0%, #fbfdff 100%);
       }
 
       [data-tool="${TOOL_KEY}"] .vitals-empty {
-        padding: 16px;
-        color: #6c757d;
+        padding: 18px;
+        color: var(--vitals-muted);
         font-size: 14px;
       }
 
@@ -331,15 +416,50 @@ export function render() {
         position: fixed;
         z-index: 9999;
         max-width: 360px;
-        padding: 8px 10px;
-        border-radius: 8px;
-        background: rgba(33, 37, 41, 0.94);
+        padding: 9px 11px;
+        border-radius: 10px;
+        background: rgba(15, 23, 42, 0.94);
         color: #fff;
         font-size: 12px;
         line-height: 1.45;
         pointer-events: none;
         display: none;
         white-space: pre-wrap;
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.22);
+      }
+
+      [data-tool="${TOOL_KEY}"] .vitals-point-hit {
+        cursor: pointer;
+      }
+
+      [data-tool="${TOOL_KEY}"] .vitals-point-dot {
+        opacity: 0.62;
+        transition: r 0.12s ease, opacity 0.12s ease, stroke-width 0.12s ease;
+      }
+
+      [data-tool="${TOOL_KEY}"] .vitals-point-dot[data-vitals-active="true"] {
+        r: 8;
+        opacity: 1;
+        stroke-width: 3;
+      }
+
+      [data-tool="${TOOL_KEY}"] .vitals-bp-bar {
+        transition: stroke-width 0.12s ease, opacity 0.12s ease;
+      }
+
+      [data-tool="${TOOL_KEY}"] .vitals-bp-bar[data-vitals-active="true"] {
+        stroke-width: 11;
+        opacity: 0.65;
+      }
+
+      [data-tool="${TOOL_KEY}"] .vitals-hover-line {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.08s ease;
+      }
+
+      [data-tool="${TOOL_KEY}"] .vitals-hover-line[data-vitals-active="true"] {
+        opacity: 0.95;
       }
 
 
@@ -532,11 +652,25 @@ export function render() {
         cursor: grabbing;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-date-presets {
+      [data-tool="${TOOL_KEY}"] .vitals-date-window-controls,
+      [data-tool="${TOOL_KEY}"] .vitals-date-pager {
         display: flex;
         flex-wrap: wrap;
+        align-items: center;
         gap: 6px;
         margin-top: 8px;
+      }
+
+      [data-tool="${TOOL_KEY}"] .vitals-date-control-label,
+      [data-tool="${TOOL_KEY}"] .vitals-page-label {
+        color: #495057;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      [data-tool="${TOOL_KEY}"] .vitals-btn:disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
       }
 
       [data-tool="${TOOL_KEY}"] .vitals-date-filter-footer {
@@ -623,9 +757,13 @@ export function render() {
             placeholder="貼上 vitals raw data..."
           ></textarea>
 
+          <div class="vitals-param-help">
+            貼上或輸入資料後會自動解析；大量資料會延遲短暫時間後再更新，避免輸入時卡頓。
+          </div>
+
           <div class="vitals-controls">
             <button type="button" class="vitals-btn" data-vitals-parse>
-              Parse
+              Parse now
             </button>
 
             <button type="button" class="vitals-btn" data-vitals-clear>
@@ -662,69 +800,7 @@ export function render() {
             Y min / Y max 有填值時會固定 Y 軸；清空其中一格則回到自動縮放。Y 間距清空則自動產生格線。Ref min / Ref max 清空則不顯示半透明參考區間。
           </div>
 
-          <div class="vitals-date-filter" data-vitals-date-filter hidden>
-            <h4>顯示區間</h4>
 
-            <div class="vitals-date-input-grid">
-              <label class="vitals-date-filter-label">
-                開始時間
-                <input
-                  type="datetime-local"
-                  class="vitals-date-input"
-                  data-vitals-time-start
-                >
-              </label>
-
-              <label class="vitals-date-filter-label">
-                結束時間
-                <input
-                  type="datetime-local"
-                  class="vitals-date-input"
-                  data-vitals-time-end
-                >
-              </label>
-            </div>
-
-
-            <div class="vitals-minimap-wrap" data-vitals-minimap-wrap hidden>
-              <div class="vitals-minimap-title">
-                <span>住院全程 Mini Map</span>
-                <span>拖曳灰色區塊選擇顯示範圍</span>
-              </div>
-              <div class="vitals-minimap" data-vitals-minimap></div>
-            </div>
-
-            <div class="vitals-range-slider" data-vitals-range-slider>
-              <div class="vitals-range-track"></div>
-              <div class="vitals-range-selection" data-vitals-range-selection></div>
-              <input type="range" data-vitals-range-start aria-label="顯示區間開始時間">
-              <input type="range" data-vitals-range-end aria-label="顯示區間結束時間">
-            </div>
-
-            <div class="vitals-date-filter-footer">
-              <span class="vitals-range-label" data-vitals-range-label>全部資料</span>
-              <div class="vitals-date-presets">
-                <button type="button" class="vitals-btn" data-vitals-time-preset="24h">
-                  最近 24h
-                </button>
-                <button type="button" class="vitals-btn" data-vitals-time-preset="48h">
-                  最近 48h
-                </button>
-                <button type="button" class="vitals-btn" data-vitals-time-preset="7d">
-                  最近 7d
-                </button>
-                <button type="button" class="vitals-btn" data-vitals-time-preset="14d">
-                  最近 14d
-                </button>
-                <button type="button" class="vitals-btn" data-vitals-time-preset="30d">
-                  最近 30d
-                </button>
-                <button type="button" class="vitals-btn" data-vitals-time-reset>
-                  全部資料
-                </button>
-              </div>
-            </div>
-          </div>
 
           <div class="vitals-parameter-table-wrap">
             <table class="vitals-parameter-table">
@@ -818,6 +894,87 @@ export function render() {
       </section>
 
       <section class="vitals-chart-section">
+        <div class="vitals-date-filter" data-vitals-date-filter hidden>
+          <h4>時間軸控制</h4>
+
+          <div class="vitals-date-input-grid">
+            <label class="vitals-date-filter-label">
+              開始時間
+              <input
+                type="datetime-local"
+                class="vitals-date-input"
+                data-vitals-time-start
+              >
+            </label>
+
+            <label class="vitals-date-filter-label">
+              結束時間
+              <input
+                type="datetime-local"
+                class="vitals-date-input"
+                data-vitals-time-end
+              >
+            </label>
+          </div>
+
+
+          <div class="vitals-minimap-wrap" data-vitals-minimap-wrap hidden>
+            <div class="vitals-minimap-title">
+              <span>住院全程 Mini Map</span>
+              <span>拖曳灰色區塊選擇顯示範圍</span>
+            </div>
+            <div class="vitals-minimap" data-vitals-minimap></div>
+          </div>
+
+          <div class="vitals-range-slider" data-vitals-range-slider>
+            <div class="vitals-range-track"></div>
+            <div class="vitals-range-selection" data-vitals-range-selection></div>
+            <input type="range" data-vitals-range-start aria-label="顯示區間開始時間">
+            <input type="range" data-vitals-range-end aria-label="顯示區間結束時間">
+          </div>
+
+          <div class="vitals-date-filter-footer">
+            <span class="vitals-range-label" data-vitals-range-label>全部資料</span>
+            <div class="vitals-date-window-controls">
+              <span class="vitals-date-control-label">每頁顯示</span>
+              <button type="button" class="vitals-btn" data-vitals-window-size="24h">
+                24h
+              </button>
+              <button type="button" class="vitals-btn" data-vitals-window-size="48h">
+                48h
+              </button>
+              <button type="button" class="vitals-btn" data-vitals-window-size="7d">
+                7d
+              </button>
+              <button type="button" class="vitals-btn" data-vitals-window-size="14d">
+                14d
+              </button>
+              <button type="button" class="vitals-btn" data-vitals-window-size="30d">
+                30d
+              </button>
+              <button type="button" class="vitals-btn" data-vitals-window-size="all">
+                全部
+              </button>
+            </div>
+
+            <div class="vitals-date-pager">
+              <button type="button" class="vitals-btn" data-vitals-page-action="first">
+                第一頁
+              </button>
+              <button type="button" class="vitals-btn" data-vitals-page-action="prev">
+                上一頁
+              </button>
+              <button type="button" class="vitals-btn" data-vitals-page-action="next">
+                下一頁
+              </button>
+              <button type="button" class="vitals-btn" data-vitals-page-action="last">
+                最後一頁
+              </button>
+              <span class="vitals-page-label" data-vitals-page-label></span>
+            </div>
+          </div>
+        </div>
+
         <div class="vitals-summary" data-vitals-summary></div>
 
         <div class="vitals-chart-wrap">
@@ -841,6 +998,7 @@ export function bind(container) {
   const root = getRoot(container);
   if (!root) return;
 
+  observeVitalsResize(root);
   renderAll(root);
 }
 
@@ -902,6 +1060,7 @@ function handleVitalsPointerDown(event) {
     state.dateFilter.endTime = timestamp;
   }
 
+  updateDateFilterPageSizeFromCurrentRange();
   syncDateFilterControls(root);
   renderAll(root);
 }
@@ -924,6 +1083,7 @@ function handleVitalsPointerMove(event) {
     state.dateFilter.endTime = clampDateFilterTime(Math.max(anchorTime, timestamp));
   }
 
+  updateDateFilterPageSizeFromCurrentRange();
   syncDateFilterControls(root);
   renderAll(root);
 }
@@ -973,6 +1133,8 @@ function handleVitalsClick(event) {
     const root = parseBtn.closest(`[data-tool="${TOOL_KEY}"]`);
     if (!root) return;
 
+    clearVitalsAutoParseTimer();
+
     const input = root.querySelector("[data-vitals-input]");
     state.rawInput = input?.value || "";
 
@@ -1010,14 +1172,27 @@ function handleVitalsClick(event) {
     return;
   }
 
-  const timePresetBtn = target.closest("[data-vitals-time-preset]");
-  if (timePresetBtn) {
+  const windowSizeBtn = target.closest("[data-vitals-window-size]");
+  if (windowSizeBtn) {
     event.preventDefault();
 
-    const root = timePresetBtn.closest(`[data-tool="${TOOL_KEY}"]`);
+    const root = windowSizeBtn.closest(`[data-tool="${TOOL_KEY}"]`);
     if (!root) return;
 
-    applyDateFilterPreset(timePresetBtn.dataset.vitalsTimePreset);
+    applyDateFilterWindowSize(windowSizeBtn.dataset.vitalsWindowSize);
+    syncDateFilterControls(root);
+    renderAll(root);
+    return;
+  }
+
+  const pageActionBtn = target.closest("[data-vitals-page-action]");
+  if (pageActionBtn) {
+    event.preventDefault();
+
+    const root = pageActionBtn.closest(`[data-tool="${TOOL_KEY}"]`);
+    if (!root) return;
+
+    moveDateFilterPage(pageActionBtn.dataset.vitalsPageAction);
     syncDateFilterControls(root);
     renderAll(root);
     return;
@@ -1030,6 +1205,7 @@ function handleVitalsClick(event) {
     const root = timeResetBtn.closest(`[data-tool="${TOOL_KEY}"]`);
     if (!root) return;
 
+    state.dateFilter.pageSizeMs = null;
     resetDateFilterToFullRange();
     syncDateFilterControls(root);
     renderAll(root);
@@ -1043,6 +1219,8 @@ function handleVitalsClick(event) {
     const root = clearBtn.closest(`[data-tool="${TOOL_KEY}"]`);
     if (!root) return;
 
+    clearVitalsAutoParseTimer();
+
     const input = root.querySelector("[data-vitals-input]");
     if (input) input.value = "";
 
@@ -1054,6 +1232,7 @@ function handleVitalsClick(event) {
       maxTime: null,
       startTime: null,
       endTime: null,
+      pageSizeMs: null,
     };
 
     syncDateFilterControls(root);
@@ -1064,6 +1243,15 @@ function handleVitalsClick(event) {
 function handleVitalsChange(event) {
   const target = event.target;
   if (!(target instanceof Element)) return;
+
+  const rawInput = target.closest("[data-vitals-input]");
+  if (rawInput) {
+    const root = rawInput.closest(`[data-tool="${TOOL_KEY}"]`);
+    if (!root) return;
+
+    scheduleVitalsAutoParse(root, rawInput.value);
+    return;
+  }
 
   const strategySelect = target.closest("[data-vitals-duplicate-strategy]");
   if (strategySelect) {
@@ -1111,6 +1299,7 @@ function handleVitalsChange(event) {
       state.dateFilter.startTime = state.dateFilter.minTime;
     }
 
+    updateDateFilterPageSizeFromCurrentRange();
     syncDateFilterControls(root);
     renderAll(root);
     return;
@@ -1131,6 +1320,7 @@ function handleVitalsChange(event) {
       state.dateFilter.endTime = state.dateFilter.maxTime;
     }
 
+    updateDateFilterPageSizeFromCurrentRange();
     syncDateFilterControls(root);
     renderAll(root);
     return;
@@ -1146,6 +1336,7 @@ function handleVitalsChange(event) {
       state.dateFilter.endTime = state.dateFilter.startTime;
     }
 
+    updateDateFilterPageSizeFromCurrentRange();
     syncDateFilterControls(root);
     renderAll(root);
     return;
@@ -1161,6 +1352,7 @@ function handleVitalsChange(event) {
       state.dateFilter.startTime = state.dateFilter.endTime;
     }
 
+    updateDateFilterPageSizeFromCurrentRange();
     syncDateFilterControls(root);
     renderAll(root);
     return;
@@ -1200,6 +1392,59 @@ function getRoot(container) {
   }
 
   return container.querySelector?.(`[data-tool="${TOOL_KEY}"]`);
+}
+
+function observeVitalsResize(root) {
+  if (typeof window === "undefined") return;
+
+  const chartBody = root.querySelector("[data-vitals-chart]");
+  const observedEl = chartBody || root;
+
+  const scheduleResponsiveRender = () => {
+    const currentWidth = getChartContainerWidth(root);
+
+    if (currentWidth === vitalsLastObservedWidth) return;
+    vitalsLastObservedWidth = currentWidth;
+
+    if (vitalsResizeFrame) cancelAnimationFrame(vitalsResizeFrame);
+
+    clearVitalsChart(root);
+
+    vitalsResizeFrame = requestAnimationFrame(() => {
+      vitalsResizeFrame = null;
+      renderAll(root);
+    });
+  };
+
+  vitalsLastObservedWidth = getChartContainerWidth(root);
+
+  if (typeof ResizeObserver === "undefined") {
+    window.addEventListener("resize", scheduleResponsiveRender, { passive: true });
+    return;
+  }
+
+  if (vitalsResizeObserver) {
+    vitalsResizeObserver.disconnect();
+  }
+
+  vitalsResizeObserver = new ResizeObserver(scheduleResponsiveRender);
+  vitalsResizeObserver.observe(observedEl);
+}
+
+function getChartContainerWidth(root) {
+  const chartEl = root.querySelector("[data-vitals-chart]");
+  const rect = chartEl?.getBoundingClientRect?.();
+  const width = rect?.width || chartEl?.clientWidth || root.clientWidth || 820;
+
+  return Math.max(320, Math.floor(width));
+}
+
+function clearVitalsChart(root) {
+  const chartEl = root.querySelector("[data-vitals-chart]");
+  const metaEl = root.querySelector("[data-vitals-chart-meta]");
+
+  if (chartEl) chartEl.innerHTML = "";
+  if (metaEl) metaEl.textContent = "";
 }
 
 
@@ -1379,6 +1624,40 @@ function normalizeBandOpacity(value) {
  * Main flow
  * ----------------------------------------------------- */
 
+function scheduleVitalsAutoParse(root, value) {
+  state.rawInput = value || "";
+
+  clearVitalsAutoParseTimer();
+
+  if (!state.rawInput.trim()) {
+    state.rows = [];
+    state.points = [];
+    state.dateFilter = {
+      minTime: null,
+      maxTime: null,
+      startTime: null,
+      endTime: null,
+      pageSizeMs: null,
+    };
+
+    syncDateFilterControls(root);
+    renderAll(root);
+    return;
+  }
+
+  vitalsAutoParseTimer = setTimeout(() => {
+    vitalsAutoParseTimer = null;
+    parseAndRender(root);
+  }, VITALS_AUTO_PARSE_DELAY_MS);
+}
+
+function clearVitalsAutoParseTimer() {
+  if (!vitalsAutoParseTimer) return;
+
+  clearTimeout(vitalsAutoParseTimer);
+  vitalsAutoParseTimer = null;
+}
+
 function parseAndRender(root) {
   const parsedRows = parseVitalsRaw(state.rawInput);
 
@@ -1387,7 +1666,7 @@ function parseAndRender(root) {
   state.rows = annotateVitalsRows(parsedRows);
 
   rebuildPoints();
-  resetDateFilterToFullRange();
+  resetDateFilterToDefaultWindow();
   syncDateFilterControls(root);
   renderAll(root);
 }
@@ -1777,6 +2056,7 @@ function syncDateFilterToPoints(reset = false) {
       maxTime: null,
       startTime: null,
       endTime: null,
+      pageSizeMs: null,
     };
     return;
   }
@@ -1808,25 +2088,191 @@ function resetDateFilterToFullRange() {
   syncDateFilterToPoints(true);
 }
 
-function applyDateFilterPreset(preset) {
+function resetDateFilterToDefaultWindow() {
+  syncDateFilterToPoints(true);
+
+  const duration = VITALS_TIME_WINDOW_OPTIONS[VITALS_DEFAULT_WINDOW_SIZE];
+  const { minTime, maxTime } = state.dateFilter;
+
+  if (!Number.isFinite(duration) || !Number.isFinite(minTime) || !Number.isFinite(maxTime)) {
+    return;
+  }
+
+  const span = maxTime - minTime;
+
+  if (!Number.isFinite(span) || span <= duration) {
+    state.dateFilter.pageSizeMs = null;
+    return;
+  }
+
+  const start = VITALS_DEFAULT_WINDOW_ANCHOR === "end"
+    ? maxTime - duration
+    : minTime;
+
+  setDateFilterWindowByStart(start, duration);
+}
+
+function applyDateFilterWindowSize(size) {
   syncDateFilterToPoints(false);
 
-  const { minTime, maxTime } = state.dateFilter;
+  const { minTime, maxTime, startTime } = state.dateFilter;
   if (!Number.isFinite(minTime) || !Number.isFinite(maxTime)) return;
 
-  const presetHours = {
-    "24h": 24,
-    "48h": 48,
-    "7d": 24 * 7,
-    "14d": 24 * 14,
-    "30d": 24 * 30,
-  };
+  if (size === "all") {
+    state.dateFilter.pageSizeMs = null;
+    resetDateFilterToFullRange();
+    return;
+  }
 
-  const hours = presetHours[preset];
-  if (!Number.isFinite(hours)) return;
+  const duration = VITALS_TIME_WINDOW_OPTIONS[size];
+  if (!Number.isFinite(duration) || duration <= 0) return;
 
-  state.dateFilter.endTime = maxTime;
-  state.dateFilter.startTime = Math.max(minTime, maxTime - hours * 36e5);
+  state.dateFilter.pageSizeMs = duration;
+
+  const anchorStart = Number.isFinite(startTime) ? startTime : minTime;
+  setDateFilterWindowByStart(anchorStart, duration);
+}
+
+function moveDateFilterPage(action) {
+  syncDateFilterToPoints(false);
+
+  const { minTime, maxTime, startTime } = state.dateFilter;
+  const windowMs = getActiveDateFilterWindowMs();
+
+  if (!Number.isFinite(minTime) || !Number.isFinite(maxTime)) return;
+  if (!Number.isFinite(windowMs) || windowMs <= 0) return;
+
+  let nextStart = Number.isFinite(startTime) ? startTime : minTime;
+
+  if (action === "first") {
+    nextStart = minTime;
+  } else if (action === "prev") {
+    nextStart -= windowMs;
+  } else if (action === "next") {
+    nextStart += windowMs;
+  } else if (action === "last") {
+    nextStart = maxTime - windowMs;
+  }
+
+  setDateFilterWindowByStart(nextStart, windowMs);
+}
+
+function setDateFilterWindowByStart(start, duration) {
+  const { minTime, maxTime } = state.dateFilter;
+
+  if (!Number.isFinite(minTime) || !Number.isFinite(maxTime)) return;
+
+  const span = maxTime - minTime;
+  const windowMs = Math.max(60 * 1000, Number(duration));
+
+  if (!Number.isFinite(windowMs) || windowMs >= span) {
+    state.dateFilter.pageSizeMs = null;
+    resetDateFilterToFullRange();
+    return;
+  }
+
+  const maxStart = maxTime - windowMs;
+  const clampedStart = Math.max(minTime, Math.min(Number(start), maxStart));
+
+  state.dateFilter.startTime = clampedStart;
+  state.dateFilter.endTime = clampedStart + windowMs;
+  state.dateFilter.pageSizeMs = windowMs;
+}
+
+function getActiveDateFilterWindowMs() {
+  const { minTime, maxTime, startTime, endTime, pageSizeMs } = state.dateFilter;
+
+  if (!Number.isFinite(minTime) || !Number.isFinite(maxTime)) return null;
+
+  const span = maxTime - minTime;
+  const configuredWindow = Number(pageSizeMs);
+
+  if (Number.isFinite(configuredWindow) && configuredWindow > 0 && configuredWindow < span) {
+    return configuredWindow;
+  }
+
+  if (!Number.isFinite(startTime) || !Number.isFinite(endTime)) return null;
+
+  const currentWindow = Math.abs(endTime - startTime);
+  if (!Number.isFinite(currentWindow) || currentWindow <= 0 || currentWindow >= span) return null;
+
+  return currentWindow;
+}
+
+function updateDateFilterPageSizeFromCurrentRange() {
+  const { minTime, maxTime, startTime, endTime } = state.dateFilter;
+
+  if (!Number.isFinite(minTime) || !Number.isFinite(maxTime)) {
+    state.dateFilter.pageSizeMs = null;
+    return;
+  }
+
+  if (!Number.isFinite(startTime) || !Number.isFinite(endTime)) {
+    state.dateFilter.pageSizeMs = null;
+    return;
+  }
+
+  const span = maxTime - minTime;
+  const currentWindow = Math.abs(endTime - startTime);
+
+  state.dateFilter.pageSizeMs = currentWindow > 0 && currentWindow < span
+    ? currentWindow
+    : null;
+}
+
+function getDateFilterPageLabel() {
+  const { minTime, maxTime, startTime, endTime } = state.dateFilter;
+  const windowMs = getActiveDateFilterWindowMs();
+
+  if (!Number.isFinite(minTime) || !Number.isFinite(maxTime)) return "";
+  if (!Number.isFinite(startTime) || !Number.isFinite(endTime)) return "";
+  if (!Number.isFinite(windowMs)) return "全部資料";
+
+  const span = maxTime - minTime;
+  const pageCount = Math.max(1, Math.ceil(span / windowMs));
+  const pageIndex = Math.max(1, Math.min(pageCount, Math.floor((Math.min(startTime, endTime) - minTime) / windowMs) + 1));
+
+  return `第 ${pageIndex} / ${pageCount} 頁 · 每頁 ${formatDurationLabel(windowMs)}`;
+}
+
+function syncDatePagerControls(root) {
+  const { minTime, maxTime, startTime, endTime } = state.dateFilter;
+  const windowMs = getActiveDateFilterWindowMs();
+  const pageLabel = root.querySelector("[data-vitals-page-label]");
+  const pageButtons = root.querySelectorAll("[data-vitals-page-action]");
+  const windowButtons = root.querySelectorAll("[data-vitals-window-size]");
+
+  const canPage = Number.isFinite(minTime) &&
+    Number.isFinite(maxTime) &&
+    Number.isFinite(startTime) &&
+    Number.isFinite(endTime) &&
+    Number.isFinite(windowMs) &&
+    windowMs > 0 &&
+    windowMs < maxTime - minTime;
+
+  const atStart = canPage && Math.min(startTime, endTime) <= minTime + 30 * 1000;
+  const atEnd = canPage && Math.max(startTime, endTime) >= maxTime - 30 * 1000;
+
+  pageButtons.forEach(button => {
+    const action = button.dataset.vitalsPageAction;
+    button.disabled = !canPage ||
+      ((action === "first" || action === "prev") && atStart) ||
+      ((action === "next" || action === "last") && atEnd);
+  });
+
+  windowButtons.forEach(button => {
+    const size = button.dataset.vitalsWindowSize;
+    const duration = VITALS_TIME_WINDOW_OPTIONS[size];
+    const active = size === "all"
+      ? !Number.isFinite(windowMs)
+      : Number.isFinite(windowMs) && Number.isFinite(duration) && Math.abs(windowMs - duration) < 60 * 1000;
+
+    button.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+
+  if (pageLabel) {
+    pageLabel.textContent = getDateFilterPageLabel();
+  }
 }
 
 function clampDateFilterTime(timestamp) {
@@ -1869,6 +2315,7 @@ function syncDateFilterControls(root) {
   const rangeEnd = root.querySelector("[data-vitals-range-end]");
   const rangeSelection = root.querySelector("[data-vitals-range-selection]");
   const label = root.querySelector("[data-vitals-range-label]");
+  const pageLabel = root.querySelector("[data-vitals-page-label]");
   const miniMapWrap = root.querySelector("[data-vitals-minimap-wrap]");
   const miniMap = root.querySelector("[data-vitals-minimap]");
 
@@ -1881,6 +2328,8 @@ function syncDateFilterControls(root) {
     if (startInput) startInput.value = "";
     if (endInput) endInput.value = "";
     if (label) label.textContent = "全部資料";
+    if (pageLabel) pageLabel.textContent = "";
+    root.querySelectorAll("[data-vitals-page-action]").forEach(button => { button.disabled = true; });
     if (miniMapWrap) miniMapWrap.hidden = true;
     if (miniMap) miniMap.innerHTML = "";
     return;
@@ -1922,8 +2371,12 @@ function syncDateFilterControls(root) {
   }
 
   if (label) {
-    label.textContent = `${formatDateTime(startTime)} – ${formatDateTime(endTime)}`;
+    const pageSize = getActiveDateFilterWindowMs();
+    const pageText = Number.isFinite(pageSize) ? `（每頁 ${formatDurationLabel(pageSize)}）` : "";
+    label.textContent = `${formatDateTime(startTime)} – ${formatDateTime(endTime)} ${pageText}`.trim();
   }
+
+  syncDatePagerControls(root);
 
   if (miniMap) {
     miniMap.innerHTML = renderVitalsMiniMap();
@@ -2080,8 +2533,7 @@ function renderChart(root) {
 
   const singleVitalKeys = visibleKeys.filter(key => !excludedFromSingleCharts.has(key));
 
-  const spanHours = Math.max(1, (maxTime - minTime) / 36e5);
-  const sharedWidth = Math.max(820, Math.ceil(spanHours * 28));
+  const sharedWidth = getChartContainerWidth(root);
 
   const charts = [];
 
@@ -2134,8 +2586,74 @@ function renderChart(root) {
 
   chartEl.innerHTML = charts.join("");
 
+  bindChartHoverGuides(root);
   bindChartTooltips(root);
 }
+
+function getVitalChartColor(key) {
+  return VITAL_CHART_COLORS[key] || "#495057";
+}
+
+function renderPlotBackground(margin, plotW, plotH) {
+  return `
+    <rect
+      x="${margin.left}"
+      y="${margin.top}"
+      width="${plotW}"
+      height="${plotH}"
+      rx="10"
+      fill="var(--vitals-plot-bg)"
+      stroke="var(--vitals-chart-frame)"
+      stroke-width="1"
+    />
+  `;
+}
+
+function renderChartLegend(items) {
+  if (!items?.length) return "";
+
+  return `
+    <g transform="translate(12 24)">
+      ${items.map((item, index) => `
+        <g transform="translate(${index * 112} 0)">
+          <circle cx="0" cy="0" r="4" fill="${item.color}" />
+          <text x="9" y="4" font-size="11" fill="var(--vitals-chart-axis)">
+            ${escapeSVG(item.label)}
+          </text>
+        </g>
+      `).join("")}
+    </g>
+  `;
+}
+
+function getUniqueTimestamps(points) {
+  return [...new Set(
+    (points || [])
+      .map(point => point.timestamp)
+      .filter(timestamp => Number.isFinite(timestamp))
+  )].sort((a, b) => a - b);
+}
+
+function renderHoverTimestampGuides(points, margin, plotH, xScale) {
+  return getUniqueTimestamps(points).map(timestamp => {
+    const x = xScale(timestamp);
+
+    return `
+      <line
+        class="vitals-hover-line"
+        x1="${x}"
+        y1="${margin.top}"
+        x2="${x}"
+        y2="${margin.top + plotH}"
+        stroke="var(--vitals-chart-axis)"
+        stroke-width="1.4"
+        stroke-dasharray="4 4"
+        data-vitals-timestamp="${timestamp}"
+      />
+    `;
+  }).join("");
+}
+
 function renderBPCompositeChart({
   title,
   systolicKey,
@@ -2154,13 +2672,15 @@ function renderBPCompositeChart({
 
   if (!points.length) return "";
 
-  const height = showXAxis ? 230 : 190;
+  const height = showXAxis ? 248 : 205;
+  const barColor = getVitalChartColor(chartBandKey);
+  const meanColor = getVitalChartColor(meanKey);
 
   const margin = {
-    top: 28,
-    right: 24,
-    bottom: showXAxis ? 55 : 18,
-    left: 46,
+    top: 40,
+    right: 26,
+    bottom: showXAxis ? 58 : 20,
+    left: 50,
   };
 
   const plotW = width - margin.left - margin.right;
@@ -2183,9 +2703,15 @@ function renderBPCompositeChart({
 
   const grouped = groupBPPointsByTime(points, systolicKey, diastolicKey, meanKey);
 
-  const band = renderNormalBand(bandRange, yMin, yMax, margin, plotW, yScale);
+  const plotBackground = renderPlotBackground(margin, plotW, plotH);
+  const band = renderNormalBand(bandRange, yMin, yMax, margin, plotW, yScale, barColor);
   const yTicks = renderYTicks(yMin, yMax, margin, plotW, yScale, axisSetting?.grid);
   const xTicks = renderXTicks(minTime, maxTime, margin, plotH, xScale, showXAxis);
+  const hoverGuides = renderHoverTimestampGuides(allPoints, margin, plotH, xScale);
+  const legend = renderChartLegend([
+    { label: `${VITAL_META[systolicKey]?.label || systolicKey}/${VITAL_META[diastolicKey]?.label || diastolicKey}`, color: barColor },
+    { label: VITAL_META[meanKey]?.label || meanKey, color: meanColor },
+  ]);
 
   const meanPoints = grouped
     .filter(item => Number.isFinite(item.mean))
@@ -2210,14 +2736,16 @@ function renderBPCompositeChart({
 
     return `
       <line
+        class="vitals-bp-bar"
         x1="${x}"
         y1="${ySys}"
         x2="${x}"
         y2="${yDia}"
-        stroke="currentColor"
-        stroke-width="7"
+        stroke="${barColor}"
+        stroke-width="8"
         stroke-linecap="round"
-        opacity="0.34"
+        opacity="0.32"
+        data-vitals-timestamp="${item.timestamp}"
       />
     `;
   }).join("");
@@ -2225,44 +2753,75 @@ function renderBPCompositeChart({
   const meanDots = meanPoints.map(item => {
     const x = xScale(item.timestamp);
     const y = yScale(item.mean);
+    const point = item.meanPoint;
+
+    const dotRadius = 2;
 
     return `
-      <circle
-        cx="${x}"
-        cy="${y}"
-        r="3.8"
-        fill="#fff"
-        stroke="currentColor"
-        stroke-width="1.8"
-        data-vitals-point="${encodeURIComponent(JSON.stringify(item.meanPoint))}"
-      />
+      <g data-vitals-timestamp="${item.timestamp}">
+        <circle
+          class="vitals-point-hit"
+          cx="${x}"
+          cy="${y}"
+          r="9"
+          fill="transparent"
+          stroke="transparent"
+          data-vitals-point="${encodeURIComponent(JSON.stringify(point))}"
+          data-vitals-timestamp="${item.timestamp}"
+        />
+
+        <circle
+          class="vitals-point-dot"
+          cx="${x}"
+          cy="${y}"
+          r="${dotRadius}"
+          fill="${meanColor}"
+          stroke="none"
+          stroke-width="0"
+          pointer-events="none"
+          data-vitals-timestamp="${item.timestamp}"
+        />
+      </g>
     `;
   }).join("");
 
   return `
     <svg
-      width="${width}"
+      class="vitals-chart-svg"
+      width="100%"
       height="${height}"
       viewBox="0 0 ${width} ${height}"
       role="img"
-      style="display:block; border-bottom:1px solid #6c757d2e;"
+      data-vitals-chart-min-time="${minTime}"
+      data-vitals-chart-max-time="${maxTime}"
+      data-vitals-chart-plot-left="${margin.left}"
+      data-vitals-chart-plot-width="${plotW}"
+      style="display:block; border-bottom:1px solid var(--vitals-border);"
     >
-      <text x="12" y="18" font-size="13" font-weight="700" fill="currentColor">
+      <circle cx="12" cy="16" r="4" fill="${meanColor}" />
+      <text x="23" y="20" font-size="13" font-weight="800" fill="var(--vitals-chart-title)">
         ${escapeSVG(title)} (mmHg)
       </text>
+      ${legend}
 
+      ${plotBackground}
       ${band}
       ${yTicks}
       ${xTicks}
+      ${hoverGuides}
 
       ${bars}
 
-      <path
-        d="${meanLinePath}"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.9"
-      />
+      ${meanLinePath ? `
+        <path
+          d="${meanLinePath}"
+          fill="none"
+          stroke="${meanColor}"
+          stroke-width="2.2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      ` : ""}
 
       ${meanDots}
     </svg>
@@ -2305,13 +2864,14 @@ function renderSingleVitalChart(key, allPoints, minTime, maxTime, width, showXAx
 
   const meta = VITAL_META[key] || { label: key, unit: "", normal: null };
 
-  const height = showXAxis ? 210 : 175;
+  const height = showXAxis ? 224 : 188;
+  const accentColor = getVitalChartColor(key);
 
   const margin = {
-    top: 24,
-    right: 24,
-    bottom: showXAxis ? 55 : 18,
-    left: 46,
+    top: 34,
+    right: 26,
+    bottom: showXAxis ? 58 : 20,
+    left: 50,
   };
 
   const plotW = width - margin.left - margin.right;
@@ -2333,48 +2893,78 @@ function renderSingleVitalChart(key, allPoints, minTime, maxTime, width, showXAx
   };
 
   const linePath = buildLinePath(points, xScale, yScale);
-  const normalBand = renderNormalBand(bandRange, yMin, yMax, margin, plotW, yScale);
+  const plotBackground = renderPlotBackground(margin, plotW, plotH);
+  const normalBand = renderNormalBand(bandRange, yMin, yMax, margin, plotW, yScale, accentColor);
   const yTicks = renderYTicks(yMin, yMax, margin, plotW, yScale, axisSetting?.grid);
   const xTicks = renderXTicks(minTime, maxTime, margin, plotH, xScale, showXAxis);
+  const hoverGuides = renderHoverTimestampGuides(allPoints, margin, plotH, xScale);
 
   const circles = points.map(point => {
     const x = xScale(point.timestamp);
     const y = yScale(point.value);
 
-    const isFlagged = point.flags.some(flag =>
-      flag.endsWith(`_${key}`) || flag.includes(key)
-    );
+    const dotRadius = 2;
 
     return `
-      <circle
-        cx="${x}"
-        cy="${y}"
-        r="${point.duplicate ? 4.2 : 3.4}"
-        fill="#fff"
-        stroke="currentColor"
-        stroke-width="${isFlagged ? 2.4 : 1.4}"
-        data-vitals-point="${encodeURIComponent(JSON.stringify(point))}"
-      />
+      <g data-vitals-timestamp="${point.timestamp}">
+        <circle
+          class="vitals-point-hit"
+          cx="${x}"
+          cy="${y}"
+          r="9"
+          fill="transparent"
+          stroke="transparent"
+          data-vitals-point="${encodeURIComponent(JSON.stringify(point))}"
+          data-vitals-timestamp="${point.timestamp}"
+        />
+
+        <circle
+          class="vitals-point-dot"
+          cx="${x}"
+          cy="${y}"
+          r="${dotRadius}"
+          fill="${accentColor}"
+          stroke="none"
+          stroke-width="0"
+          pointer-events="none"
+          data-vitals-timestamp="${point.timestamp}"
+        />
+      </g>
     `;
   }).join("");
 
   return `
     <svg
-      width="${width}"
+      class="vitals-chart-svg"
+      width="100%"
       height="${height}"
       viewBox="0 0 ${width} ${height}"
       role="img"
-      style="display:block; border-bottom:1px solid #6c757d2e;"
+      data-vitals-chart-min-time="${minTime}"
+      data-vitals-chart-max-time="${maxTime}"
+      data-vitals-chart-plot-left="${margin.left}"
+      data-vitals-chart-plot-width="${plotW}"
+      style="display:block; border-bottom:1px solid var(--vitals-border);"
     >
-      <text x="12" y="17" font-size="13" font-weight="700" fill="currentColor">
+      <circle cx="12" cy="16" r="4" fill="${accentColor}" />
+      <text x="23" y="20" font-size="13" font-weight="800" fill="var(--vitals-chart-title)">
         ${escapeSVG(meta.label)} ${meta.unit ? `(${escapeSVG(meta.unit)})` : ""}
       </text>
 
+      ${plotBackground}
       ${normalBand}
       ${yTicks}
       ${xTicks}
+      ${hoverGuides}
 
-      <path d="${linePath}" fill="none" stroke="currentColor" stroke-width="1.8" />
+      <path
+        d="${linePath}"
+        fill="none"
+        stroke="${accentColor}"
+        stroke-width="2.2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
 
       ${circles}
     </svg>
@@ -2420,7 +3010,7 @@ function buildLinePath(points, xScale, yScale) {
     .join(" ");
 }
 
-function renderNormalBand(normalRange, yMin, yMax, margin, plotW, yScale) {
+function renderNormalBand(normalRange, yMin, yMax, margin, plotW, yScale, bandColor = "var(--vitals-chart-axis)") {
   if (!normalRange) return "";
 
   const [normalMin, normalMax, opacity = 0.06] = normalRange;
@@ -2436,8 +3026,8 @@ function renderNormalBand(normalRange, yMin, yMax, margin, plotW, yScale) {
       y="${y1}"
       width="${plotW}"
       height="${Math.max(0, y2 - y1)}"
-      fill="currentColor"
-      opacity="${normalizeBandOpacity(opacity)}"
+      fill="${bandColor}"
+      opacity="${Math.max(0.08, normalizeBandOpacity(opacity))}"
     />
   `;
 }
@@ -2456,8 +3046,8 @@ function renderYTicks(yMin, yMax, margin, plotW, yScale, gridInterval = null) {
         y1="${y}"
         x2="${margin.left + plotW}"
         y2="${y}"
-        stroke="currentColor"
-        opacity="0.12"
+        stroke="var(--vitals-chart-grid)"
+        opacity="0.9"
       />
 
       <text
@@ -2465,8 +3055,8 @@ function renderYTicks(yMin, yMax, margin, plotW, yScale, gridInterval = null) {
         y="${y + 4}"
         text-anchor="end"
         font-size="11"
-        fill="currentColor"
-        opacity="0.7"
+        fill="var(--vitals-chart-axis)"
+        opacity="0.78"
       >
         ${formatNumber(value)}
       </text>
@@ -2501,8 +3091,8 @@ function renderXTicks(
         y1="${margin.top}"
         x2="${x}"
         y2="${margin.top + plotH}"
-        stroke="currentColor"
-        opacity="0.05"
+        stroke="var(--vitals-chart-grid)"
+        opacity="0.38"
       />
     `;
   }).join("");
@@ -2516,9 +3106,9 @@ function renderXTicks(
         y1="${margin.top}"
         x2="${x}"
         y2="${margin.top + plotH}"
-        stroke="currentColor"
-        opacity="0.22"
-        stroke-width="1.4"
+        stroke="var(--vitals-chart-grid)"
+        opacity="0.95"
+        stroke-width="1.2"
       />
 
       ${showLabels ? `
@@ -2528,8 +3118,8 @@ function renderXTicks(
           text-anchor="middle"
           font-size="11"
           font-weight="700"
-          fill="currentColor"
-          opacity="0.8"
+          fill="var(--vitals-chart-axis)"
+          opacity="0.86"
         >
           ${escapeSVG(
             formatDateLabel(timestamp)
@@ -2632,8 +3222,64 @@ function formatDateLabel(timestamp) {
 
 
 /* -------------------------------------------------------
- * Tooltip
+ * Tooltip / hover guides
  * ----------------------------------------------------- */
+
+function bindChartHoverGuides(root) {
+  root.querySelectorAll(".vitals-chart-svg").forEach(svg => {
+    svg.addEventListener("mousemove", event => {
+      const timestamp = getNearestChartTimestampFromEvent(event, svg);
+      if (!Number.isFinite(timestamp)) return;
+
+      highlightVitalsTimestamp(root, timestamp);
+    });
+
+    svg.addEventListener("mouseleave", () => {
+      clearVitalsTimestampHighlight(root);
+    });
+  });
+}
+
+function getNearestChartTimestampFromEvent(event, svg) {
+  const minTime = Number(svg.dataset.vitalsChartMinTime);
+  const maxTime = Number(svg.dataset.vitalsChartMaxTime);
+  const plotLeft = Number(svg.dataset.vitalsChartPlotLeft);
+  const plotW = Number(svg.dataset.vitalsChartPlotWidth);
+  const rect = svg.getBoundingClientRect();
+
+  if (!Number.isFinite(minTime) || !Number.isFinite(maxTime) || minTime === maxTime) return null;
+  if (!Number.isFinite(plotLeft) || !Number.isFinite(plotW) || plotW <= 0) return null;
+  if (!rect.width) return null;
+
+  const viewBoxWidth = svg.viewBox?.baseVal?.width || rect.width;
+  const xInSvg = ((event.clientX - rect.left) / rect.width) * viewBoxWidth;
+  const ratio = Math.max(0, Math.min(1, (xInSvg - plotLeft) / plotW));
+  const cursorTime = minTime + ratio * (maxTime - minTime);
+  const timestamps = getUniqueTimestamps(getFilteredPoints());
+
+  return findNearestTimestamp(cursorTime, timestamps);
+}
+
+function findNearestTimestamp(timestamp, timestamps) {
+  if (!timestamps.length) return null;
+
+  let low = 0;
+  let high = timestamps.length - 1;
+
+  while (low < high) {
+    const mid = Math.floor((low + high) / 2);
+    if (timestamps[mid] < timestamp) low = mid + 1;
+    else high = mid;
+  }
+
+  const next = timestamps[low];
+  const prev = timestamps[Math.max(0, low - 1)];
+
+  if (!Number.isFinite(prev)) return next;
+  if (!Number.isFinite(next)) return prev;
+
+  return Math.abs(timestamp - prev) <= Math.abs(next - timestamp) ? prev : next;
+}
 
 function bindChartTooltips(root) {
   const tooltip = root.querySelector("[data-vitals-tooltip]");
@@ -2649,6 +3295,7 @@ function bindChartTooltips(root) {
       tooltip.textContent = formatPointTooltip(point);
       tooltip.style.display = "block";
 
+      highlightVitalsTimestamp(root, point.timestamp);
       moveTooltip(event, tooltip);
     });
 
@@ -2658,8 +3305,29 @@ function bindChartTooltips(root) {
 
     el.addEventListener("mouseleave", () => {
       tooltip.style.display = "none";
+      clearVitalsTimestampHighlight(root);
     });
   });
+}
+
+function highlightVitalsTimestamp(root, timestamp) {
+  clearVitalsTimestampHighlight(root);
+
+  if (!Number.isFinite(Number(timestamp))) return;
+
+  root
+    .querySelectorAll(`[data-vitals-timestamp="${timestamp}"]`)
+    .forEach(el => {
+      el.setAttribute("data-vitals-active", "true");
+    });
+}
+
+function clearVitalsTimestampHighlight(root) {
+  root
+    .querySelectorAll("[data-vitals-active]")
+    .forEach(el => {
+      el.removeAttribute("data-vitals-active");
+    });
 }
 
 function moveTooltip(event, tooltip) {
@@ -2709,6 +3377,24 @@ function formatPointTooltip(point) {
 /* -------------------------------------------------------
  * Formatting helpers
  * ----------------------------------------------------- */
+
+function formatDurationLabel(milliseconds) {
+  const hours = milliseconds / 36e5;
+
+  if (Math.abs(hours - 24) < 0.01) return "24h";
+  if (Math.abs(hours - 48) < 0.01) return "48h";
+
+  const days = hours / 24;
+  if (Math.abs(days - Math.round(days)) < 0.01) {
+    return `${Math.round(days)}d`;
+  }
+
+  if (hours < 24) {
+    return `${Number(hours.toFixed(1))}h`;
+  }
+
+  return `${Number(days.toFixed(1))}d`;
+}
 
 function toDateTimeLocalValue(timestamp) {
   const date = new Date(timestamp);
