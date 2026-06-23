@@ -1018,12 +1018,20 @@ export function init(root) {
     let girText = ""; // GIR line for order_output (advanced only)
 
     if (version === "advanced") {
-      tpnDex = Number(els.tpnDex?.value) || 10;
-      tpnNa = Number(els.tpnNa?.value) || 40;
-      tpnK = Number(els.tpnK?.value) || 20;
-      tpnCa = Number(els.tpnCa?.value) || 20;
-      tpnP = Number(els.tpnP?.value) || 9;
-      tpnMg = Number(els.tpnMg?.value) || 4;
+      function numOrDefault(value, defaultValue) {
+        if (value == null || value.trim() === "") {
+          return defaultValue;
+        }
+        const n = Number(value);
+        return Number.isNaN(n) ? defaultValue : n;
+      }
+
+      tpnDex = numOrDefault(els.tpnDex?.value, 10);
+      tpnNa  = numOrDefault(els.tpnNa?.value, 40);
+      tpnK   = numOrDefault(els.tpnK?.value, 20);
+      tpnCa  = numOrDefault(els.tpnCa?.value, 20);
+      tpnP   = numOrDefault(els.tpnP?.value, 9);
+      tpnMg  = numOrDefault(els.tpnMg?.value, 4);
     } else {
       // keep footer placeholders stable (ions only)
       if (els.nutNa) els.nutNa.textContent = "Na ___";
