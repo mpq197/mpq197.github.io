@@ -50,6 +50,7 @@ export function render() {
               <option value="Jusomin">Jusomin</option>
               <option value="Octreotide">Octreotide</option>
               <option value="Amiodarone">Amiodarone</option>
+              <option value="Esmolol">Esmolol</option>
             </select>
 
             <input type="text" data-role="extract" class="form-control text-center" />
@@ -139,6 +140,7 @@ const drugSpecs = {
   Jusomin:           { concentration: 0.83, unit: "mEq/ml", rateUnit: "mEq/kg/hr",  decimalPlace: 1 }, //小數點待確定
   Octreotide:        { concentration: 100,  unit: "mcg/ml", rateUnit: "mcg/kg/hr",  decimalPlace: 1 }, //小數點待確定
   Amiodarone:        { concentration: 50,   unit: "mg/ml",  rateUnit: "mcg/kg/min", decimalPlace: 1 }, //小數點待確定
+  Esmolol:           { concentration: 10,   unit: "mg/ml",  rateUnit: "mcg/kg/min", decimalPlace: 2 }, //小數點待確定
 };
 
 export function init(root) {
