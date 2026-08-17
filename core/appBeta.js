@@ -14,9 +14,9 @@ const GROUPS = [
     id: "grp-oth",
     title: "測試",
     items: [
-      //{ key: "heartEchoPlane", label: "心超3D切面", module: "../tools/heartEchoPlane.js" },
+      { key: "heartEchoPlane", label: "心超3D切面", module: "../tools/heartEchoPlane.js" },
       { key: "handoff", label: "交班單", module: "../tools/handoff.js"  },
-      //{ key: "vitals", label: "生命徵象", module: "../tools/vitals.js"  },
+      { key: "vitals", label: "生命徵象", module: "../tools/vitals.js"  }
     ],
   },
 ];
