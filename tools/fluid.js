@@ -137,6 +137,10 @@ export function render() {
             <span class="input-group-text justify-content-center" style="width:15%;">PO</span>
             <select class="form-select text-center" data-role="po_hm">
               <option value="HM">HM</option>
+              <option value="HM(每餐加0.5gHMF)">HM+0.5gHMF</option>
+              <option value="HM(每餐加1gHMF)">HM+1.0gHMF</option>
+              <option value="HM(每餐加1.5gHMF)">HM+1.5gHMF</option>
+              <option value="HM(每餐加2gHMF)">HM+2.0gHMF</option>
               <option value=""></option>
             </select>
             <span class="input-group-text" style="background-color:#ffffff;">/</span>
@@ -144,6 +148,11 @@ export function render() {
               <option value="16%PF">16%PF</option>
               <option value="15%PDF">15%PDF</option>
               <option value="14%RF">14%RF</option>
+              <option value="母乳庫">母乳庫</option>
+              <option value="母乳庫(每餐加0.5gHMF)">母乳庫+0.5gHMF</option>
+              <option value="母乳庫(每餐加1gHMF)">母乳庫+1.0gHMF</option>
+              <option value="母乳庫(每餐加1.5gHMF)">母乳庫+1.5gHMF</option>
+              <option value="母乳庫(每餐加2gHMF)">母乳庫+2.0gHMF</option>
               <option value=""></option>
             </select>
             <input type="text" class="form-control text-center" data-role="po" />
