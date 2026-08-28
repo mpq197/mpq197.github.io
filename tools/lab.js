@@ -2327,6 +2327,19 @@ True\t72B530\tPCO2\tCSF\t\t\t\t45\t48\t\tmmHg\t-
     intro.start();
   });
 
+
+  // app.js 完成第二階段 restore 後，重新同步 Lab 內部 state
+  box.addEventListener("neo:restore", () => {
+    // DOM checkbox → selectedItemIdxSet
+    syncVisibleSelectedItemsFromDOM();
+
+    // 依目前恢復的選取狀態重新建立 Order
+    syncOrderTokensFromSelection({ reset: true });
+
+    rebuildOrderUI();
+    renderOutput();
+  });
+
   // ---- initial
   setOutputText("");
   ensureOrderAreaVisibility();
