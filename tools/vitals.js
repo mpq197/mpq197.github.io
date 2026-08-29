@@ -161,7 +161,9 @@ export function render() {
 
   return `
     <style>
-      [data-tool="${TOOL_KEY}"] {
+      /* Scope Vitals styles to the actual module root.
+         data-tool alone is also used by NeoAssist sidebar links. */
+      .vitals-root[data-tool="${TOOL_KEY}"] {
         --vitals-bg: #f6f8fb;
         --vitals-card-bg: #ffffff;
         --vitals-soft-bg: #f8fafc;
@@ -180,14 +182,14 @@ export function render() {
         color: var(--vitals-text);
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-layout {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-layout {
         display: grid;
         grid-template-columns: minmax(300px, 390px) 1fr;
         gap: 14px;
         align-items: start;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-panel {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-panel {
         border: 1px solid var(--vitals-border);
         border-radius: 14px;
         padding: 14px;
@@ -195,13 +197,13 @@ export function render() {
         box-shadow: var(--vitals-shadow);
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-panel h3 {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-panel h3 {
         margin: 0 0 10px;
         font-size: 16px;
         letter-spacing: -0.01em;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-textarea {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-textarea {
         width: 100%;
         min-height: 380px;
         resize: vertical;
@@ -216,15 +218,15 @@ export function render() {
         color: var(--vitals-text);
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-controls {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-controls {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
         margin-top: 10px;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-btn,
-      [data-tool="${TOOL_KEY}"] .vitals-select {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-btn,
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-select {
         border: 1px solid var(--vitals-border);
         border-radius: 999px;
         background: var(--vitals-soft-bg);
@@ -235,28 +237,28 @@ export function render() {
         transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-btn:hover,
-      [data-tool="${TOOL_KEY}"] .vitals-select:hover {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-btn:hover,
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-select:hover {
         background: #eef4ff;
         border-color: #b8c7dc;
         box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
         transform: translateY(-1px);
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-btn[aria-pressed="true"] {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-btn[aria-pressed="true"] {
         background: #172033;
         border-color: #172033;
         color: #fff;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-series-list {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-series-list {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
         margin-top: 10px;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-series-item {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-series-item {
         display: inline-flex;
         align-items: center;
         gap: 5px;
@@ -267,35 +269,35 @@ export function render() {
         border: 1px solid var(--vitals-border-soft);
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-band-settings,
-      [data-tool="${TOOL_KEY}"] .vitals-axis-settings {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-band-settings,
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-axis-settings {
         margin-top: 12px;
         border-top: 1px solid #6c757d2e;
         padding-top: 10px;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-band-settings h4,
-      [data-tool="${TOOL_KEY}"] .vitals-axis-settings h4 {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-band-settings h4,
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-axis-settings h4 {
         margin: 0 0 8px;
         font-size: 14px;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-band-help,
-      [data-tool="${TOOL_KEY}"] .vitals-axis-help {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-band-help,
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-axis-help {
         margin: -2px 0 8px;
         color: #6c757d;
         font-size: 12px;
         line-height: 1.45;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-band-grid,
-      [data-tool="${TOOL_KEY}"] .vitals-axis-grid {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-band-grid,
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-axis-grid {
         display: grid;
         grid-template-columns: 1fr;
         gap: 7px;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-band-row {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-band-row {
         display: grid;
         grid-template-columns: minmax(78px, 1fr) 72px 72px 72px;
         gap: 6px;
@@ -303,7 +305,7 @@ export function render() {
         font-size: 12px;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-axis-row {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-axis-row {
         display: grid;
         grid-template-columns: minmax(78px, 1fr) 76px 72px 72px 72px;
         gap: 6px;
@@ -311,16 +313,16 @@ export function render() {
         font-size: 12px;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-band-label,
-      [data-tool="${TOOL_KEY}"] .vitals-axis-label {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-band-label,
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-axis-label {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-band-input,
-      [data-tool="${TOOL_KEY}"] .vitals-axis-input,
-      [data-tool="${TOOL_KEY}"] .vitals-axis-select {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-band-input,
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-axis-input,
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-axis-select {
         width: 100%;
         box-sizing: border-box;
         border: 1px solid #ced4da;
@@ -329,21 +331,21 @@ export function render() {
         font-size: 12px;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-band-input:focus,
-      [data-tool="${TOOL_KEY}"] .vitals-axis-input:focus,
-      [data-tool="${TOOL_KEY}"] .vitals-axis-select:focus {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-band-input:focus,
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-axis-input:focus,
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-axis-select:focus {
         outline: 2px solid rgba(108, 117, 125, 0.18);
         border-color: #adb5bd;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-summary {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-summary {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
         gap: 8px;
         margin-bottom: 12px;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-summary-card {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-summary-card {
         border: 1px solid var(--vitals-border);
         border-radius: 12px;
         padding: 10px;
@@ -351,18 +353,18 @@ export function render() {
         box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-summary-card .label {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-summary-card .label {
         font-size: 12px;
         color: var(--vitals-muted);
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-summary-card .value {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-summary-card .value {
         font-size: 18px;
         font-weight: 700;
         margin-top: 2px;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-warning {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-warning {
         margin-top: 10px;
         padding: 8px 10px;
         border-radius: 8px;
@@ -372,7 +374,7 @@ export function render() {
         line-height: 1.45;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-chart-wrap {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-chart-wrap {
         border: 1px solid var(--vitals-border);
         border-radius: 16px;
         background: var(--vitals-card-bg);
@@ -380,7 +382,7 @@ export function render() {
         box-shadow: var(--vitals-shadow);
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-chart-header {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-chart-header {
         display: flex;
         justify-content: space-between;
         gap: 10px;
@@ -391,28 +393,28 @@ export function render() {
         font-weight: 700;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-chart-body {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-chart-body {
         overflow-x: hidden;
         width: 100%;
         background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-chart-body svg {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-chart-body svg {
         width: 100%;
         max-width: 100%;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-chart-svg {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-chart-svg {
         background: linear-gradient(180deg, var(--vitals-chart-surface) 0%, #fbfdff 100%);
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-empty {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-empty {
         padding: 18px;
         color: var(--vitals-muted);
         font-size: 14px;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-tooltip {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-tooltip {
         position: fixed;
         z-index: 9999;
         max-width: 360px;
@@ -428,43 +430,43 @@ export function render() {
         box-shadow: 0 14px 30px rgba(15, 23, 42, 0.22);
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-point-hit {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-point-hit {
         cursor: pointer;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-point-dot {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-point-dot {
         opacity: 0.62;
         transition: r 0.12s ease, opacity 0.12s ease, stroke-width 0.12s ease;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-point-dot[data-vitals-active="true"] {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-point-dot[data-vitals-active="true"] {
         r: 8;
         opacity: 1;
         stroke-width: 3;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-bp-bar {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-bp-bar {
         transition: stroke-width 0.12s ease, opacity 0.12s ease;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-bp-bar[data-vitals-active="true"] {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-bp-bar[data-vitals-active="true"] {
         stroke-width: 11;
         opacity: 0.65;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-hover-line {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-hover-line {
         opacity: 0;
         pointer-events: none;
         transition: opacity 0.08s ease;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-hover-line[data-vitals-active="true"] {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-hover-line[data-vitals-active="true"] {
         opacity: 0.95;
       }
 
 
 
-      [data-tool="${TOOL_KEY}"] .vitals-top-grid {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-top-grid {
         display: grid;
         grid-template-columns: minmax(320px, 420px) 1fr;
         gap: 14px;
@@ -472,26 +474,26 @@ export function render() {
         margin-bottom: 14px;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-parameter-table-wrap {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-parameter-table-wrap {
         overflow-x: auto;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-parameter-table {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-parameter-table {
         width: 100%;
         min-width: 660px;
         border-collapse: collapse;
         font-size: 12px;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-parameter-table th,
-      [data-tool="${TOOL_KEY}"] .vitals-parameter-table td {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-parameter-table th,
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-parameter-table td {
         border-bottom: 1px solid #6c757d2e;
         padding: 6px 5px;
         text-align: left;
         vertical-align: middle;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-parameter-table th {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-parameter-table th {
         color: #495057;
         font-weight: 700;
         background: #f8f9fa;
@@ -499,12 +501,12 @@ export function render() {
         top: 0;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-param-label {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-param-label {
         font-weight: 700;
         white-space: nowrap;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-param-input {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-param-input {
         width: 76px;
         box-sizing: border-box;
         border: 1px solid #ced4da;
@@ -513,19 +515,19 @@ export function render() {
         font-size: 12px;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-param-input:focus {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-param-input:focus {
         outline: 2px solid rgba(108, 117, 125, 0.18);
         border-color: #adb5bd;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-param-help {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-param-help {
         margin: 0 0 8px;
         color: #6c757d;
         font-size: 12px;
         line-height: 1.45;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-date-filter {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-date-filter {
         margin: 0 0 12px;
         border: 1px solid #6c757d2e;
         border-radius: 10px;
@@ -533,25 +535,25 @@ export function render() {
         background: #f8f9fa;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-date-filter h4 {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-date-filter h4 {
         margin: 0 0 8px;
         font-size: 14px;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-date-input-grid {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-date-input-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 8px;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-date-filter-label {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-date-filter-label {
         display: grid;
         gap: 4px;
         font-size: 12px;
         color: #495057;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-date-input {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-date-input {
         width: 100%;
         box-sizing: border-box;
         border: 1px solid #ced4da;
@@ -561,19 +563,19 @@ export function render() {
         background: #fff;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-date-input:focus {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-date-input:focus {
         outline: 2px solid rgba(108, 117, 125, 0.18);
         border-color: #adb5bd;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-range-slider {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-range-slider {
         position: relative;
         height: 34px;
         margin: 12px 0 6px;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-range-track,
-      [data-tool="${TOOL_KEY}"] .vitals-range-selection {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-range-track,
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-range-selection {
         position: absolute;
         left: 0;
         right: 0;
@@ -583,18 +585,18 @@ export function render() {
         pointer-events: none;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-range-track {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-range-track {
         background: #dee2e6;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-range-selection {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-range-selection {
         left: var(--vitals-range-left, 0%);
         right: var(--vitals-range-right, 0%);
         background: currentColor;
         opacity: 0.38;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-range-slider input[type="range"] {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-range-slider input[type="range"] {
         position: absolute;
         left: 0;
         top: 7px;
@@ -607,19 +609,19 @@ export function render() {
         -webkit-appearance: none;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-range-slider input[type="range"]::-webkit-slider-runnable-track {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-range-slider input[type="range"]::-webkit-slider-runnable-track {
         height: 6px;
         background: transparent;
         border: 0;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-range-slider input[type="range"]::-moz-range-track {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-range-slider input[type="range"]::-moz-range-track {
         height: 6px;
         background: transparent;
         border: 0;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-range-slider input[type="range"]::-webkit-slider-thumb {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-range-slider input[type="range"]::-webkit-slider-thumb {
         pointer-events: auto;
         cursor: grab;
         width: 18px;
@@ -633,7 +635,7 @@ export function render() {
         margin-top: -6px;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-range-slider input[type="range"]::-moz-range-thumb {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-range-slider input[type="range"]::-moz-range-thumb {
         pointer-events: auto;
         cursor: grab;
         width: 18px;
@@ -644,16 +646,16 @@ export function render() {
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.22);
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-range-slider input[type="range"]:active::-webkit-slider-thumb {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-range-slider input[type="range"]:active::-webkit-slider-thumb {
         cursor: grabbing;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-range-slider input[type="range"]:active::-moz-range-thumb {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-range-slider input[type="range"]:active::-moz-range-thumb {
         cursor: grabbing;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-date-window-controls,
-      [data-tool="${TOOL_KEY}"] .vitals-date-pager {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-date-window-controls,
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-date-pager {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
@@ -661,33 +663,33 @@ export function render() {
         margin-top: 8px;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-date-control-label,
-      [data-tool="${TOOL_KEY}"] .vitals-page-label {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-date-control-label,
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-page-label {
         color: #495057;
         font-size: 12px;
         line-height: 1.45;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-btn:disabled {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-btn:disabled {
         cursor: not-allowed;
         opacity: 0.45;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-date-filter-footer {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-date-filter-footer {
         display: grid;
         grid-template-columns: 1fr;
         gap: 8px;
         margin-top: 8px;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-range-label {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-range-label {
         color: #495057;
         font-size: 12px;
         line-height: 1.45;
       }
 
 
-      [data-tool="${TOOL_KEY}"] .vitals-minimap-wrap {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-minimap-wrap {
         margin-top: 10px;
         border: 1px solid #6c757d2e;
         border-radius: 9px;
@@ -695,7 +697,7 @@ export function render() {
         overflow: hidden;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-minimap-title {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-minimap-title {
         display: flex;
         justify-content: space-between;
         gap: 8px;
@@ -706,47 +708,47 @@ export function render() {
         line-height: 1.35;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-minimap {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-minimap {
         height: 74px;
         cursor: crosshair;
         user-select: none;
         touch-action: none;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-minimap svg {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-minimap svg {
         display: block;
         width: 100%;
         height: 74px;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-minimap-selection {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-minimap-selection {
         cursor: grab;
       }
 
-      [data-tool="${TOOL_KEY}"] .vitals-minimap-selection:active {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-minimap-selection:active {
         cursor: grabbing;
       }
 
       @media (max-width: 560px) {
-        [data-tool="${TOOL_KEY}"] .vitals-date-input-grid {
+        .vitals-root[data-tool="${TOOL_KEY}"] .vitals-date-input-grid {
           grid-template-columns: 1fr;
         }
       }
 
 
-      [data-tool="${TOOL_KEY}"] .vitals-chart-section {
+      .vitals-root[data-tool="${TOOL_KEY}"] .vitals-chart-section {
         margin-top: 0;
       }
 
       @media (max-width: 900px) {
-        [data-tool="${TOOL_KEY}"] .vitals-layout,
-        [data-tool="${TOOL_KEY}"] .vitals-top-grid {
+        .vitals-root[data-tool="${TOOL_KEY}"] .vitals-layout,
+        .vitals-root[data-tool="${TOOL_KEY}"] .vitals-top-grid {
           grid-template-columns: 1fr;
         }
       }
     </style>
 
-    <div data-tool="${TOOL_KEY}">
+    <div class="vitals-root" data-tool="${TOOL_KEY}">
       <section class="vitals-top-grid">
         <div class="vitals-panel">
           <h3>Vitals raw data</h3>
@@ -1029,7 +1031,7 @@ function handleVitalsPointerDown(event) {
   const miniMap = target.closest("[data-vitals-minimap]");
   if (!miniMap) return;
 
-  const root = miniMap.closest(`[data-tool="${TOOL_KEY}"]`);
+  const root = miniMap.closest(`.vitals-root[data-tool="${TOOL_KEY}"]`);
   if (!root) return;
 
   const { minTime, maxTime } = state.dateFilter;
@@ -1130,7 +1132,7 @@ function handleVitalsClick(event) {
   if (parseBtn) {
     event.preventDefault();
 
-    const root = parseBtn.closest(`[data-tool="${TOOL_KEY}"]`);
+    const root = parseBtn.closest(`.vitals-root[data-tool="${TOOL_KEY}"]`);
     if (!root) return;
 
     clearVitalsAutoParseTimer();
@@ -1150,7 +1152,7 @@ function handleVitalsClick(event) {
   if (bandResetBtn) {
     event.preventDefault();
 
-    const root = bandResetBtn.closest(`[data-tool="${TOOL_KEY}"]`);
+    const root = bandResetBtn.closest(`.vitals-root[data-tool="${TOOL_KEY}"]`);
     if (!root) return;
 
     state.chartBandRanges = cloneChartBandRanges(DEFAULT_CHART_BAND_RANGES);
@@ -1163,7 +1165,7 @@ function handleVitalsClick(event) {
   if (axisResetBtn) {
     event.preventDefault();
 
-    const root = axisResetBtn.closest(`[data-tool="${TOOL_KEY}"]`);
+    const root = axisResetBtn.closest(`.vitals-root[data-tool="${TOOL_KEY}"]`);
     if (!root) return;
 
     state.chartAxisSettings = cloneChartAxisSettings(DEFAULT_CHART_AXIS_SETTINGS);
@@ -1176,7 +1178,7 @@ function handleVitalsClick(event) {
   if (windowSizeBtn) {
     event.preventDefault();
 
-    const root = windowSizeBtn.closest(`[data-tool="${TOOL_KEY}"]`);
+    const root = windowSizeBtn.closest(`.vitals-root[data-tool="${TOOL_KEY}"]`);
     if (!root) return;
 
     applyDateFilterWindowSize(windowSizeBtn.dataset.vitalsWindowSize);
@@ -1189,7 +1191,7 @@ function handleVitalsClick(event) {
   if (pageActionBtn) {
     event.preventDefault();
 
-    const root = pageActionBtn.closest(`[data-tool="${TOOL_KEY}"]`);
+    const root = pageActionBtn.closest(`.vitals-root[data-tool="${TOOL_KEY}"]`);
     if (!root) return;
 
     moveDateFilterPage(pageActionBtn.dataset.vitalsPageAction);
@@ -1202,7 +1204,7 @@ function handleVitalsClick(event) {
   if (timeResetBtn) {
     event.preventDefault();
 
-    const root = timeResetBtn.closest(`[data-tool="${TOOL_KEY}"]`);
+    const root = timeResetBtn.closest(`.vitals-root[data-tool="${TOOL_KEY}"]`);
     if (!root) return;
 
     state.dateFilter.pageSizeMs = null;
@@ -1216,7 +1218,7 @@ function handleVitalsClick(event) {
   if (clearBtn) {
     event.preventDefault();
 
-    const root = clearBtn.closest(`[data-tool="${TOOL_KEY}"]`);
+    const root = clearBtn.closest(`.vitals-root[data-tool="${TOOL_KEY}"]`);
     if (!root) return;
 
     clearVitalsAutoParseTimer();
@@ -1246,7 +1248,7 @@ function handleVitalsChange(event) {
 
   const rawInput = target.closest("[data-vitals-input]");
   if (rawInput) {
-    const root = rawInput.closest(`[data-tool="${TOOL_KEY}"]`);
+    const root = rawInput.closest(`.vitals-root[data-tool="${TOOL_KEY}"]`);
     if (!root) return;
 
     scheduleVitalsAutoParse(root, rawInput.value);
@@ -1255,7 +1257,7 @@ function handleVitalsChange(event) {
 
   const strategySelect = target.closest("[data-vitals-duplicate-strategy]");
   if (strategySelect) {
-    const root = strategySelect.closest(`[data-tool="${TOOL_KEY}"]`);
+    const root = strategySelect.closest(`.vitals-root[data-tool="${TOOL_KEY}"]`);
     if (!root) return;
 
     state.duplicateStrategy = strategySelect.value;
@@ -1267,7 +1269,7 @@ function handleVitalsChange(event) {
 
   const seriesCheckbox = target.closest("[data-vitals-series]");
   if (seriesCheckbox) {
-    const root = seriesCheckbox.closest(`[data-tool="${TOOL_KEY}"]`);
+    const root = seriesCheckbox.closest(`.vitals-root[data-tool="${TOOL_KEY}"]`);
     if (!root) return;
 
     const key = seriesCheckbox.dataset.vitalsSeries;
@@ -1286,7 +1288,7 @@ function handleVitalsChange(event) {
 
   const timeStartInput = target.closest("[data-vitals-time-start]");
   if (timeStartInput) {
-    const root = timeStartInput.closest(`[data-tool="${TOOL_KEY}"]`);
+    const root = timeStartInput.closest(`.vitals-root[data-tool="${TOOL_KEY}"]`);
     if (!root) return;
 
     const timestamp = parseDateTimeLocalValue(timeStartInput.value);
@@ -1307,7 +1309,7 @@ function handleVitalsChange(event) {
 
   const timeEndInput = target.closest("[data-vitals-time-end]");
   if (timeEndInput) {
-    const root = timeEndInput.closest(`[data-tool="${TOOL_KEY}"]`);
+    const root = timeEndInput.closest(`.vitals-root[data-tool="${TOOL_KEY}"]`);
     if (!root) return;
 
     const timestamp = parseDateTimeLocalValue(timeEndInput.value);
@@ -1328,7 +1330,7 @@ function handleVitalsChange(event) {
 
   const rangeStartInput = target.closest("[data-vitals-range-start]");
   if (rangeStartInput) {
-    const root = rangeStartInput.closest(`[data-tool="${TOOL_KEY}"]`);
+    const root = rangeStartInput.closest(`.vitals-root[data-tool="${TOOL_KEY}"]`);
     if (!root) return;
 
     state.dateFilter.startTime = clampDateFilterTime(Number(rangeStartInput.value));
@@ -1344,7 +1346,7 @@ function handleVitalsChange(event) {
 
   const rangeEndInput = target.closest("[data-vitals-range-end]");
   if (rangeEndInput) {
-    const root = rangeEndInput.closest(`[data-tool="${TOOL_KEY}"]`);
+    const root = rangeEndInput.closest(`.vitals-root[data-tool="${TOOL_KEY}"]`);
     if (!root) return;
 
     state.dateFilter.endTime = clampDateFilterTime(Number(rangeEndInput.value));
@@ -1363,7 +1365,7 @@ function handleVitalsChange(event) {
   );
 
   if (bandInput) {
-    const root = bandInput.closest(`[data-tool="${TOOL_KEY}"]`);
+    const root = bandInput.closest(`.vitals-root[data-tool="${TOOL_KEY}"]`);
     if (!root) return;
 
     updateBandRangeFromInput(bandInput);
@@ -1376,7 +1378,7 @@ function handleVitalsChange(event) {
   );
 
   if (axisInput) {
-    const root = axisInput.closest(`[data-tool="${TOOL_KEY}"]`);
+    const root = axisInput.closest(`.vitals-root[data-tool="${TOOL_KEY}"]`);
     if (!root) return;
 
     updateAxisSettingFromInput(axisInput);
@@ -1387,11 +1389,13 @@ function handleVitalsChange(event) {
 function getRoot(container) {
   if (!container) return null;
 
-  if (container.matches?.(`[data-tool="${TOOL_KEY}"]`)) {
+  const selector = `.vitals-root[data-tool="${TOOL_KEY}"]`;
+
+  if (container.matches?.(selector)) {
     return container;
   }
 
-  return container.querySelector?.(`[data-tool="${TOOL_KEY}"]`);
+  return container.querySelector?.(selector);
 }
 
 function observeVitalsResize(root) {
