@@ -9,14 +9,14 @@ const AUTOSAVE_DELAY_MS=650;
 
 const SYSTEMS=[
   ["resp","RESP"],["cv","CV"],["gi","GI"],["inf","INF"],
-  ["heme","HEME"],["neuro","NEURO"],["renal","RENAL"],["other","OTHER"]
+  ["neuro","NEURO"],["oph","OPH"],["other","OTHER"]
 ];
 
 let activeApp=null;
 
 export function render(){
   return `
-  <section class="hf" data-tool="${TOOL_KEY}">
+  <section class="hf" data-tool="${TOOL_KEY}" spellcheck="false">
     <style>${STYLES}</style>
     <header class="hf-app-header">
       <h1>交班單</h1>
@@ -96,11 +96,16 @@ export function render(){
 
           </div>
 
-          <!-- 第二列：Patient Identity + Record Status -->
-          <div class="hf-identity-row">
 
+        </header>
+
+        <div class="hf-alert-strip" data-ref="alertStrip" hidden></div>
+
+        <section class="hf-section hf-background" data-action="editBackground">
+          <div class="hf-section-heading hf-background-heading">
             <button
               class="hf-patient-title-btn"
+              type="button"
               data-action="editBackground"
               title="編輯病人背景"
             >
@@ -108,26 +113,17 @@ export function render(){
             </button>
 
             <div class="hf-record-state">
-              <span class="hf-save-state" data-ref="saveState">
-                初始化中…
-              </span>
+              <button
+                type="button"
+                class="hf-add-alert"
+                data-action="editAlert"
+                data-ref="addAlertBtn"
+                title="新增重要提醒"
+              >＋提醒</button>
 
-              <span
-                class="hf-record-badge"
-                data-ref="recordBadge"
-              ></span>
+              <span class="hf-save-state" data-ref="saveState">初始化中…</span>
+              <span class="hf-record-badge" data-ref="recordBadge"></span>
             </div>
-
-          </div>
-
-        </header>
-
-        <div class="hf-alert-strip" data-ref="alertStrip" hidden></div>
-
-        <section class="hf-section hf-background" data-action="editBackground">
-          <div class="hf-section-heading">
-            <h2>BACKGROUND</h2>
-            <span>點擊編輯</span>
           </div>
           <div class="hf-background-body" data-ref="backgroundView"></div>
         </section>
@@ -163,13 +159,25 @@ export function render(){
         </section>
 
         <section class="hf-section">
-          <div class="hf-section-heading"><h2>ASSESSMENT</h2></div>
+          <div class="hf-section-heading">
+            <h2>ASSESSMENT</h2>
+            <button
+              type="button"
+              class="hf-heading-action"
+              data-action="collectProblems"
+              title="從各 System 抓取以 # 開頭的問題"
+            >匯入問題</button>
+          </div>
           <textarea class="hf-large-text" rows="4" data-field="assessment"
             placeholder="Assessment..."></textarea>
         </section>
 
         <section class="hf-section">
-          <div class="hf-section-heading"><h2>PLAN</h2></div>
+          <div class="hf-section-heading">
+            <h2>PLAN</h2>
+            <button type="button" class="hf-heading-action"
+              data-action="loadTemplate" data-template="plan">載入 Template</button>
+          </div>
           <textarea class="hf-large-text" rows="4" data-field="plan"
             placeholder="Plan..."></textarea>
         </section>
@@ -192,43 +200,134 @@ export function render(){
 
     <dialog class="hf-dialog" data-ref="backgroundDialog">
       <div class="hf-dialog-card hf-bg-dialog-card">
-        <h3>病人背景</h3>
-
-        <div class="hf-bg-grid">
-          ${dialogField("床號","patient.bed","text")}
-          ${dialogField("病歷號","patient.mrn","text")}
-          ${dialogField("姓名／代稱","patient.name","text")}
-          ${dialogField("主治／Team","patient.team","text")}
-
-          ${dialogField("DOB","patient.birthDate","date")}
-          ${dialogField("GA wk","patient.gaWeeks","number",'min="20" max="45" step="1"')}
-          ${dialogField("GA day","patient.gaDays","number",'min="0" max="6" step="1"')}
-          ${dialogField("BBW (g)","patient.birthWeightG","number",'min="100" step="1"')}
-
-          ${dialogField("Delivery","patient.deliveryMode","text")}
-          ${dialogField("Reason","patient.deliveryReason","text")}
-          ${dialogField("A/S 1 min","patient.apgar1","text")}
-          ${dialogField("A/S 5 min","patient.apgar5","text")}
+        <div class="hf-bg-dialog-head">
+          <div>
+            <h3>病人背景</h3>
+            <p>Birth profile and persistent background information</p>
+          </div>
         </div>
 
-        <label class="hf-dialog-text">
-          <span>Mom</span>
-          <textarea rows="5" data-field="patient.momBackground"></textarea>
-        </label>
+        <section class="hf-bg-block">
+          <div class="hf-bg-block-title">IDENTITY</div>
+          <div class="hf-bg-form-grid">
+            ${dialogField("床號","patient.bed","text")}
+            ${dialogField("病歷號","patient.mrn","text")}
+            ${dialogField("姓名／代稱","patient.name","text")}
+            ${dialogField("主治／Team","patient.team","text")}
+          </div>
+        </section>
 
-        <label class="hf-dialog-text">
-          <span>NB</span>
-          <textarea rows="5" data-field="patient.nbBackground"></textarea>
-        </label>
+        <section class="hf-bg-block hf-birth-block">
+          <div class="hf-bg-block-title">BIRTH</div>
 
-        <label class="hf-dialog-text">
-          <span>重要提醒</span>
-          <textarea rows="2" data-field="patient.alert" placeholder="例如：Difficult airway / allergy / 特殊交班提醒"></textarea>
-        </label>
+          <div class="hf-birth-form">
+            <div class="hf-birth-row hf-birth-row-single">
+              ${dialogField("DOB","patient.birthDate","date")}
+            </div>
+
+            <div class="hf-birth-row">
+              <label class="hf-ga-field">
+                <span>GA</span>
+                <div class="hf-ga-inputs">
+                  <input type="number" data-field="patient.gaWeeks" min="20" max="45" step="1">
+                  <b>+</b>
+                  <input type="number" data-field="patient.gaDays" min="0" max="6" step="1">
+                  <small>wk</small>
+                </div>
+              </label>
+
+              ${dialogField("BBW","patient.birthWeightG","number",'min="100" step="1"')}
+            </div>
+
+            <div class="hf-birth-row">
+              ${dialogField("Delivery","patient.deliveryMode","text")}
+              ${dialogField("Indication","patient.deliveryReason","text")}
+            </div>
+
+            <div class="hf-birth-apgar">
+              <div class="hf-apgar-label">A/S</div>
+
+              <div class="hf-apgar-values">
+                <label class="hf-apgar-cell">
+                  <span>1 min</span>
+                  <input type="number" data-field="patient.apgar1" min="0" max="10" step="1">
+                </label>
+
+                <label class="hf-apgar-cell">
+                  <span>5 min</span>
+                  <input type="number" data-field="patient.apgar5" min="0" max="10" step="1">
+                </label>
+
+                <div class="hf-apgar-step" data-ref="apgar10Row" hidden>
+                  <label class="hf-apgar-cell">
+                    <span>10 min</span>
+                    <input type="number" data-field="patient.apgar10" min="0" max="10" step="1">
+                  </label>
+                </div>
+
+                <div class="hf-apgar-step" data-ref="apgar15Row" hidden>
+                  <label class="hf-apgar-cell">
+                    <span>15 min</span>
+                    <input type="number" data-field="patient.apgar15" min="0" max="10" step="1">
+                  </label>
+                </div>
+
+                <div class="hf-apgar-step" data-ref="apgar20Row" hidden>
+                  <label class="hf-apgar-cell">
+                    <span>20 min</span>
+                    <input type="number" data-field="patient.apgar20" min="0" max="10" step="1">
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="hf-bg-block">
+          <div class="hf-bg-block-title">CLINICAL BACKGROUND</div>
+
+          <label class="hf-dialog-text">
+            <span class="hf-field-label-row">
+              <span>Mom</span>
+              <button type="button" class="hf-template-btn"
+                data-action="loadTemplate" data-template="mom">載入 Template</button>
+            </span>
+            <textarea rows="3" data-field="patient.momBackground"></textarea>
+          </label>
+
+          <label class="hf-dialog-text">
+            <span>NB</span>
+            <textarea rows="3" data-field="patient.nbBackground"></textarea>
+          </label>
+        </section>
 
         <div class="hf-dialog-actions">
           <button type="button" data-action="closeDialog">取消</button>
           <button type="button" class="hf-primary" data-action="saveBackground">完成</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="hf-dialog" data-ref="alertDialog">
+      <div class="hf-dialog-card hf-alert-dialog-card">
+        <div class="hf-alert-dialog-head">
+          <div>
+            <h3>重要提醒</h3>
+            <p>跨日期保留的病人層級提醒</p>
+          </div>
+        </div>
+
+        <label class="hf-alert-dialog-field">
+          <textarea
+            rows="3"
+            data-field="patient.alert"
+            placeholder="例如：Difficult airway / allergy / VIP / 特殊交班提醒"
+          ></textarea>
+        </label>
+
+        <div class="hf-dialog-actions">
+          <button type="button" data-action="closeAlertDialog">取消</button>
+          <button type="button" class="hf-primary" data-action="saveAlert">完成</button>
         </div>
       </div>
     </dialog>
@@ -395,6 +494,8 @@ class HandoffApp{
       derivedAge:q('[data-ref="derivedAge"]'),
       systems:q('[data-ref="systems"]'),
       alertStrip:q('[data-ref="alertStrip"]'),
+      addAlertBtn:q('[data-ref="addAlertBtn"]'),
+      alertDialog:q('[data-ref="alertDialog"]'),
       copyMenu:q('[data-ref="copyMenu"]'),
       backupMenu:q('[data-ref="backupMenu"]'),
       backupFileInput:q('[data-ref="backupFileInput"]'),
@@ -412,6 +513,9 @@ class HandoffApp{
       weeklyInfo:q('[data-ref="weeklyInfo"]'),
       patientDialog:q('[data-ref="patientDialog"]'),
       backgroundDialog:q('[data-ref="backgroundDialog"]'),
+      apgar10Row:q('[data-ref="apgar10Row"]'),
+      apgar15Row:q('[data-ref="apgar15Row"]'),
+      apgar20Row:q('[data-ref="apgar20Row"]'),
       newBed:q('[data-ref="newBed"]'),
       newMrn:q('[data-ref="newMrn"]'),
       newName:q('[data-ref="newName"]'),
@@ -506,7 +610,9 @@ class HandoffApp{
         :getPath(this.record,path);
 
       setControl(el,value);
+
       if(el.tagName==="TEXTAREA")autoResize(el);
+      if(el.matches(".hf-metric input"))resizeMetricInput(el);
     });
 
     this.r.date.value=this.record.date;
@@ -536,10 +642,13 @@ class HandoffApp{
     }
 
     if(el.tagName==="TEXTAREA")autoResize(el);
+    if(el.matches(".hf-metric input"))resizeMetricInput(el);
+
     this.markDirty();
 
     this.renderDerived();
     this.renderPatientHeader();
+    this.renderApgarFields();
   }
 
   async onChange(e){
@@ -590,6 +699,16 @@ class HandoffApp{
         return;
       }
       if(a==="confirmRestore")return this.restoreBackup();
+
+      if(a==="editAlert")return this.openAlertEditor();
+      if(a==="saveAlert")return this.saveAlert();
+
+      if(a==="closeAlertDialog"){
+        this.backgroundEditing=false;
+        this.fill();
+        return this.r.alertDialog?.close();
+      }
+
       if(a==="newPatient")return this.r.patientDialog.showModal();
       if(a==="togglePatientMenu"){
         e.stopPropagation();
@@ -655,6 +774,8 @@ class HandoffApp{
       if(a==="copyWeekly"){
         return this.copyWeeklySummary();
       }
+      if(a==="collectProblems")return this.collectProblemsToAssessment();
+      if(a==="loadTemplate")return this.loadTemplate(b.dataset.template);
       if(a==="copyMode"){
         const mode=b.dataset.copyMode||"full";
         await copyText(this.outputText(mode));
@@ -769,10 +890,27 @@ class HandoffApp{
     this.setSaveState(replace?"備份已完整還原":"備份已合併");
   }
 
+  openAlertEditor(){
+    if(this.record?.status==="finalized")return;
+
+    this.backgroundEditing=true;
+    this.fill();
+    this.r.alertDialog?.showModal();
+    this.syncReadonly();
+  }
+
+  async saveAlert(){
+    await this.saveNow("alert");
+    this.backgroundEditing=false;
+    this.r.alertDialog?.close();
+    this.renderAll();
+  }
+
   openBackgroundEditor(){
     if(this.record?.status==="finalized")return;
     this.backgroundEditing=true;
     this.fill();
+    this.renderApgarFields();
     this.r.backgroundDialog.showModal();
     this.syncReadonly();
   }
@@ -958,7 +1096,36 @@ class HandoffApp{
     this.renderAlert();
     this.renderDerived();
     this.renderRecordState();
+    this.renderApgarFields();
     this.syncReadonly();
+  }
+
+  renderApgarFields(){
+    if(!this.patient)return;
+
+    const a5=apgarNumber(this.patient.apgar5);
+    const a10=apgarNumber(this.patient.apgar10);
+    const a15=apgarNumber(this.patient.apgar15);
+
+    const show10=a5!==null&&a5<7;
+    const show15=show10&&a10!==null&&a10<7;
+    const show20=show15&&a15!==null&&a15<7;
+
+    if(this.r.apgar10Row)this.r.apgar10Row.hidden=!show10;
+    if(this.r.apgar15Row)this.r.apgar15Row.hidden=!show15;
+    if(this.r.apgar20Row)this.r.apgar20Row.hidden=!show20;
+
+    // 上游已經 >=7 時，清掉後面不再適用的數值
+    if(!show10){
+      this.patient.apgar10="";
+      this.patient.apgar15="";
+      this.patient.apgar20="";
+    }else if(!show15){
+      this.patient.apgar15="";
+      this.patient.apgar20="";
+    }else if(!show20){
+      this.patient.apgar20="";
+    }
   }
 
   renderPatientHeader(){
@@ -1007,16 +1174,37 @@ class HandoffApp{
       ${first.length
         ?`<div class="hf-bg-summary">${first.map(escapeHTML).join('<span class="hf-dot-sep">·</span>')}</div>`
         :`<div class="hf-bg-empty">尚未建立病人背景</div>`}
-      ${mom?`<div class="hf-bg-text"><b>Mom</b><pre>${escapeHTML(mom)}</pre></div>`:""}
-      ${nb?`<div class="hf-bg-text"><b>NB</b><pre>${escapeHTML(nb)}</pre></div>`:""}
+      ${mom?`
+        <div class="hf-bg-row">
+          <span>Mom</span>
+          <pre>${escapeHTML(mom)}</pre>
+        </div>
+      `:""}
+
+      ${nb?`
+        <div class="hf-bg-row">
+          <span>NB</span>
+          <pre>${escapeHTML(nb)}</pre>
+        </div>
+      `:""}
     `;
   }
 
   renderAlert(){
     if(!this.r.alertStrip||!this.patient)return;
+
     const alert=this.patient.alert?.trim()||"";
+
     this.r.alertStrip.hidden=!alert;
-    this.r.alertStrip.innerHTML=alert?`<strong>!</strong><span>${escapeHTML(alert)}</span>`:"";
+    this.r.alertStrip.dataset.action=alert?"editAlert":"";
+    this.r.alertStrip.title=alert?"點擊編輯重要提醒":"";
+    this.r.alertStrip.innerHTML=alert
+      ?`<strong>!</strong><span>${escapeHTML(alert)}</span><small>編輯</small>`
+      :"";
+
+    if(this.r.addAlertBtn){
+      this.r.addAlertBtn.hidden=!!alert;
+    }
   }
 
 
@@ -1113,17 +1301,16 @@ class HandoffApp{
     }
 
     this.r.derivedAge.innerHTML = `
-      <div class="hf-age-chip">
-        <span>Date</span>
+      <div class="hf-fact">
         <strong>${escapeHTML(date)}</strong>
       </div>
 
-      <div class="hf-age-chip">
+      <div class="hf-fact">
         <span>${escapeHTML(ageType || "PMA")}</span>
         <strong>${escapeHTML(ageValue || "—")}</strong>
       </div>
 
-      <div class="hf-age-chip">
+      <div class="hf-fact">
         <span>DOL</span>
         <strong>${age.dol !== null ? escapeHTML(age.dol) : "—"}</strong>
       </div>
@@ -1564,6 +1751,140 @@ class HandoffApp{
     return cleanOutput(lines);
   }
 
+  loadTemplate(name){
+    if(this.isReadOnly())return;
+
+    const config=FIELD_TEMPLATES[name];
+    if(!config)return;
+
+    const el=this.root.querySelector(`[data-field="${config.field}"]`);
+    if(!el)return;
+
+    // Do not overwrite existing clinical documentation.
+    if(String(el.value||"").trim()){
+      this.setSaveState("欄位已有內容，未載入 Template");
+      el.focus();
+      return;
+    }
+
+    el.value=config.text;
+    el.dispatchEvent(new Event("input",{bubbles:true}));
+    autoResize(el);
+    el.focus();
+    el.setSelectionRange(0,0);
+    this.setSaveState("Template 已載入");
+  }
+
+  collectProblemsToAssessment(){
+    if(!this.record||!this.patient||this.isReadOnly())return;
+
+    const birthProblem=buildBirthAssessmentProblem(this.patient);
+    const systemProblems=collectSystemProblems(this.record);
+    const current=String(this.record.assessment||"").trim();
+
+    // --------------------------------------------------
+    // First import:
+    //   # Birth summary
+    //   # Problem 1
+    //   # Problem 2
+    // No blank lines between imported problem headings.
+    // --------------------------------------------------
+    if(!current){
+      const initial=[
+        ...(birthProblem?[birthProblem]:[]),
+        ...systemProblems
+      ];
+
+      if(!initial.length){
+        this.setSaveState("沒有找到可匯入的問題");
+        return;
+      }
+
+      this.record.assessment=initial.join("\n");
+      this.record.updatedAt=nowISO();
+      this.dirty=true;
+
+      const el=this.root.querySelector('[data-field="assessment"]');
+      if(el){
+        el.value=this.record.assessment;
+        autoResize(el);
+        el.focus();
+        el.setSelectionRange(el.value.length,el.value.length);
+      }
+
+      this.markDirty();
+      this.setSaveState(`已建立 Assessment · ${initial.length} 項`);
+      return;
+    }
+
+    // --------------------------------------------------
+    // Later imports:
+    // 1. Birth summary stays on line 1. If Background changed,
+    //    update line 1 in place instead of appending another copy.
+    // 2. Existing Assessment body is never overwritten.
+    // 3. Only new / changed system problem headings are appended.
+    // 4. Insert exactly one blank line before the appended block.
+    // --------------------------------------------------
+    let lines=current.split("\n");
+
+    if(birthProblem){
+      if(lines.length&&isBirthAssessmentProblem(lines[0])){
+        if(normalizeProblemKey(lines[0])!==normalizeProblemKey(birthProblem)){
+          lines[0]=birthProblem;
+        }
+      }else{
+        lines.unshift(birthProblem);
+      }
+    }
+
+    const existingKeys=new Set(
+      lines
+        .map(line=>line.trim())
+        .filter(line=>/^#\s*\S/.test(line))
+        .map(normalizeProblemKey)
+    );
+
+    const additions=[];
+    systemProblems.forEach(problem=>{
+      const key=normalizeProblemKey(problem);
+      if(existingKeys.has(key))return;
+
+      existingKeys.add(key);
+      additions.push(problem);
+    });
+
+    let body=lines.join("\n").trimEnd();
+
+    if(additions.length){
+      body=`${body}\n\n${additions.join("\n")}`;
+    }
+
+    if(body===current){
+      this.setSaveState("Assessment 已包含所有問題");
+      return;
+    }
+
+    this.record.assessment=body;
+    this.record.updatedAt=nowISO();
+    this.dirty=true;
+
+    const el=this.root.querySelector('[data-field="assessment"]');
+    if(el){
+      el.value=this.record.assessment;
+      autoResize(el);
+      el.focus();
+      el.setSelectionRange(el.value.length,el.value.length);
+    }
+
+    this.markDirty();
+
+    if(additions.length){
+      this.setSaveState(`已新增 ${additions.length} 個問題`);
+    }else{
+      this.setSaveState("出生診斷已更新");
+    }
+  }
+
   outputChangesText(){
     const r=this.record, prev=this.previousRecord;
     const head=[this.patient.bed,this.patient.name,this.patient.mrn].filter(Boolean).join(" · ");
@@ -1599,9 +1920,123 @@ class HandoffApp{
 
 }
 
+const FIELD_TEMPLATES={
+  mom:{
+    field:"patient.momBackground",
+    text:`f/u @ ____: level II(ok), 羊穿(ok)
+G_P_, PIH(-), GDM(-), GBS(-), PROM(-)
+`
+  },
+
+  plan:{
+    field:"plan",
+    text:`＜Respiratory＞              
+  Ventilator: NIMV
+＜Medications＞            
+  ＠ Antibiotics: Ampi+Genta (__/__-)
+  ＠ Inotropic agents: nil
+  ＠ Sedatives: nil
+  ＠ AEDs: nil     
+  ＠ Other: nil`
+  }
+};
+
+function buildBirthAssessmentProblem(p){
+  if(!p)return "";
+
+  const gaWeek=Number(p.gaWeeks);
+  const gaDay=Number(p.gaDays)||0;
+  const hasGA=p.gaWeeks!==""&&p.gaWeeks!==null&&p.gaWeeks!==undefined&&Number.isFinite(gaWeek);
+
+  const maturity=hasGA
+    ?(gaWeek<37?"Preterm neonate":"Term neonate")
+    :"Neonate";
+
+  const delivery=assessmentDeliveryText(p.deliveryMode);
+  const ga=hasGA
+    ?`${gaWeek}${gaDay?`+${gaDay}`:""} weeks of gestation`
+    :"";
+
+  const bw=p.birthWeightG!==""&&p.birthWeightG!=null
+    ?`birth weight ${p.birthWeightG} g`
+    :"";
+
+  const apgar=assessmentApgarText(p);
+
+  const parts=[`# ${maturity}`];
+
+  if(delivery)parts.push(`born via ${delivery}`);
+  if(ga)parts.push(`at ${ga}`);
+  if(bw)parts.push(`with ${bw}`);
+  if(apgar)parts.push(`and Apgar score ${apgar}`);
+
+  return parts.join(" ");
+}
+
+function assessmentDeliveryText(value){
+  const raw=String(value??"").trim();
+  if(!raw)return "";
+
+  const v=raw.toLowerCase().replace(/\s+/g," ");
+
+  if(["vd","nsvd","nvd","svd","vaginal","vaginal delivery"].includes(v))
+    return "vaginal delivery";
+
+  if(["cs","c/s","c-section","c section","cesarean","cesarean section","caesarean","caesarean section"].includes(v))
+    return "cesarean section";
+
+  return raw;
+}
+
+function assessmentApgarText(p){
+  const values=[p.apgar1,p.apgar5,p.apgar10,p.apgar15,p.apgar20]
+    .map(apgarNumber)
+    .filter(v=>v!==null);
+
+  if(!values.length)return "";
+  return values.join(" to ");
+}
+
+function isBirthAssessmentProblem(line){
+  const s=String(line??"").trim().toLowerCase();
+  return /^#\s*(term neonate|preterm neonate|neonate)\b/.test(s);
+}
+
+function collectSystemProblems(record){
+  const problems=[];
+  const seen=new Set();
+
+  SYSTEMS.forEach(([key])=>{
+    const text=record?.systems?.[key]||"";
+
+    text.split("\n").forEach(line=>{
+      const s=line.trim();
+      if(!/^#\s*\S/.test(s))return;
+
+      const problem="# "+s.replace(/^#\s*/,"").trim();
+      const key=normalizeProblemKey(problem);
+
+      if(problem!=="# "&&!seen.has(key)){
+        seen.add(key);
+        problems.push(problem);
+      }
+    });
+  });
+
+  return problems;
+}
+
+function normalizeProblemKey(problem){
+  return String(problem??"")
+    .trim()
+    .replace(/^#\s*/,"")
+    .replace(/\s+/g," ")
+    .toLowerCase();
+}
+
 function metric(label,path,suffix=""){
   return `
-    <label class="hf-metric">
+    <label class="hf-fact hf-metric">
       <span>${label}</span>
       <div>
         <input type="text" data-field="${path}">
@@ -1644,6 +2079,9 @@ function blankPatient(){
     deliveryReason:"",
     apgar1:"",
     apgar5:"",
+    apgar10:"",
+    apgar15:"",
+    apgar20:"",
     momBackground:"",
     nbBackground:"",
     alert:"",
@@ -1799,17 +2237,49 @@ function formatDelivery(p){
   return m&&r?`${m} (${r})`:(m||r);
 }
 
+function apgarNumber(value){
+  if(value===""||value===null||value===undefined)return null;
+  const n=Number(value);
+  return Number.isFinite(n)?n:null;
+}
+
 function formatApgar(p){
-  const a1=String(p.apgar1??"").trim();
-  const a5=String(p.apgar5??"").trim();
-  if(!a1&&!a5)return "";
-  return `A/S ${a1||"?"} > ${a5||"?"}`;
+  const values=[
+    ["1",p.apgar1],
+    ["5",p.apgar5],
+    ["10",p.apgar10],
+    ["15",p.apgar15],
+    ["20",p.apgar20]
+  ];
+
+  const a1=apgarNumber(p.apgar1);
+  const a5=apgarNumber(p.apgar5);
+  if(a1===null&&a5===null)return "";
+
+  const out=[
+    a1===null?"?":String(a1),
+    a5===null?"?":String(a5)
+  ];
+
+  // Extended Apgar is relevant when 5-min score is <7.
+  // Continue displaying entered 10/15/20-min scores up to recovery >=7 or 20 min.
+  if(a5!==null&&a5<7){
+    for(const [,raw] of values.slice(2)){
+      const n=apgarNumber(raw);
+      if(n===null)break;
+      out.push(String(n));
+      if(n>=7)break;
+    }
+  }
+
+  return `A/S ${out.join(" > ")}`;
 }
 
 function buildPatientText(p){
   return [
     p.bed,p.mrn,p.name,p.team,p.birthDate,p.gaWeeks,p.gaDays,
-    p.birthWeightG,p.deliveryMode,p.deliveryReason,p.apgar1,p.apgar5,
+    p.birthWeightG,p.deliveryMode,p.deliveryReason,
+    p.apgar1,p.apgar5,p.apgar10,p.apgar15,p.apgar20,
     p.momBackground,p.nbBackground,p.alert
   ].filter(v=>v!==""&&v!=null).join(" ");
 }
@@ -1965,6 +2435,23 @@ function autoResize(el){
   el.style.height="auto";
   el.style.height=`${Math.max(el.scrollHeight,38)}px`;
 }
+
+function resizeMetricInput(el){
+  if(!el)return;
+
+  const value=String(el.value??"");
+  const minChars=3;
+  const maxChars=10;
+
+  // Extra character avoids clipping the final digit.
+  const chars=Math.min(
+    maxChars,
+    Math.max(minChars,value.length+1)
+  );
+
+  el.style.width=`${chars}ch`;
+}
+
 function clone(x){return JSON.parse(JSON.stringify(x));}
 function uid(p="id"){return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`;}
 function nowISO(){return new Date().toISOString();}
@@ -2361,46 +2848,6 @@ const STYLES=`
   min-height:34px;
 }
 
-/* 第二列 */
-.hf-identity-row{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:16px;
-
-  margin-top:12px;
-  min-height:42px;
-
-  padding:8px 12px;
-
-  background:#faf8f5;
-  border:1px solid var(--line);
-  border-radius:7px;
-}
-
-/* Patient identity */
-.hf-patient-title-btn{
-  border:0;
-  background:transparent;
-  padding:0;
-
-  min-width:0;
-  cursor:pointer;
-
-  text-align:left;
-  color:var(--ink);
-
-  font-family:var(--font-ui);
-  font-size:16px;
-  font-weight:500;
-  line-height:1.35;
-}
-
-.hf-patient-title-btn strong{
-  font-size:inherit;
-  font-weight:700;
-}
-
 /* Status */
 .hf-record-state{
   display:flex;
@@ -2660,13 +3107,12 @@ const STYLES=`
 
 .hf-alert-strip{
   display:flex;
-  align-items:flex-start;
+  align-items:center;
   gap:8px;
 
-  margin:-6px 0 10px;
-  padding:8px 11px;
-
-  border:1px solid #d8c8ae;
+  margin:0 0 10px;
+  padding:9px 11px;
+  border:1px solid #9b5b55;
   border-radius:6px;
 
   background:#fbf6ed;
@@ -2680,20 +3126,57 @@ const STYLES=`
   display:none;
 }
 
+.hf-alert-strip:not([hidden]){
+  cursor:pointer;
+}
+
+.hf-alert-strip:hover{
+  background:#f8efe5;
+}
+
+.hf-alert-strip small{
+  margin-left:auto;
+  font-size:10px;
+  font-weight:600;
+  color:#9a6a64;
+}
+
+.hf-add-alert{
+  height:26px;
+  padding:0 8px;
+  border:1px solid #d4ccc3;
+  border-radius:5px;
+  background:#fff;
+  color:#776f68;
+  font-size:10px;
+  font-weight:600;
+  cursor:pointer;
+}
+
+.hf-add-alert:hover{
+  border-color:#b98781;
+  color:#8f504a;
+  background:#fffafa;
+}
+
+.hf-add-alert[hidden]{
+  display:none;
+}
+
 .hf-alert-strip strong{
   display:inline-flex;
   align-items:center;
   justify-content:center;
 
-  width:17px;
-  height:17px;
-
+  width:18px;
+  height:18px;
   border-radius:50%;
 
-  background:#88755c;
+  background:#a65d57;
   color:#fff;
 
   font-size:11px;
+  font-weight:700;
   flex:0 0 auto;
 }
 
@@ -2739,22 +3222,59 @@ const STYLES=`
   letter-spacing:.06em;
 }
 
-.hf-section-heading span{
+.hf-section-heading > span{
   font-family:var(--font-ui);
   font-size:11px;
   font-weight:400;
   color:var(--muted);
 }
 
+.hf-heading-action{
+  height:26px;
+  padding:0 9px;
+
+  border:1px solid #d3ccc4;
+  border-radius:5px;
+
+  background:#fff;
+  color:#625c56;
+
+  font-size:11px;
+  font-weight:600;
+  cursor:pointer;
+}
+
+.hf-heading-action:hover{
+  background:#eee9e2;
+  color:var(--ink);
+}
+
 /* =========================
    BACKGROUND
 ========================= */
 
+.hf-background-heading{
+  min-height:46px;
+  padding:8px 12px;
+  cursor:pointer;
+}
+
+.hf-background-heading .hf-patient-title-btn{
+  flex:1;
+  font-size:16px;
+  font-weight:500;
+}
+
+.hf-background-heading .hf-record-state{
+  flex:0 0 auto;
+}
+
 .hf-background-body{
-  padding:12px;
+  padding:0;
 }
 
 .hf-bg-summary{
+  padding:12px;
   font-family:var(--font-clinical);
   font-size:13px;
   font-weight:400;
@@ -2768,108 +3288,110 @@ const STYLES=`
   font-size:12px;
 }
 
-.hf-bg-text{
+.hf-bg-row{
   display:grid;
-  grid-template-columns:52px 1fr;
-  gap:10px;
+  grid-template-columns:72px 1fr;
+  min-height:38px;
 
-  margin-top:10px;
-
-  font-size:13px;
+  border-top:1px solid var(--line2);
 }
 
-.hf-bg-text b{
+.hf-bg-row > span{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  background:#fbf9f6;
+  border-right:1px solid var(--line2);
+
   font-family:var(--font-ui);
-  color:#55504b;
-
-  font-size:12px;
-  font-weight:700;
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.02em;
 }
 
-.hf-bg-text pre{
+.hf-bg-row pre{
   margin:0;
+  padding:8px 10px;
+
   white-space:pre-wrap;
 
   font-family:var(--font-clinical);
-  font-size:13px;
+  font-size:14px;
   font-weight:400;
-
   line-height:1.55;
+
   tab-size:4;
 }
 
 /* =========================
-   SHIFT METRICS
+   SHIFT METRICS — COMPACT FACTS ROW
 ========================= */
 
 .hf-metrics{
   display:flex;
+  align-items:center;
   flex-wrap:wrap;
+  column-gap:18px;
+  row-gap:6px;
+
+  min-height:50px;
+  padding:8px 14px;
 
   border-bottom:1px solid var(--line2);
+  background:#fff;
 }
 
 .hf-age-metrics{
   display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:10px;
+
   align-self:stretch;
+  padding-right:18px;
+
+  border-right:1px solid var(--line);
 }
 
-.hf-age-chip{
+.hf-fact{
   display:flex;
   align-items:center;
   gap:7px;
 
-  min-height:42px;
-  padding:5px 12px;
+  min-height:30px;
+  padding:0;
 
-  border-right:1px solid var(--line2);
-  border-top:1px solid var(--line2);
-  border-bottom:1px solid var(--line2);
-
+  border:0;
+  background:transparent;
   white-space:nowrap;
 }
 
-.hf-age-chip span{
-  font-family:var(--font-ui);
-
-  font-size:10px;
-  font-weight:600;
-
-  color:#6f6963;
-}
-
-.hf-age-chip strong{
-  font-family:var(--font-clinical);
-
-  font-size:12px;
-  font-weight:600;
-
-  color:var(--ink);
-  font-variant-numeric:tabular-nums;
-}
-
-.hf-metric{
-  display:grid;
-  grid-template-columns:auto auto;
-
+.hf-metric > div{
+  display:flex;
   align-items:center;
-  gap:5px;
-
-  min-height:42px;
-  padding:5px 9px;
-
-  border-right:1px solid var(--line2);
-  border-top:1px solid var(--line2);
-  border-bottom:1px solid var(--line2);
+  gap:3px;
 }
 
-.hf-metric > span{
+.hf-fact > span{
   font-family:var(--font-ui);
-
-  font-size:10px;
+  font-size:11px;
   font-weight:600;
+  color:#746d66;
+}
 
-  color:#6f6963;
+.hf-fact > strong,
+.hf-metric input{
+  font-family:var(--font-clinical);
+  font-size:15px;
+  font-weight:500;
+  font-variant-numeric:tabular-nums;
+  color:var(--ink);
+  line-height:1.2;
+}
+
+.hf-fact > strong{
+  display:inline-block;
 }
 
 .hf-metric > div{
@@ -2879,27 +3401,31 @@ const STYLES=`
 }
 
 .hf-metric input{
-  width:62px;
+  width:auto;
+  min-width:3ch;
+  max-width:10ch;
   height:28px;
 
   border:0;
-  border-bottom:1px solid #cbc4bb;
-
+  border-radius:4px;
   background:transparent;
 
-  padding:2px 4px;
+  padding:1px 2px;
+  text-align:left;
+}
 
-  font-family:var(--font-clinical);
-  font-size:13px;
-  font-weight:500;
+.hf-metric input:hover{
+  background:#f7f3ee;
+}
 
-  font-variant-numeric:tabular-nums;
-  text-align:center;
+.hf-metric input:focus{
+  outline:none!important;
+  background:#f3eee8;
+  box-shadow:inset 0 -1px 0 #9f9890!important;
 }
 
 .hf-metric small{
   font-family:var(--font-ui);
-
   font-size:10px;
   color:var(--muted);
 }
@@ -3094,82 +3620,342 @@ const STYLES=`
 }
 
 .hf-bg-dialog-card{
-  width:min(780px,94vw);
+  width:min(860px,94vw);
+  max-height:88vh;
+  overflow:auto;
 }
 
-.hf-dialog-card h3{
-  margin:0 0 14px;
-  font-size:17px;
+.hf-bg-dialog-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:14px;
 }
 
-.hf-dialog-card > label{
-  display:grid;
-  grid-template-columns:100px 1fr;
-
-  gap:8px;
-  align-items:center;
-
-  margin:8px 0;
+.hf-bg-dialog-head h3{
+  margin:0;
+  font-size:18px;
 }
 
-.hf-dialog-card input,
-.hf-dialog-card textarea{
-  width:100%;
-
-  border:1px solid #cfc8bf;
-  border-radius:5px;
-
-  background:#fff;
-
-  padding:7px 8px;
-
-  font:inherit;
-  font-size:13px;
+.hf-bg-dialog-head p{
+  margin:3px 0 0;
+  font-size:11px;
+  color:var(--muted);
 }
 
-.hf-bg-grid{
+.hf-bg-block{
+  padding:13px 0 15px;
+  border-top:1px solid var(--line2);
+}
+
+.hf-bg-block:first-of-type{
+  border-top:0;
+  padding-top:2px;
+}
+
+.hf-bg-block-title{
+  margin-bottom:10px;
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.10em;
+  color:#8a837c;
+}
+
+.hf-bg-form-grid{
   display:grid;
   grid-template-columns:1fr 1fr;
-  gap:8px 14px;
+  gap:10px 18px;
 }
 
-.hf-bg-grid label{
+.hf-bg-form-grid > label,
+.hf-ga-field{
   display:grid;
-  grid-template-columns:92px 1fr;
-
-  gap:8px;
+  grid-template-columns:94px minmax(0,1fr);
   align-items:center;
+  gap:10px;
+  margin:0;
 }
 
-.hf-bg-grid label span,
-.hf-dialog-text span{
-  font-size:12px;
-  color:#5f5954;
+.hf-bg-form-grid > label > span,
+.hf-ga-field > span,
+.hf-dialog-text > span{
+  font-size:11px;
+  font-weight:600;
+  color:#6f6963;
+}
+
+/* Background dialog controls — one visual system */
+.hf-bg-dialog-card input{
+  height:36px;
+  border:1px solid #cfc8bf;
+  border-radius:6px;
+  background:#fff;
+  color:var(--ink);
+  padding:0 9px;
+
+  font-family:var(--font-clinical);
+  font-size:14px;
+  font-weight:400;
+  line-height:1.2;
+}
+
+.hf-bg-dialog-card textarea{
+  width:100%;
+  border:1px solid #cfc8bf;
+  border-radius:6px;
+  background:#fff;
+  color:var(--ink);
+
+  font-family:var(--font-clinical);
+  font-size:14px;
+  font-weight:400;
+}
+
+.hf-ga-inputs{
+  display:grid;
+  grid-template-columns:70px auto 58px auto;
+  align-items:center;
+  justify-content:start;
+  gap:7px;
+}
+
+.hf-ga-inputs b{
+  font-weight:500;
+  color:#746d66;
+}
+
+.hf-ga-inputs small{
+  font-size:11px;
+  color:var(--muted);
+}
+
+.hf-ga-inputs input{
+  width:100%;
+}
+
+.hf-birth-block{
+  border-top:1px solid var(--line2);
+  border-bottom:1px solid var(--line2);
+}
+
+.hf-birth-form{
+  display:grid;
+  gap:10px;
+}
+
+.hf-birth-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:18px;
+}
+
+.hf-birth-row-single{
+  grid-template-columns:1fr;
+}
+
+.hf-birth-row > label,
+.hf-birth-apgar{
+  display:grid;
+  grid-template-columns:94px minmax(0,1fr);
+  align-items:center;
+  gap:10px;
+  margin:0;
+}
+
+.hf-birth-row-single > label{
+  max-width:calc(50% - 9px);
+}
+
+.hf-birth-row > label > span{
+  font-size:11px;
+  font-weight:600;
+  color:#6f6963;
+}
+
+.hf-birth-apgar{
+  margin-top:2px;
+}
+
+.hf-apgar-label{
+  width:auto;
+  padding:0;
+}
+
+.hf-apgar-values{
+  display:flex;
+  align-items:flex-end;
+  flex-wrap:wrap;
+  gap:10px;
+}
+
+.hf-apgar-step{
+  display:contents;
+}
+
+.hf-apgar-step[hidden]{
+  display:none;
+}
+
+.hf-apgar-label{
+  width:42px;
+  padding-bottom:9px;
+  font-family:var(--font-ui);
+  font-size:11px;
+  font-weight:700;
+  color:#6f6963;
+}
+
+.hf-apgar-cell{
+  display:grid;
+  gap:5px;
+  width:78px;
+}
+
+.hf-apgar-cell span{
+  font-size:10px;
+  font-weight:600;
+  color:#817a73;
+  text-align:center;
+}
+
+.hf-apgar-cell input{
+  padding:0 8px;
+  text-align:center;
 }
 
 .hf-dialog-text{
   display:block!important;
-  margin-top:12px!important;
+  margin:0 0 11px!important;
 }
 
-.hf-dialog-text span{
+.hf-dialog-text:last-child{
+  margin-bottom:0!important;
+}
+
+.hf-dialog-text > span{
   display:block;
   margin-bottom:5px;
 }
 
+.hf-dialog-text > .hf-field-label-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+
+.hf-field-label-row > span{
+  font-size:11px;
+  font-weight:600;
+  color:#6f6963;
+}
+
+.hf-template-btn{
+  height:24px;
+  padding:0 8px;
+  border:1px solid #d3ccc4;
+  border-radius:5px;
+  background:#fff;
+  color:#625c56;
+  font-size:10px;
+  font-weight:600;
+  cursor:pointer;
+}
+
+.hf-template-btn:hover{
+  background:#eee9e2;
+  color:var(--ink);
+}
+
 .hf-dialog-text textarea{
+  display:block;
+  min-height:62px;
+  padding:8px 10px;
+  line-height:1.5;
+  resize:vertical;
+}
+
+.hf-alert-dialog-card{
+  width:min(560px,92vw);
+}
+
+.hf-alert-dialog-head{
+  margin-bottom:12px;
+}
+
+.hf-alert-dialog-head h3{
+  margin:0;
+  font-size:17px;
+}
+
+.hf-alert-dialog-head p{
+  margin:3px 0 0;
+  font-size:11px;
+  color:var(--muted);
+}
+
+.hf-alert-dialog-field{
+  display:block!important;
+  margin:0!important;
+}
+
+.hf-alert-dialog-field textarea{
+  width:100%;
+  min-height:88px;
+  border:1px solid #cfa9a5;
+  border-radius:6px;
+  background:#fffdfc;
+  padding:9px 10px;
   font-family:var(--font-clinical);
-  font-size:13px;
-  line-height:1.55;
-  tab-size:4;
+  font-size:14px;
+  line-height:1.5;
+  resize:vertical;
 }
 
 .hf-dialog-actions{
+  position:sticky;
+  bottom:-18px;
   display:flex;
   justify-content:flex-end;
-
   gap:7px;
-  margin-top:16px;
+  margin:4px -18px -18px;
+  padding:12px 18px;
+  border-top:1px solid var(--line);
+  background:#faf8f5f2;
+  backdrop-filter:blur(4px);
+}
+
+@media(max-width:700px){
+  .hf-bg-form-grid{
+    grid-template-columns:1fr;
+  }
+
+  .hf-birth-row{
+    grid-template-columns:1fr;
+  }
+
+  .hf-birth-row-single > label{
+    max-width:none;
+  }
+
+  .hf-birth-row > label,
+  .hf-birth-apgar{
+    grid-template-columns:84px minmax(0,1fr);
+  }
+
+  .hf-bg-form-grid > label,
+  .hf-ga-field{
+    grid-template-columns:84px minmax(0,1fr);
+  }
+
+  .hf-apgar-row{
+    gap:8px;
+  }
+
+  .hf-apgar-cell{
+    width:68px;
+  }
 }
 
 /* =========================
@@ -3623,12 +4409,19 @@ const STYLES=`
     grid-template-columns:58px 1fr;
   }
 
-  .hf-metric{
-    padding:5px 7px;
+  .hf-metrics{
+    column-gap:12px;
+    padding:7px 9px;
+  }
+
+  .hf-age-metrics{
+    gap:12px;
+    padding-right:12px;
   }
 
   .hf-metric input{
-    width:50px;
+    min-width:3ch;
+    max-width:8ch;
   }
 }
 `;
