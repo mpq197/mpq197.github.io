@@ -1,5 +1,5 @@
 // core/app.js
-// updated: 2026-03-03
+// updated: 2026-03-23
 // note: remove legacy jQuery code
 
 import { bindCopyItems } from "./utils.js";
@@ -10,13 +10,13 @@ import { bindCopyItems } from "./utils.js";
  * - #group=grp => group dashboard view (ALL tools in that group, single-column)
  */
 const GROUPS = [
-{
-    id: "grp-oth",
+  {
+    id: "grp-test",
     title: "測試",
     items: [
-      { key: "heartEchoPlane", label: "心超3D切面", module: "../tools/heartEchoPlane.js" },
       { key: "handoff", label: "交班單", module: "../tools/handoff.js"  },
-      { key: "vitals", label: "生命徵象", module: "../tools/vitals.js"  }
+      { key: "vitals", label: "生命徵象", module: "../tools/vitals.js"  },
+      { key: "heartecho", label: "心超", module: "../tools/heartEchoPlane.js"  },
     ],
   },
 ];
@@ -31,6 +31,60 @@ const mainEl    = document.getElementById("neoMain");
 
 const toggleBtnCollapsed = document.getElementById("sidebarToggleBtnCollapsed");
 const toggleBtnExpanded  = document.getElementById("sidebarToggleBtnExpanded");
+
+
+/* -------------------------
+    Tool state cache 切換工具時保留表單狀態 (SPA)  
+------------------------- */
+const TOOL_STATE_CACHE = new Map();
+let currentToolKey = null;
+
+function saveToolState(toolKey, root) {
+  if (!toolKey || !root) return;
+
+  const state = {};
+
+  root.querySelectorAll("input, select, textarea").forEach((el, index) => {
+    const key = el.id || el.name || `field_${index}`;
+
+    if (el.type === "checkbox" || el.type === "radio") {
+      state[key] = {
+        type: el.type,
+        checked: el.checked
+      };
+    } else {
+      state[key] = {
+        type: el.type,
+        value: el.value
+      };
+    }
+  });
+
+  TOOL_STATE_CACHE.set(toolKey, state);
+}
+
+function restoreToolState(toolKey, root, { triggerEvents = true } = {}) {
+  const state = TOOL_STATE_CACHE.get(toolKey);
+  if (!state || !root) return;
+
+  root.querySelectorAll("input, select, textarea").forEach((el, index) => {
+    const key = el.id || el.name || `field_${index}`;
+    const saved = state[key];
+
+    if (!saved) return;
+
+    if (el.type === "checkbox" || el.type === "radio") {
+      el.checked = saved.checked;
+    } else {
+      el.value = saved.value;
+    }
+
+    if (triggerEvents) {
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  });
+}
 
 /* -------------------------
    GA helpers
@@ -248,13 +302,45 @@ async function loadTool(toolKey){
   const main = document.getElementById("neoMain");
   if (!main) return;
 
+  if (currentToolKey) {
+    saveToolState(currentToolKey, main);
+  } else {
+    main.querySelectorAll("[data-tool-host]").forEach((mount) => {
+      const key = mount.dataset.toolHost;
+      if (key) {
+        saveToolState(key, mount);
+      }
+    });
+  }
+
   const mod = await importModule(meta.module);
+
   main.innerHTML = mod.render();
 
-  if (typeof mod.init === "function") mod.init(main);
+  if (typeof mod.init === "function") {
+    mod.init(main);
+  }
+
   bindCopyItems(main);
 
-  // (Optional) GA virtual pageview for SPA tool view
+  // 第一輪 restore
+  restoreToolState(meta.key, main, { triggerEvents: true });
+
+  // 第二輪 restore，等動態 checkbox 建好
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      restoreToolState(meta.key, main, { triggerEvents: false });
+
+      // 通知有特殊內部 state 的工具：
+      // DOM restore 已完成，可以同步自己的 state
+      main
+        .querySelector(`[data-tool="${meta.key}"]`)
+        ?.dispatchEvent(new CustomEvent("neo:restore"));
+    });
+  });
+
+  currentToolKey = meta.key;
+
   gaEvent("page_view", { page_path: `/tool/${meta.key}` });
 }
 
@@ -267,6 +353,21 @@ async function loadGroup(groupId){
 
   const main = document.getElementById("neoMain");
   if (!main) return;
+
+  // ① 如果目前是單一工具，切到 group 前先保存
+  if (currentToolKey) {
+    saveToolState(currentToolKey, main);
+    currentToolKey = null;
+  }
+
+  // ② 如果目前本來就是 group dashboard，
+  //    先保存 dashboard 中每一個工具
+  main.querySelectorAll("[data-tool-host]").forEach((mount) => {
+    const key = mount.dataset.toolHost;
+    if (key) {
+      saveToolState(key, mount);
+    }
+  });
 
   main.innerHTML = `
     <div class="neo-main-group-title">${g.title}</div>
@@ -295,11 +396,26 @@ async function loadGroup(groupId){
     col.appendChild(mount);
     row.appendChild(col);
 
-    if (typeof mod.init === "function") mod.init(mount);
+    if (typeof mod.init === "function") {
+      mod.init(mount);
+    }
+
     bindCopyItems(mount);
+
+    // ③ dashboard 建立完成後還原各工具資料
+    restoreToolState(it.key, mount, { triggerEvents: true });
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        restoreToolState(it.key, mount, { triggerEvents: false });
+
+        mount
+          .querySelector(`[data-tool="${it.key}"]`)
+          ?.dispatchEvent(new CustomEvent("neo:restore"));
+      });
+    });
   });
 
-  // (Optional) GA virtual pageview for SPA group dashboard
   gaEvent("page_view", { page_path: `/group/${g.id}` });
 }
 
@@ -373,6 +489,5 @@ window.addEventListener("load", async () => {
   });
 
 });
-
 
 
