@@ -315,8 +315,10 @@ export function render(){
 }
 
 export async function init(host=document){
-  const root=host?.matches?.(`[data-tool="${TOOL_KEY}"]`)
-    ?host:host?.querySelector?.(`[data-tool="${TOOL_KEY}"]`);
+  const selector=`.hf[data-tool="${TOOL_KEY}"]`;
+  const root=host?.matches?.(selector)
+    ?host
+    :host?.querySelector?.(selector);
   if(!root)return null;
   if(root.__handoffApp)return root.__handoffApp;
   if(activeApp&&activeApp.root!==root)activeApp.destroy();
@@ -2011,7 +2013,7 @@ async function copyText(t){
 }
 
 const STYLES=`
-[data-tool="handoff"]{
+.hf[data-tool="handoff"]{
   --bg:#f4eee6;
   --panel:#fff;
   --soft:#faf8f5;
@@ -2042,11 +2044,11 @@ const STYLES=`
   overflow:hidden;
 }
 
-[data-tool="handoff"] *{
+.hf[data-tool="handoff"] *{
   box-sizing:border-box;
 }
 
-[data-tool="handoff"] button{
+.hf[data-tool="handoff"] button{
   font-family:var(--font-ui);
 }
 
@@ -3054,15 +3056,15 @@ const STYLES=`
    FOCUS / DISABLED
 ========================= */
 
-textarea:focus,
-input:focus,
-button:focus-visible{
+.hf[data-tool="handoff"] textarea:focus,
+.hf[data-tool="handoff"] input:focus,
+.hf[data-tool="handoff"] button:focus-visible{
   outline:2px solid #9f9890;
   outline-offset:-2px;
 }
 
-textarea:disabled,
-input:disabled{
+.hf[data-tool="handoff"] textarea:disabled,
+.hf[data-tool="handoff"] input:disabled{
   color:#6f6963;
   background:#f7f5f2;
 }
@@ -3490,16 +3492,16 @@ input:disabled{
    FINALIZED
 ========================= */
 
-[data-tool="handoff"].is-finalized .hf-section{
+.hf[data-tool="handoff"].is-finalized .hf-section{
   border-color:#d7ded8;
 }
 
-[data-tool="handoff"].is-finalized .hf-section-heading{
+.hf[data-tool="handoff"].is-finalized .hf-section-heading{
   background:#f3f6f3;
 }
 
-[data-tool="handoff"].is-finalized textarea:disabled,
-[data-tool="handoff"].is-finalized input:disabled{
+.hf[data-tool="handoff"].is-finalized textarea:disabled,
+.hf[data-tool="handoff"].is-finalized input:disabled{
   background:#fbfcfb;
   color:#555;
 }
