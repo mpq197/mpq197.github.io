@@ -16,7 +16,7 @@ const GROUPS = [
     items: [
       { key: "handoff", label: "交班單", module: "../tools/handoff.js"  },
       { key: "vitals", label: "生命徵象", module: "../tools/vitals.js"  },
-      { key: "heartecho", label: "心超", module: "../tools/heartEchoPlane.js"  },
+      // { key: "heartecho", label: "心超", module: "../tools/heartEchoPlane.js"  },
     ],
   },
 ];
