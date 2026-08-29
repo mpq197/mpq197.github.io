@@ -109,7 +109,7 @@ export function render() {
   const uid = `${TOOL_KEY}-${++instanceSeq}`;
 
   return `
-    <section class="container-fluid py-3" data-heart-plane-root="${uid}">
+    <section class="heart-echo-root container-fluid py-3" data-heart-plane-root="${uid}">
       <div class="card shadow-sm border-0">
         <div class="card-body">
           <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
@@ -232,26 +232,27 @@ export function render() {
       </div>
 
       <style>
-        [data-heart-plane-root] .heart-plane-main {
+        /* Keep all styles inside the actual Heart Echo module root. */
+        .heart-echo-root[data-heart-plane-root] .heart-plane-main {
           display: grid;
           grid-template-columns: minmax(0, 1.1fr) minmax(320px, .9fr);
           gap: 1rem;
         }
 
-        [data-heart-plane-root] .heart-pane {
+        .heart-echo-root[data-heart-plane-root] .heart-pane {
           border: 1px solid #dee2e6;
           border-radius: 18px;
           background: #faf9f8;
           padding: .75rem;
         }
 
-        [data-heart-plane-root] .heart-pane-title {
+        .heart-echo-root[data-heart-plane-root] .heart-pane-title {
           font-weight: 750;
           margin-bottom: .5rem;
         }
 
-        [data-heart-plane-root] .heart-plane-viewer,
-        [data-heart-plane-root] .heart-plane-section {
+        .heart-echo-root[data-heart-plane-root] .heart-plane-viewer,
+        .heart-echo-root[data-heart-plane-root] .heart-plane-section {
           min-height: 560px;
           position: relative;
           overflow: hidden;
@@ -262,14 +263,14 @@ export function render() {
           border: 1px solid rgba(255,255,255,.18);
         }
 
-        [data-heart-plane-root] .heart-plane-viewer canvas,
-        [data-heart-plane-root] .heart-plane-section canvas {
+        .heart-echo-root[data-heart-plane-root] .heart-plane-viewer canvas,
+        .heart-echo-root[data-heart-plane-root] .heart-plane-section canvas {
           display: block;
           width: 100%;
           height: 100%;
         }
 
-        [data-heart-plane-root] .heart-plane-status {
+        .heart-echo-root[data-heart-plane-root] .heart-plane-status {
           position: absolute;
           left: 12px;
           right: 12px;
@@ -282,7 +283,7 @@ export function render() {
           font-size: .875rem;
         }
 
-        [data-heart-plane-root] .heart-plane-section-hint {
+        .heart-echo-root[data-heart-plane-root] .heart-plane-section-hint {
           position: absolute;
           left: 12px;
           right: 12px;
@@ -296,21 +297,21 @@ export function render() {
           pointer-events: none;
         }
 
-        [data-heart-plane-root] .heart-plane-panel {
+        .heart-echo-root[data-heart-plane-root] .heart-plane-panel {
           border: 1px solid #dee2e6;
           border-radius: 18px;
           background: #faf9f8;
           padding: 1rem;
         }
 
-        [data-heart-plane-root] .heart-plane-label-layer {
+        .heart-echo-root[data-heart-plane-root] .heart-plane-label-layer {
           position: absolute;
           inset: 0;
           z-index: 3;
           pointer-events: none;
         }
 
-        [data-heart-plane-root] .heart-label {
+        .heart-echo-root[data-heart-plane-root] .heart-label {
           position: absolute;
           transform: translate(-50%, -50%);
           padding: 2px 7px;
@@ -324,19 +325,19 @@ export function render() {
           box-shadow: 0 2px 8px rgba(0,0,0,.16);
         }
 
-        [data-heart-plane-root] .btn[data-preset].active {
+        .heart-echo-root[data-heart-plane-root] .btn[data-preset].active {
           background: #212529;
           color: #fff;
           border-color: #212529;
         }
 
         @media (max-width: 992px) {
-          [data-heart-plane-root] .heart-plane-main {
+          .heart-echo-root[data-heart-plane-root] .heart-plane-main {
             grid-template-columns: 1fr;
           }
 
-          [data-heart-plane-root] .heart-plane-viewer,
-          [data-heart-plane-root] .heart-plane-section {
+          .heart-echo-root[data-heart-plane-root] .heart-plane-viewer,
+          .heart-echo-root[data-heart-plane-root] .heart-plane-section {
             min-height: 420px;
           }
         }
@@ -345,7 +346,14 @@ export function render() {
   `;
 }
 
-export async function init(root) {
+export async function init(host) {
+  const selector = ".heart-echo-root[data-heart-plane-root]";
+  const root = host?.matches?.(selector)
+    ? host
+    : host?.querySelector?.(selector);
+
+  if (!root) return;
+
   const mount = root.querySelector("[data-heart-viewer]");
   const sectionMount = root.querySelector("[data-heart-section]");
 
