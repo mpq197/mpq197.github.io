@@ -184,17 +184,64 @@ export function render(){
       </main>
     </div>
 
+    <div class="hf-symbol-rail" data-ref="symbolRail" hidden aria-label="常用符號">
+      <button type="button" data-symbol="↑" title="上升">↑</button>
+      <button type="button" data-symbol="↓" title="下降">↓</button>
+      <button type="button" data-symbol="→" title="向右箭頭">→</button>
+      <button type="button" data-symbol="←" title="向左箭頭">←</button>
+
+      <span class="hf-symbol-rail-sep" aria-hidden="true"></span>
+
+      <button type="button" data-symbol="★" title="實心星號">★</button>
+      <button type="button" data-symbol="☆" title="空心星號">☆</button>
+
+      <span class="hf-symbol-rail-sep" aria-hidden="true"></span>
+
+      <button type="button" data-symbol="±" title="正負">±</button>
+      <button type="button" data-symbol="≥" title="大於等於">≥</button>
+      <button type="button" data-symbol="≤" title="小於等於">≤</button>
+      <button type="button" data-symbol="≠" title="不等於">≠</button>
+    </div>
+
     <dialog class="hf-dialog" data-ref="patientDialog">
-      <div class="hf-dialog-card">
-        <h3>建立病人</h3>
-        <label>床號<input data-ref="newBed" type="text"></label>
-        <label>病歷號<input data-ref="newMrn" type="text"></label>
-        <label>姓名／代稱<input data-ref="newName" type="text"></label>
-        <label>主治／Team<input data-ref="newTeam" type="text"></label>
+      <div class="hf-dialog-card hf-new-patient-card">
+
+        <div class="hf-new-patient-head">
+          <h3>建立病人</h3>
+        </div>
+
+        <div class="hf-new-patient-form">
+          <label>
+            <span>床號</span>
+            <input data-ref="newBed" type="text">
+          </label>
+
+          <label>
+            <span>病歷號</span>
+            <input data-ref="newMrn" type="text">
+          </label>
+
+          <label>
+            <span>姓名／代稱</span>
+            <input data-ref="newName" type="text">
+          </label>
+
+          <label>
+            <span>主治／Team</span>
+            <input data-ref="newTeam" type="text">
+          </label>
+
+          <label>
+            <span>DOB</span>
+            <input data-ref="newBirthDate" type="date" value="${todayISO()}">
+          </label>
+        </div>
+
         <div class="hf-dialog-actions">
           <button type="button" data-action="closeDialog">取消</button>
           <button type="button" class="hf-primary" data-action="createPatient">建立</button>
         </div>
+
       </div>
     </dialog>
 
@@ -445,10 +492,13 @@ class HandoffApp{
     this.dirty=false;
     this.patientDirty=false;
     this.backgroundEditing=false;
+    this.lastTextField=null;
 
     this.onInput=this.onInput.bind(this);
     this.onChange=this.onChange.bind(this);
     this.onClick=this.onClick.bind(this);
+    this.onFocusIn=this.onFocusIn.bind(this);
+    this.onFocusOut=this.onFocusOut.bind(this);
     this.pendingBackup=null;
   }
 
@@ -511,6 +561,7 @@ class HandoffApp{
       weeklyAnonymize:q('[data-ref="weeklyAnonymize"]'),
       weeklyBackground:q('[data-ref="weeklyBackground"]'),
       weeklyInfo:q('[data-ref="weeklyInfo"]'),
+      symbolRail:q('[data-ref="symbolRail"]'),
       patientDialog:q('[data-ref="patientDialog"]'),
       backgroundDialog:q('[data-ref="backgroundDialog"]'),
       apgar10Row:q('[data-ref="apgar10Row"]'),
@@ -527,6 +578,8 @@ class HandoffApp{
     this.root.addEventListener("input",this.onInput);
     this.root.addEventListener("change",this.onChange);
     this.root.addEventListener("click",this.onClick);
+    this.root.addEventListener("focusin",this.onFocusIn);
+    this.root.addEventListener("focusout",this.onFocusOut);
   }
 
   destroy(){
@@ -534,7 +587,33 @@ class HandoffApp{
     this.root.removeEventListener("input",this.onInput);
     this.root.removeEventListener("change",this.onChange);
     this.root.removeEventListener("click",this.onClick);
+    this.root.removeEventListener("focusin",this.onFocusIn);
+    this.root.removeEventListener("focusout",this.onFocusOut);
     if(this.root.__handoffApp===this)delete this.root.__handoffApp;
+  }
+
+  onFocusIn(e){
+    const el=e.target.closest?.('textarea[data-field], input[data-field][type="text"]');
+    if(!el||el.disabled)return;
+
+    this.lastTextField=el;
+    if(this.r.symbolRail)this.r.symbolRail.hidden=false;
+  }
+
+  onFocusOut(){
+    setTimeout(()=>{
+      const active=document.activeElement;
+      const stillEditing=
+        this.root.contains(active)&&
+        (
+          active?.matches?.('textarea[data-field], input[data-field][type="text"]')||
+          active?.closest?.('.hf-symbol-rail')
+        );
+
+      if(!stillEditing&&this.r.symbolRail){
+        this.r.symbolRail.hidden=true;
+      }
+    },0);
   }
 
   renderSystems(){
@@ -627,6 +706,9 @@ class HandoffApp{
     const el=e.target.closest("[data-field]");
     if(!el)return;
 
+    // 特殊符號快捷
+    applySymbolShortcut(el);
+
     const path=el.dataset.field;
 
     if(path.startsWith("patient.")){
@@ -680,6 +762,13 @@ class HandoffApp{
   }
 
   async onClick(e){
+    const symbolBtn=e.target.closest("[data-symbol]");
+    if(symbolBtn){
+      e.preventDefault();
+      this.insertSymbol(symbolBtn.dataset.symbol||"");
+      return;
+    }
+
     const b=e.target.closest("[data-action]");
     if(!b)return;
     const a=b.dataset.action;
@@ -807,6 +896,24 @@ class HandoffApp{
     }
   }
 
+  insertSymbol(symbol){
+    const el=this.lastTextField;
+    if(!symbol||!el||el.disabled||!this.root.contains(el))return;
+
+    const start=el.selectionStart??el.value.length;
+    const end=el.selectionEnd??start;
+
+    el.value=
+      el.value.slice(0,start)+
+      symbol+
+      el.value.slice(end);
+
+    const pos=start+symbol.length;
+    el.focus();
+    el.setSelectionRange(pos,pos);
+    el.dispatchEvent(new Event("input",{bubbles:true}));
+  }
+
   async exportBackup(){
     await this.flush();
     const backup={
@@ -924,6 +1031,7 @@ class HandoffApp{
 
   async createPatient(){
     const p=blankPatient();
+    p.birthDate=todayISO();
     p.bed=this.r.newBed.value.trim();
     p.mrn=this.r.newMrn.value.trim();
     p.name=this.r.newName.value.trim();
@@ -941,6 +1049,8 @@ class HandoffApp{
 
     await this.updateSearchIndexForPatient(p.id);
     await this.selectPatient(p.id,true);
+
+    this.openBackgroundEditor();
   }
 
   async transferPatient(patientId=this.patient?.id){
@@ -2451,7 +2561,54 @@ function resizeMetricInput(el){
 
   el.style.width=`${chars}ch`;
 }
+function applySymbolShortcut(el){
+  if(!el || !["INPUT","TEXTAREA"].includes(el.tagName))return false;
 
+  if(
+    el.tagName==="INPUT" &&
+    el.type &&
+    !["text","search"].includes(el.type)
+  )return false;
+
+  const start=el.selectionStart;
+  const end=el.selectionEnd;
+
+  if(start==null || start!==end)return false;
+
+  const shortcuts=[
+    ["-->", "→"],
+    [">--", "→"],
+    ["<--", "←"],
+    ["<--", "←"],
+    ["==>", "⇒"],
+    [">==", "⇒"],
+    ["<==", "⇐"],
+    ["==<", "⇐"],
+    ["^||", "↑"],
+    ["V||", "↓"],
+    ["v||", "↓"]
+  ];
+
+  const before=el.value.slice(0,start);
+
+  for(const [shortcut,symbol] of shortcuts){
+    if(!before.endsWith(shortcut))continue;
+
+    const from=start-shortcut.length;
+
+    el.value=
+      el.value.slice(0,from)+
+      symbol+
+      el.value.slice(end);
+
+    const pos=from+symbol.length;
+    el.setSelectionRange(pos,pos);
+
+    return true;
+  }
+
+  return false;
+}
 function clone(x){return JSON.parse(JSON.stringify(x));}
 function uid(p="id"){return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`;}
 function nowISO(){return new Date().toISOString();}
@@ -3584,15 +3741,83 @@ const STYLES=`
 
 .hf[data-tool="handoff"] textarea:focus,
 .hf[data-tool="handoff"] input:focus,
-.hf[data-tool="handoff"] button:focus-visible{
-  outline:2px solid #9f9890;
-  outline-offset:-2px;
+.hf[data-tool="handoff"] select:focus{
+  outline:none !important;
+  box-shadow:none !important;
+  border-color:inherit !important;
 }
 
-.hf[data-tool="handoff"] textarea:disabled,
-.hf[data-tool="handoff"] input:disabled{
-  color:#6f6963;
-  background:#f7f5f2;
+.hf[data-tool="handoff"] button:focus-visible{
+  outline:1px solid #bdb6ae;
+  outline-offset:1px;
+  box-shadow:none !important;
+}
+
+/* =========================
+   SYMBOL RAIL
+========================= */
+
+.hf-symbol-rail{
+  position:fixed;
+  right:26px;
+  top:50%;
+  transform:translateY(-50%);
+  z-index:120;
+
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:2px;
+
+  padding:5px 4px;
+
+  background:#faf8f5ee;
+  border:1px solid var(--line);
+  border-radius:8px;
+
+  box-shadow:0 4px 14px #0002;
+  backdrop-filter:blur(6px);
+
+  opacity:.82;
+  transition:opacity .15s ease;
+}
+
+.hf-symbol-rail:hover{
+  opacity:1;
+}
+
+.hf-symbol-rail[hidden]{
+  display:none;
+}
+
+.hf-symbol-rail button{
+  width:28px;
+  height:28px;
+  padding:0;
+
+  border:0;
+  border-radius:4px;
+
+  background:transparent;
+  color:#625c56;
+
+  font-family:var(--font-clinical);
+  font-size:16px;
+  line-height:1;
+
+  cursor:pointer;
+}
+
+.hf-symbol-rail button:hover{
+  background:#ebe6df;
+  color:var(--ink);
+}
+
+.hf-symbol-rail-sep{
+  width:18px;
+  height:1px;
+  margin:3px 0;
+  background:var(--line);
 }
 
 /* =========================
@@ -3956,6 +4181,67 @@ const STYLES=`
   .hf-apgar-cell{
     width:68px;
   }
+}
+
+/* =========================
+   NEW PATIENT DIALOG
+========================= */
+
+.hf-new-patient-card{
+  width:min(520px,92vw);
+}
+
+.hf-new-patient-head{
+  margin-bottom:16px;
+}
+
+.hf-new-patient-head h3{
+  margin:0;
+  font-size:20px;
+  font-weight:700;
+}
+
+.hf-new-patient-form{
+  display:grid;
+  gap:10px;
+}
+
+.hf-new-patient-form label{
+  display:grid;
+  grid-template-columns:100px minmax(0,1fr);
+  align-items:center;
+  gap:12px;
+  margin:0;
+}
+
+.hf-new-patient-form label > span{
+  font-size:12px;
+  font-weight:600;
+  color:#6f6963;
+}
+
+.hf-new-patient-form input{
+  width:100%;
+  height:38px;
+
+  border:1px solid #cfc8bf;
+  border-radius:6px;
+
+  background:#fff;
+  color:var(--ink);
+
+  padding:0 10px;
+
+  font-family:var(--font-clinical);
+  font-size:14px;
+}
+
+/* 不要 NeoAssist global 黑色 focus ring */
+.hf-new-patient-form input:focus{
+  outline:none !important;
+  box-shadow:none !important;
+  border-color:#9f9890 !important;
+  background:#fff;
 }
 
 /* =========================
