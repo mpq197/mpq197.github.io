@@ -7,9 +7,14 @@ const DB_NAME="neoassist-clinical-handoff";
 const DB_VERSION=3;
 const AUTOSAVE_DELAY_MS=650;
 
-const SYSTEMS=[
-  ["resp","RESP"],["cv","CV"],["gi","GI"],["inf","INF"],
-  ["neuro","NEURO"],["oph","OPH"],["other","OTHER"]
+const DEFAULT_SYSTEMS=[
+  {key:"resp",label:"RESP"},
+  {key:"cv",label:"CV"},
+  {key:"gi",label:"GI"},
+  {key:"inf",label:"INF"},
+  {key:"neuro",label:"NEURO"},
+  {key:"oph",label:"OPH"},
+  {key:"other",label:"OTHER"}
 ];
 
 let activeApp=null;
@@ -130,7 +135,7 @@ export function render(){
 
         <section class="hf-section">
           <div class="hf-section-heading">
-            <h2>SHIFT SUMMARY</h2>
+            <h2>DAILY SUMMARY</h2>
           </div>
 
           <div class="hf-metrics">
@@ -144,17 +149,19 @@ export function render(){
           </div>
 
           <textarea class="hf-summary" rows="3" data-field="summary"
-            placeholder="Shift summary..."></textarea>
+            placeholder="Daily Summary..."></textarea>
 
           <div class="hf-support-grid">
-            ${supportRow("Vent","vent","例如：HFOV MAP 12 Amp 24 Hz 12 FiO₂ 30%")}
-            ${supportRow("Line","line","例如：PCVC (8/26-), ETT (8/26-)")}
-            ${supportRow("Fluids","fluids","例如：BM 60 + TPN 70, TDF 140")}
+            ${supportRow("Vent","vent","e.g. 08/31 NIMV [25 25% 15/5]")}
+            ${supportRow("Line","line","e.g. ETT (8/26-)")}
+            ${supportRow("Fluids","fluids","e.g. BW 1200g, TDF 120 (-10 for PDA), TPN/SMOF 2/2")}
           </div>
         </section>
 
         <section class="hf-section hf-clinical">
-          <div class="hf-section-heading"><h2>CLINICAL</h2></div>
+          <div class="hf-section-heading">
+            <h2>CLINICAL</h2>
+          </div>
           <div data-ref="systems"></div>
         </section>
 
@@ -168,8 +175,7 @@ export function render(){
               title="從各 System 抓取以 # 開頭的問題"
             >匯入問題</button>
           </div>
-          <textarea class="hf-large-text" rows="4" data-field="assessment"
-            placeholder="Assessment..."></textarea>
+          <textarea class="hf-large-text" rows="4" data-field="assessment"></textarea>
         </section>
 
         <section class="hf-section">
@@ -178,8 +184,7 @@ export function render(){
             <button type="button" class="hf-heading-action"
               data-action="loadTemplate" data-template="plan">載入 Template</button>
           </div>
-          <textarea class="hf-large-text" rows="4" data-field="plan"
-            placeholder="Plan..."></textarea>
+          <textarea class="hf-large-text" rows="4" data-field="plan"></textarea>
         </section>
       </main>
     </div>
@@ -194,13 +199,15 @@ export function render(){
 
       <button type="button" data-symbol="★" title="實心星號">★</button>
       <button type="button" data-symbol="☆" title="空心星號">☆</button>
+      <button type="button" data-symbol="●" title="實心圓點">●</button>
+      <button type="button" data-symbol="○" title="空心圓點">○</button>
+      <button type="button" data-symbol="∵" title="因為">∵</button>
+      <button type="button" data-symbol="∴" title="所以">∴</button>
 
       <span class="hf-symbol-rail-sep" aria-hidden="true"></span>
 
-      <button type="button" data-symbol="±" title="正負">±</button>
       <button type="button" data-symbol="≥" title="大於等於">≥</button>
       <button type="button" data-symbol="≤" title="小於等於">≤</button>
-      <button type="button" data-symbol="≠" title="不等於">≠</button>
     </div>
 
     <dialog class="hf-dialog" data-ref="patientDialog">
@@ -497,8 +504,15 @@ class HandoffApp{
     this.onInput=this.onInput.bind(this);
     this.onChange=this.onChange.bind(this);
     this.onClick=this.onClick.bind(this);
+    this.onKeyDown=this.onKeyDown.bind(this);
     this.onFocusIn=this.onFocusIn.bind(this);
     this.onFocusOut=this.onFocusOut.bind(this);
+    this.onDragStart=this.onDragStart.bind(this);
+    this.onDragOver=this.onDragOver.bind(this);
+    this.onDrop=this.onDrop.bind(this);
+    this.onDragEnd=this.onDragEnd.bind(this);
+    this.dragSystemKey=null;
+    this.pendingSystem=null;
     this.pendingBackup=null;
   }
 
@@ -517,7 +531,6 @@ class HandoffApp{
       this.patients=[p];
     }
 
-    this.renderSystems();
     await this.rebuildSearchIndex();
 
     const savedId=await getSetting(this.db,"currentPatientId");
@@ -578,8 +591,13 @@ class HandoffApp{
     this.root.addEventListener("input",this.onInput);
     this.root.addEventListener("change",this.onChange);
     this.root.addEventListener("click",this.onClick);
+    this.root.addEventListener("keydown",this.onKeyDown);
     this.root.addEventListener("focusin",this.onFocusIn);
     this.root.addEventListener("focusout",this.onFocusOut);
+    this.root.addEventListener("dragstart",this.onDragStart);
+    this.root.addEventListener("dragover",this.onDragOver);
+    this.root.addEventListener("drop",this.onDrop);
+    this.root.addEventListener("dragend",this.onDragEnd);
   }
 
   destroy(){
@@ -587,8 +605,13 @@ class HandoffApp{
     this.root.removeEventListener("input",this.onInput);
     this.root.removeEventListener("change",this.onChange);
     this.root.removeEventListener("click",this.onClick);
+    this.root.removeEventListener("keydown",this.onKeyDown);
     this.root.removeEventListener("focusin",this.onFocusIn);
     this.root.removeEventListener("focusout",this.onFocusOut);
+    this.root.removeEventListener("dragstart",this.onDragStart);
+    this.root.removeEventListener("dragover",this.onDragOver);
+    this.root.removeEventListener("drop",this.onDrop);
+    this.root.removeEventListener("dragend",this.onDragEnd);
     if(this.root.__handoffApp===this)delete this.root.__handoffApp;
   }
 
@@ -600,7 +623,20 @@ class HandoffApp{
     if(this.r.symbolRail)this.r.symbolRail.hidden=false;
   }
 
-  onFocusOut(){
+  onFocusOut(e){
+    const systemName=e.target.closest?.("[data-system-name]");
+    if(systemName){
+      const key=systemName.dataset.systemName;
+      setTimeout(()=>{
+        // If focus moved back to the same name input, do nothing.
+        if(document.activeElement===systemName)return;
+        this.commitSystemName(key,systemName).catch(err=>{
+          console.error(err);
+          alert(err.message||String(err));
+        });
+      },0);
+    }
+
     setTimeout(()=>{
       const active=document.activeElement;
       const stillEditing=
@@ -617,29 +653,63 @@ class HandoffApp{
   }
 
   renderSystems(){
-    this.r.systems.innerHTML=SYSTEMS.map(([key,label])=>`
-      <label class="hf-system-row">
-        <span>${label}</span>
-        <textarea rows="2" data-field="systems.${key}"
-          placeholder="${label}..."></textarea>
-      </label>
-    `).join("");
+    if(!this.r.systems)return;
+    const layout=getPatientSystemLayout(this.patient);
+    const rows=[...layout];
+
+    if(this.pendingSystem){
+      rows.push({
+        key:this.pendingSystem.key,
+        label:this.pendingSystem.label||"",
+        pending:true
+      });
+    }
+
+    this.r.systems.innerHTML=rows.map(({key,label,pending=false})=>`
+      <div class="hf-system-row ${pending?"is-pending":""}" data-system-key="${escapeAttr(key)}">
+        <div class="hf-system-label">
+          <button type="button" class="hf-system-drag" draggable="${pending?"false":"true"}"
+            data-system-key="${escapeAttr(key)}"
+            ${pending?"disabled":""}
+            aria-label="拖曳調整 ${escapeAttr(label||"未命名 System")} 順序" title="拖曳調整順序">⠿</button>
+
+          <input class="hf-system-name" type="text"
+            data-system-name="${escapeAttr(key)}"
+            value="${escapeAttr(label)}"
+            maxlength="24"
+            aria-label="System 名稱">
+
+          <button type="button" class="hf-system-remove"
+            data-action="deleteSystem" data-system-key="${escapeAttr(key)}"
+            aria-label="移除 ${escapeAttr(label||"未命名 System")}" title="移除此 System">×</button>
+        </div>
+
+        <textarea rows="2" data-field="systems.${escapeAttr(key)}"
+          ${pending?"disabled":""}
+          placeholder="# ...")}"></textarea>
+      </div>
+    `).join("")+`
+      <button type="button" class="hf-add-system-row" data-action="addSystem">＋ Add system</button>
+    `;
   }
 
   async selectPatient(id,save=true){
     if(save)await this.flush();
+    this.pendingSystem=null;
 
     this.patient=clone(this.patients.find(p=>p.id===id)||this.patients[0]);
     await setSetting(this.db,"currentPatientId",this.patient.id);
 
     if(this.r.search)this.r.search.value="";
     this.renderPatientLists();
+    this.renderSystems();
 
-    const lastDate=await getSetting(this.db,`lastDate:${this.patient.id}`);
-    await this.loadDate(lastDate||todayISO(),false);
+    // Clinical handoff always opens the selected patient on today's note.
+    await this.loadDate(todayISO(),false);
   }
 
   async loadDate(date,save=true){
+    this.pendingSystem=null;
     const maxDate=addDays(todayISO(),1);
 
     if(date>maxDate){
@@ -703,6 +773,12 @@ class HandoffApp{
       return;
     }
 
+    const systemName=e.target.closest?.("[data-system-name]");
+    if(systemName){
+      this.updateSystemName(systemName.dataset.systemName,systemName.value);
+      return;
+    }
+
     const el=e.target.closest("[data-field]");
     if(!el)return;
 
@@ -758,7 +834,60 @@ class HandoffApp{
       await this.updateWeeklyInfo();
       return;
     }
+    if(e.target.matches("[data-system-name]")){
+      return;
+    }
     if(e.target.matches("[data-field]"))await this.onInput(e);
+  }
+
+  async onKeyDown(e){
+    // --------------------------------------------------
+    // Clinical textarea indentation
+    // --------------------------------------------------
+    const textarea=e.target.closest?.("textarea[data-field]");
+    if(textarea&&!textarea.disabled){
+      if(e.key==="Tab"){
+        e.preventDefault();
+        applyTextareaIndent(textarea,e.shiftKey?-1:1);
+        textarea.dispatchEvent(new Event("input",{bubbles:true}));
+        return;
+      }
+
+      if(e.key==="Enter"&&!e.shiftKey&&!e.ctrlKey&&!e.metaKey&&!e.altKey){
+        e.preventDefault();
+        applyTextareaSmartEnter(textarea);
+        textarea.dispatchEvent(new Event("input",{bubbles:true}));
+        return;
+      }
+    }
+
+    // --------------------------------------------------
+    // Inline System name editor
+    // --------------------------------------------------
+    const input=e.target.closest?.("[data-system-name]");
+    if(!input)return;
+
+    if(e.key==="Enter"){
+      e.preventDefault();
+      await this.commitSystemName(input.dataset.systemName,input);
+      return;
+    }
+
+    if(e.key==="Escape"){
+      e.preventDefault();
+      const key=input.dataset.systemName;
+      if(this.pendingSystem?.key===key){
+        this.pendingSystem=null;
+        this.renderSystems();
+        this.fill();
+        this.syncReadonly();
+        this.setSaveState("已取消新增 System");
+      }else{
+        const item=getPatientSystemLayout(this.patient).find(x=>x.key===key);
+        input.value=item?.label||"";
+        input.blur();
+      }
+    }
   }
 
   async onClick(e){
@@ -863,6 +992,8 @@ class HandoffApp{
       if(a==="copyWeekly"){
         return this.copyWeeklySummary();
       }
+      if(a==="addSystem")return this.addSystem();
+      if(a==="deleteSystem")return this.deleteSystem(b.dataset.systemKey);
       if(a==="collectProblems")return this.collectProblemsToAssessment();
       if(a==="loadTemplate")return this.loadTemplate(b.dataset.template);
       if(a==="copyMode"){
@@ -894,6 +1025,280 @@ class HandoffApp{
       console.error(err);
       alert(err.message||String(err));
     }
+  }
+
+  async addSystem(){
+    if(!this.patient||this.isReadOnly())return;
+
+    // Only one unnamed temporary row at a time. It exists in the DOM only and
+    // is not written to patient.systemLayout / IndexedDB until a valid name is committed.
+    if(this.pendingSystem){
+      const existing=this.root.querySelector(
+        `[data-system-name="${CSS.escape(this.pendingSystem.key)}"]`
+      );
+      existing?.focus();
+      return;
+    }
+
+    const key=uid("sys");
+    this.pendingSystem={key,label:""};
+    this.renderSystems();
+    this.fill();
+    this.syncReadonly();
+
+    const input=this.root.querySelector(`[data-system-name="${CSS.escape(key)}"]`);
+    if(input)input.focus();
+  }
+
+  updateSystemName(key,value){
+    if(!this.patient||this.isReadOnly())return;
+
+    if(this.pendingSystem?.key===key){
+      // Pending names are UI-only. Do not dirty or autosave the patient yet.
+      this.pendingSystem.label=String(value??"").slice(0,24);
+      return;
+    }
+
+    const layout=getPatientSystemLayout(this.patient);
+    const item=layout.find(x=>x.key===key);
+    if(!item)return;
+
+    item.label=String(value??"").slice(0,24);
+    this.patient.systemLayout=layout;
+    this.patient.updatedAt=nowISO();
+    this.patientDirty=true;
+    this.markDirty();
+  }
+
+  async findExistingSystemKey(label,excludeKey=""){
+    if(!this.patient)return null;
+
+    const target=normalizeSystemLabel(label).toLowerCase();
+    if(!target)return null;
+
+    const activeKeys=new Set(
+      getPatientSystemLayout(this.patient)
+        .filter(item=>item.key!==excludeKey)
+        .map(item=>item.key)
+    );
+
+    const candidates=[];
+    const remember=(layout,date="",savedAt="")=>{
+      normalizeSystemLayout(layout).forEach(item=>{
+        if(
+          item.key!==excludeKey &&
+          !activeKeys.has(item.key) &&
+          item.label.toLowerCase()===target
+        ){
+          candidates.push({key:item.key,date:String(date||""),savedAt:String(savedAt||"")});
+        }
+      });
+    };
+
+    const rows=await getByIndex(this.db,"dailyRecords","patientId",this.patient.id);
+    rows.forEach(raw=>remember(raw?.patientSnapshot?.systemLayout,raw?.date,raw?.updatedAt));
+
+    const revisions=await getAll(this.db,"revisions");
+    revisions
+      .filter(rev=>rev?.patientId===this.patient.id)
+      .forEach(rev=>remember(
+        rev?.snapshot?.patientSnapshot?.systemLayout,
+        rev?.date||rev?.snapshot?.date,
+        rev?.savedAt
+      ));
+
+    if(candidates.length){
+      candidates.sort((a,b)=>
+        b.date.localeCompare(a.date)||b.savedAt.localeCompare(a.savedAt)
+      );
+      return candidates[0].key;
+    }
+
+    const defaultItem=DEFAULT_SYSTEMS.find(item=>item.label.toLowerCase()===target);
+    if(defaultItem&&defaultItem.key!==excludeKey&&!activeKeys.has(defaultItem.key)){
+      const existsInData=rows.some(raw=>
+        raw?.systems&&Object.prototype.hasOwnProperty.call(raw.systems,defaultItem.key)
+      );
+      if(existsInData)return defaultItem.key;
+    }
+
+    return null;
+  }
+
+  async commitSystemName(key,input){
+    if(!this.patient||this.isReadOnly())return;
+
+    const label=normalizeSystemLabel(input?.value);
+
+    // A pending row with no name is simply cancelled. Because it was never
+    // persisted, there is nothing to remove from IndexedDB.
+    if(this.pendingSystem?.key===key){
+      if(!label){
+        this.pendingSystem=null;
+        this.renderSystems();
+        this.fill();
+        this.syncReadonly();
+        this.setSaveState("已取消空白 System");
+        return;
+      }
+
+      const layout=getPatientSystemLayout(this.patient);
+      const duplicate=layout.some(x=>x.label.toLowerCase()===label.toLowerCase());
+      if(duplicate){
+        this.setSaveState(`System「${label}」已存在`);
+        input?.focus();
+        input?.select();
+        return;
+      }
+
+      const existingKey=await this.findExistingSystemKey(label,key);
+      const finalKey=existingKey||key;
+      layout.push({key:finalKey,label});
+
+      this.pendingSystem=null;
+      await this.saveSystemLayout(layout,existingKey?"system-restore":"system-add");
+      if(existingKey)this.setSaveState(`已恢復 System「${label}」`);
+      return;
+    }
+
+    const layout=getPatientSystemLayout(this.patient);
+    const item=layout.find(x=>x.key===key);
+    if(!item)return;
+
+    // Existing committed Systems cannot be left nameless. Restore the prior label.
+    if(!label){
+      input.value=item.label;
+      this.setSaveState("System 名稱不可空白");
+      return;
+    }
+
+    const duplicate=layout.some(x=>x.key!==key&&x.label.toLowerCase()===label.toLowerCase());
+    if(duplicate){
+      this.setSaveState(`System「${label}」已存在`);
+      input?.focus();
+      input?.select();
+      return;
+    }
+
+    const existingKey=await this.findExistingSystemKey(label,key);
+    const restored=!!existingKey&&existingKey!==key;
+
+    if(restored){
+      const oldKey=key;
+      item.key=existingKey;
+
+      if(this.record?.systems){
+        const newText=String(this.record.systems[oldKey]??"");
+        const existingText=String(this.record.systems[existingKey]??"");
+
+        if(newText&&existingText&&newText!==existingText){
+          this.record.systems[existingKey]=`${existingText}\n${newText}`;
+        }else if(newText&&!existingText){
+          this.record.systems[existingKey]=newText;
+        }else if(!(existingKey in this.record.systems)){
+          this.record.systems[existingKey]="";
+        }
+
+        delete this.record.systems[oldKey];
+        this.record.updatedAt=nowISO();
+        this.dirty=true;
+      }
+    }
+
+    item.label=label;
+    await this.saveSystemLayout(layout,restored?"system-restore":"system-rename");
+
+    if(restored)this.setSaveState(`已恢復 System「${label}」`);
+  }
+
+  onDragStart(e){
+    const handle=e.target.closest?.(".hf-system-drag");
+    if(!handle||this.isReadOnly())return;
+    const row=handle.closest(".hf-system-row");
+    if(!row)return;
+
+    this.dragSystemKey=row.dataset.systemKey||null;
+    row.classList.add("is-dragging");
+    e.dataTransfer.effectAllowed="move";
+    e.dataTransfer.setData("text/plain",this.dragSystemKey||"");
+  }
+
+  onDragOver(e){
+    if(!this.dragSystemKey)return;
+    const row=e.target.closest?.(".hf-system-row");
+    if(!row||row.dataset.systemKey===this.dragSystemKey)return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect="move";
+
+    this.root.querySelectorAll(".hf-system-row.is-drop-before,.hf-system-row.is-drop-after")
+      .forEach(x=>x.classList.remove("is-drop-before","is-drop-after"));
+
+    const rect=row.getBoundingClientRect();
+    row.classList.add(e.clientY<rect.top+rect.height/2?"is-drop-before":"is-drop-after");
+  }
+
+  async onDrop(e){
+    if(!this.dragSystemKey)return;
+    const target=e.target.closest?.(".hf-system-row");
+    if(!target)return this.onDragEnd();
+    e.preventDefault();
+
+    const targetKey=target.dataset.systemKey;
+    if(!targetKey||targetKey===this.dragSystemKey)return this.onDragEnd();
+
+    const layout=getPatientSystemLayout(this.patient);
+    const from=layout.findIndex(x=>x.key===this.dragSystemKey);
+    let to=layout.findIndex(x=>x.key===targetKey);
+    if(from<0||to<0)return this.onDragEnd();
+
+    const rect=target.getBoundingClientRect();
+    const after=e.clientY>=rect.top+rect.height/2;
+    const [moved]=layout.splice(from,1);
+    to=layout.findIndex(x=>x.key===targetKey);
+    layout.splice(to+(after?1:0),0,moved);
+
+    this.onDragEnd();
+    await this.saveSystemLayout(layout,"system-drag");
+    this.setSaveState("System 順序已更新");
+  }
+
+  onDragEnd(){
+    this.dragSystemKey=null;
+    this.root.querySelectorAll(".hf-system-row")
+      .forEach(x=>x.classList.remove("is-dragging","is-drop-before","is-drop-after"));
+  }
+
+  async deleteSystem(key){
+    if(!this.patient||this.isReadOnly())return;
+
+    if(this.pendingSystem?.key===key){
+      this.pendingSystem=null;
+      this.renderSystems();
+      this.fill();
+      this.syncReadonly();
+      this.setSaveState("已取消新增 System");
+      return;
+    }
+
+    const layout=getPatientSystemLayout(this.patient);
+    const item=layout.find(x=>x.key===key);
+    if(!item)return;
+
+    if(!confirm(`從這位病人的交班版面移除 ${item.label}？\n\n既有歷史紀錄不會被刪除。`))return;
+    await this.saveSystemLayout(layout.filter(x=>x.key!==key),"system-remove");
+  }
+
+  async saveSystemLayout(layout,reason){
+    this.patient.systemLayout=normalizeSystemLayout(layout);
+    this.patient.updatedAt=nowISO();
+    this.patientDirty=true;
+
+    // Keep any already-entered system text in the record object.
+    // Removing a system only changes the patient-level layout.
+    await this.saveNow(reason);
+    this.renderSystems();
+    this.fill();
+    this.renderAll();
   }
 
   insertSymbol(symbol){
@@ -1445,6 +1850,9 @@ class HandoffApp{
       const patientField=el.dataset.field?.startsWith("patient.");
       el.disabled=ro||(patientField&&!this.backgroundEditing);
     });
+
+    this.root.querySelectorAll("[data-system-name], .hf-system-drag, .hf-system-remove, .hf-add-system-row")
+      .forEach(el=>{el.disabled=ro;});
   }
 
   setSaveState(text){
@@ -1535,7 +1943,7 @@ class HandoffApp{
     for(const r of records){
       const fields=[
         ["Summary",r.summary],["Vent",r.vent],["Line",r.line],["Fluids",r.fluids],
-        ...SYSTEMS.map(([key,label])=>[label,r.systems?.[key]||""]),
+        ...systemEntriesForRecord(r,p).map(({key,label})=>[label,r.systems?.[key]||""]),
         ["Assessment",r.assessment],["Plan",r.plan]
       ];
       for(const [label,raw] of fields){
@@ -1684,7 +2092,7 @@ class HandoffApp{
       lines.push(this.quickFactsText(r,age));
 
       if(r.summary?.trim()){
-        lines.push("","SHIFT SUMMARY",r.summary.trim());
+        lines.push("","DAILY SUMMARY",r.summary.trim());
       }
 
       const support=[];
@@ -1693,7 +2101,7 @@ class HandoffApp{
       if(r.fluids?.trim())support.push(`Fluids: ${r.fluids.trim()}`);
       if(support.length)lines.push("",...support);
 
-      SYSTEMS.forEach(([key,label])=>{
+      systemEntriesForRecord(r,p).forEach(({key,label})=>{
         const value=r.systems?.[key]?.trim();
         if(value)lines.push("",label,value);
       });
@@ -1718,10 +2126,57 @@ class HandoffApp{
     const age=deriveAge(p,r.date);
     const lines=[];
 
-    const head=[p.bed,p.name,p.mrn,p.team].filter(Boolean).join(" · ");
-    if(head)lines.push(head);
-    if(p.alert?.trim())lines.push(`! ${p.alert.trim()}`);
+    const indent=(text,spaces=2)=>{
+      const pad=" ".repeat(spaces);
+      return String(text??"")
+        .split("\n")
+        .map(line=>line.trim()===""?"":pad+line)
+        .join("\n");
+    };
 
+    // Clinical hierarchy:
+    // ▶ System
+    //   # Problem
+    //     detail
+    // Existing indentation entered by the user is preserved.
+    const formatClinical=(text,problemIndent=4,detailIndent=6)=>{
+      const raw=String(text??"").trim();
+      if(!raw)return "";
+
+      let inProblem=false;
+
+      return raw.split("\n").map(line=>{
+        const original=String(line??"");
+        const trimmed=original.trim();
+        if(!trimmed)return "";
+
+        if(/^#\s*\S/.test(trimmed)){
+          inProblem=true;
+          return " ".repeat(problemIndent)+trimmed;
+        }
+
+        const existing=(original.match(/^ */)?.[0]||"").length;
+        const base=inProblem?detailIndent:problemIndent;
+        return " ".repeat(base+existing)+trimmed;
+      }).join("\n");
+    };
+
+    const field=(label,value)=>{
+      const v=String(value??"").trim();
+      if(!v)return;
+      lines.push(`  ▶ ${label}`);
+      lines.push(indent(v,4));
+    };
+
+    // Patient header — intentionally minimal, no ASCII frame.
+    const head=[p.team,p.bed,p.mrn,p.name].filter(Boolean).join(" · ");
+    if(head)lines.push(head);
+
+    if(p.alert?.trim()){
+      lines.push("",`⚠ IMPORTANT  ${p.alert.trim()}`);
+    }
+
+    // BACKGROUND
     const bg=[
       p.birthDate?`DOB ${formatDate(p.birthDate)}`:"",
       p.gaWeeks!==""?`GA ${p.gaWeeks}+${p.gaDays||0}`:"",
@@ -1730,24 +2185,50 @@ class HandoffApp{
       formatApgar(p)
     ].filter(Boolean).join(" · ");
 
-    if(bg)lines.push("","[BACKGROUND]",bg);
-    if(p.momBackground?.trim())lines.push(`Mom: ${p.momBackground.trim()}`);
-    if(p.nbBackground?.trim())lines.push(`NB: ${p.nbBackground.trim()}`);
+    if(bg||p.momBackground?.trim()||p.nbBackground?.trim()){
+      lines.push("","[BACKGROUND]");
+      if(bg)lines.push(indent(bg,2));
+      field("Mom",p.momBackground);
+      field("NB",p.nbBackground);
+    }
 
-    lines.push("","[SHIFT SUMMARY]");
-    lines.push(this.quickFactsText(r,age));
-    if(r.summary?.trim())lines.push(r.summary.trim());
-    if(r.vent?.trim())lines.push(`Vent: ${r.vent.trim()}`);
-    if(r.line?.trim())lines.push(`Line: ${r.line.trim()}`);
-    if(r.fluids?.trim())lines.push(`Fluids: ${r.fluids.trim()}`);
+    // DAILY SUMMARY
+    lines.push("","[DAILY SUMMARY]");
+    lines.push(indent(this.quickFactsText(r,age),2));
 
-    SYSTEMS.forEach(([key,label])=>{
-      const v=r.systems[key]?.trim();
-      if(v)lines.push("",`[${label}]`,v);
-    });
+    field("Summary",r.summary);
+    field("Vent",r.vent);
+    field("Line",r.line);
+    field("Fluids",r.fluids);
 
-    if(r.assessment?.trim())lines.push("","[ASSESSMENT]",r.assessment.trim());
-    if(r.plan?.trim())lines.push("","[PLAN]",r.plan.trim());
+    // CLINICAL
+    const systems=systemEntriesForRecord(r,p)
+      .map(({key,label})=>({
+        label,
+        value:String(r.systems?.[key]??"").trim()
+      }))
+      .filter(x=>x.value);
+
+    if(systems.length){
+      lines.push("","[CLINICAL]");
+
+      systems.forEach(({label,value})=>{
+        lines.push("",`  ▶ ${label}`);
+        lines.push(formatClinical(value,4,6));
+      });
+    }
+
+    // ASSESSMENT
+    if(r.assessment?.trim()){
+      lines.push("","[ASSESSMENT]");
+      lines.push(formatClinical(r.assessment.trim(),2,4));
+    }
+
+    // PLAN
+    if(r.plan?.trim()){
+      lines.push("","[PLAN]");
+      lines.push(indent(r.plan.trim(),2));
+    }
 
     return cleanOutput(lines);
   }
@@ -1771,7 +2252,7 @@ class HandoffApp{
     const age=deriveAge(p,r.date);
     const lines=[];
 
-    // S — birth background + today's quick facts + shift summary
+    // S — birth background + today's quick facts + DAILY SUMMARY
     lines.push("[S]");
 
     const birthFacts=[
@@ -1806,7 +2287,7 @@ class HandoffApp{
     pushSection("Line",r.line);
     pushSection("Fluids",r.fluids);
 
-    SYSTEMS.forEach(([key,label])=>{
+    systemEntriesForRecord(r,p).forEach(({key,label})=>{
       pushSection(label,r.systems?.[key]);
     });
 
@@ -2020,7 +2501,7 @@ class HandoffApp{
     add("Vent","vent");
     add("Line","line");
     add("Fluids","fluids");
-    SYSTEMS.forEach(([key,label])=>add(label,`systems.${key}`));
+    systemEntriesForComparison(r,prev,this.patient).forEach(({key,label})=>add(label,`systems.${key}`));
     add("Assessment","assessment");
     add("Plan","plan");
 
@@ -2040,14 +2521,14 @@ G_P_, PIH(-), GDM(-), GBS(-), PROM(-)
 
   plan:{
     field:"plan",
-    text:`＜Respiratory＞              
+    text:`<Respiratory>
   Ventilator: NIMV
-＜Medications＞            
-  ＠ Antibiotics: Ampi+Genta (__/__-)
-  ＠ Inotropic agents: nil
-  ＠ Sedatives: nil
-  ＠ AEDs: nil     
-  ＠ Other: nil`
+<Medications>            
+  @ Antibiotics: Ampi+Genta (__/__~)
+  @ Inotropic agents: nil
+  @ Sedatives: nil
+  @ AEDs: nil     
+  @ Other: nil`
   }
 };
 
@@ -2116,10 +2597,8 @@ function collectSystemProblems(record){
   const problems=[];
   const seen=new Set();
 
-  SYSTEMS.forEach(([key])=>{
-    const text=record?.systems?.[key]||"";
-
-    text.split("\n").forEach(line=>{
+  Object.values(record?.systems||{}).forEach(text=>{
+    String(text||"").split("\n").forEach(line=>{
       const s=line.trim();
       if(!/^#\s*\S/.test(s))return;
 
@@ -2142,6 +2621,59 @@ function normalizeProblemKey(problem){
     .replace(/^#\s*/,"")
     .replace(/\s+/g," ")
     .toLowerCase();
+}
+
+function normalizeSystemLabel(value){
+  return String(value??"").trim().replace(/\s+/g," ").slice(0,24);
+}
+
+function normalizeSystemLayout(layout){
+  const source=Array.isArray(layout)?layout:[];
+  const out=[];
+  const seenKeys=new Set();
+  const seenLabels=new Set();
+
+  source.forEach(item=>{
+    const key=String(item?.key||"").trim().replace(/[^a-zA-Z0-9_-]/g,"");
+    const label=normalizeSystemLabel(item?.label);
+    const pending=item?.pending===true;
+
+    if(!key||seenKeys.has(key))return;
+    if(!label&&!pending)return;
+    if(label&&seenLabels.has(label.toLowerCase()))return;
+
+    seenKeys.add(key);
+    if(label)seenLabels.add(label.toLowerCase());
+    out.push({key,label,...(pending?{pending:true}:{})});
+  });
+
+  return out;
+}
+
+function getPatientSystemLayout(patient){
+  const layout=normalizeSystemLayout(patient?.systemLayout);
+  return layout.length||Array.isArray(patient?.systemLayout)
+    ?layout
+    :clone(DEFAULT_SYSTEMS);
+}
+
+function systemEntriesForRecord(record,fallbackPatient=null){
+  // The patient snapshot records which systems were active on that date.
+  // Hidden/removed system text may remain in record.systems for history safety,
+  // but is not shown or exported once it is removed from the layout.
+  return getPatientSystemLayout(record?.patientSnapshot||fallbackPatient);
+}
+
+function systemEntriesForComparison(current,previous,fallbackPatient=null){
+  const out=[];
+  const seen=new Set();
+  [...systemEntriesForRecord(current,fallbackPatient),...systemEntriesForRecord(previous,fallbackPatient)]
+    .forEach(item=>{
+      if(seen.has(item.key))return;
+      seen.add(item.key);
+      out.push(item);
+    });
+  return out;
 }
 
 function metric(label,path,suffix=""){
@@ -2195,6 +2727,7 @@ function blankPatient(){
     momBackground:"",
     nbBackground:"",
     alert:"",
+    systemLayout:clone(DEFAULT_SYSTEMS),
     createdAt:nowISO(),
     updatedAt:nowISO()
   };
@@ -2213,6 +2746,8 @@ function normalizePatient(x={}){
     p.nbBackground=[x.birthCourse,x.background].filter(Boolean).join("\n");
 
   if(!p.team&&x.attending)p.team=x.attending;
+
+  p.systemLayout=normalizeSystemLayout(x.systemLayout||p.systemLayout);
 
   return p;
 }
@@ -2244,7 +2779,7 @@ function blankRecord(patient,date,previous){
     fluids:prev?.fluids??"",
 
     systems:Object.fromEntries(
-      SYSTEMS.map(([key])=>[key,prev?.systems?.[key]??""])
+      getPatientSystemLayout(patient).map(({key})=>[key,prev?.systems?.[key]??""])
     ),
 
     assessment:prev?.assessment??"",
@@ -2260,11 +2795,17 @@ function normalizeRecord(x={}){
   const oldSupport=x.lineSupport||x.support||{};
   const oldMetrics=x.metrics||{};
 
+  const snapshot=normalizePatient(x.patientSnapshot||{});
   const systems={};
-  SYSTEMS.forEach(([key])=>{
-    const old=x.systems?.[key];
+
+  Object.entries(x.systems||{}).forEach(([key,old])=>{
     systems[key]=typeof old==="string"?old:(old?.progress||"");
   });
+
+  getPatientSystemLayout(snapshot).forEach(({key})=>{
+    if(!(key in systems))systems[key]="";
+  });
+
   if(!systems.other&&x.systems?.general?.progress)
     systems.other=x.systems.general.progress;
 
@@ -2274,7 +2815,7 @@ function normalizeRecord(x={}){
     date:x.date||todayISO(),
     status:x.status||"draft",
     revision:Number(x.revision)||1,
-    patientSnapshot:normalizePatient(x.patientSnapshot||{}),
+    patientSnapshot:snapshot,
 
     metrics:{
       weightG:oldMetrics.weightG??"",
@@ -2390,6 +2931,7 @@ function buildPatientText(p){
     p.bed,p.mrn,p.name,p.team,p.birthDate,p.gaWeeks,p.gaDays,
     p.birthWeightG,p.deliveryMode,p.deliveryReason,
     p.apgar1,p.apgar5,p.apgar10,p.apgar15,p.apgar20,
+    ...(p.systemLayout||[]).map(x=>x.label),
     p.momBackground,p.nbBackground,p.alert
   ].filter(v=>v!==""&&v!=null).join(" ");
 }
@@ -2397,7 +2939,7 @@ function buildPatientText(p){
 function recordText(r){
   return [
     r.date,...Object.values(r.metrics||{}),r.summary,r.vent,r.line,r.fluids,
-    ...SYSTEMS.map(([key])=>r.systems?.[key]||""),
+    ...Object.values(r.systems||{}),
     r.assessment,r.plan
   ].filter(v=>v!==""&&v!=null).join(" ");
 }
@@ -2561,6 +3103,143 @@ function resizeMetricInput(el){
 
   el.style.width=`${chars}ch`;
 }
+const TEXTAREA_INDENT="  ";
+
+function applyTextareaIndent(el,direction=1){
+  const value=String(el.value??"");
+  const start=el.selectionStart??0;
+  const end=el.selectionEnd??start;
+
+  const lineStart=value.lastIndexOf("\n",Math.max(0,start-1))+1;
+  let lineEnd=value.indexOf("\n",end);
+  if(lineEnd<0)lineEnd=value.length;
+
+  // No selection: Tab inserts two spaces at the caret.
+  if(start===end&&direction>0){
+    el.value=value.slice(0,start)+TEXTAREA_INDENT+value.slice(end);
+    const pos=start+TEXTAREA_INDENT.length;
+    el.setSelectionRange(pos,pos);
+    autoResize(el);
+    return;
+  }
+
+  // No selection: Shift+Tab removes up to one indentation level
+  // from the start of the current line.
+  if(start===end&&direction<0){
+    const current=value.slice(lineStart,lineEnd);
+    const removable=current.startsWith(TEXTAREA_INDENT)
+      ?TEXTAREA_INDENT.length
+      :(current.startsWith(" ")?1:0);
+
+    if(!removable)return;
+
+    el.value=value.slice(0,lineStart)+current.slice(removable)+value.slice(lineEnd);
+    const pos=Math.max(lineStart,start-removable);
+    el.setSelectionRange(pos,pos);
+    autoResize(el);
+    return;
+  }
+
+  const block=value.slice(lineStart,lineEnd);
+  const lines=block.split("\n");
+
+  if(direction>0){
+    const changed=lines.map(line=>TEXTAREA_INDENT+line).join("\n");
+    el.value=value.slice(0,lineStart)+changed+value.slice(lineEnd);
+
+    const newStart=start+TEXTAREA_INDENT.length;
+    const lineCount=lines.length;
+    const newEnd=end+(TEXTAREA_INDENT.length*lineCount);
+    el.setSelectionRange(newStart,newEnd);
+    autoResize(el);
+    return;
+  }
+
+  let removedBeforeStart=0;
+  let removedTotal=0;
+  let cursor=lineStart;
+
+  const changed=lines.map((line,i)=>{
+    const remove=line.startsWith(TEXTAREA_INDENT)
+      ?TEXTAREA_INDENT.length
+      :(line.startsWith(" ")?1:0);
+
+    const absoluteLineStart=cursor;
+    if(absoluteLineStart<start)removedBeforeStart+=remove;
+    removedTotal+=remove;
+    cursor+=line.length+1;
+
+    return line.slice(remove);
+  }).join("\n");
+
+  el.value=value.slice(0,lineStart)+changed+value.slice(lineEnd);
+  el.setSelectionRange(
+    Math.max(lineStart,start-removedBeforeStart),
+    Math.max(lineStart,end-removedTotal)
+  );
+  autoResize(el);
+}
+
+function applyTextareaSmartEnter(el){
+  const value=String(el.value??"");
+  const start=el.selectionStart??0;
+  const end=el.selectionEnd??start;
+
+  // Replacing a selection behaves like a normal Enter first.
+  if(start!==end){
+    el.value=value.slice(0,start)+"\n"+value.slice(end);
+    const pos=start+1;
+    el.setSelectionRange(pos,pos);
+    autoResize(el);
+    return;
+  }
+
+  const lineStart=value.lastIndexOf("\n",Math.max(0,start-1))+1;
+  let lineEnd=value.indexOf("\n",start);
+  if(lineEnd<0)lineEnd=value.length;
+
+  const line=value.slice(lineStart,lineEnd);
+  const beforeCaret=value.slice(lineStart,start);
+  const leading=(line.match(/^ */)||[""])[0];
+  const trimmed=line.trim();
+
+  // Pressing Enter again on an indentation-only line:
+  // keep a blank line, then outdent one level.
+  if(trimmed===""&&beforeCaret.trim()===""){
+    const outdent=leading.length>=TEXTAREA_INDENT.length
+      ?leading.slice(0,-TEXTAREA_INDENT.length)
+      :"";
+
+    el.value=
+      value.slice(0,lineStart)+
+      "\n"+
+      outdent+
+      value.slice(lineEnd);
+
+    const pos=lineStart+1+outdent.length;
+    el.setSelectionRange(pos,pos);
+    autoResize(el);
+    return;
+  }
+
+  let nextIndent=leading;
+
+  // A top-level "# problem" starts its detail block one level deeper.
+  if(leading.length===0&&/^#\s*\S/.test(line)){
+    nextIndent=TEXTAREA_INDENT;
+  }
+
+  el.value=
+    value.slice(0,start)+
+    "\n"+
+    nextIndent+
+    value.slice(end);
+
+  const pos=start+1+nextIndent.length;
+  el.setSelectionRange(pos,pos);
+  autoResize(el);
+}
+
 function applySymbolShortcut(el){
   if(!el || !["INPUT","TEXTAREA"].includes(el.tagName))return false;
 
@@ -3351,6 +4030,30 @@ const STYLES=`
   overflow:hidden;
 }
 
+/* Clinical section 的 System menu 可以超出區塊 */
+.hf-section.hf-clinical{
+  overflow:visible;
+  position:relative;
+  z-index:10;
+}
+
+/* Clinical 下面的 section 保持較低層級 */
+.hf-clinical + .hf-section{
+  position:relative;
+  z-index:1;
+}
+
+/* System menu 必須浮在其他內容上面 */
+.hf-system-menu-wrap{
+  position:relative;
+  z-index:20;
+}
+
+.hf-system-menu{
+  position:absolute;
+  z-index:1000;
+}
+
 .hf-background{
   cursor:pointer;
 }
@@ -3674,55 +4377,145 @@ const STYLES=`
    SYSTEMS
 ========================= */
 
+.hf-clinical{
+  overflow:visible;
+}
+
 .hf-system-row{
+  position:relative;
   display:grid;
-  grid-template-columns:76px 1fr;
-
+  grid-template-columns:118px minmax(0,1fr);
   border-bottom:1px solid var(--line2);
+  background:#fff;
 }
 
-.hf-system-row:last-child{
-  border-bottom:0;
+.hf-system-row.is-dragging{
+  opacity:.45;
 }
 
-.hf-system-row > span{
-  display:flex;
+.hf-system-row.is-drop-before::before,
+.hf-system-row.is-drop-after::after{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  height:2px;
+  z-index:20;
+  background:#7d766f;
+}
+
+.hf-system-row.is-drop-before::before{top:-1px}
+.hf-system-row.is-drop-after::after{bottom:-1px}
+
+.hf-system-label{
+  min-width:0;
+  display:grid;
+  grid-template-columns:24px minmax(0,1fr) 24px;
   align-items:center;
-  justify-content:center;
-
-  padding:10px 7px;
-
+  gap:2px;
+  padding:7px 4px;
   background:#fbf9f6;
-
   border-right:1px solid var(--line2);
+}
 
+.hf-system-drag,
+.hf-system-remove{
+  width:24px;
+  height:30px;
+  padding:0;
+  border:0;
+  border-radius:4px;
+  background:transparent;
+  color:#aaa39b;
+  line-height:1;
+}
+
+.hf-system-drag{
+  font-size:16px;
+  cursor:grab;
+}
+
+.hf-system-drag:active{cursor:grabbing}
+.hf-system-drag:hover{background:#eee9e2;color:#625c56}
+
+.hf-system-remove{
+  font-size:17px;
+  cursor:pointer;
+  opacity:0;
+}
+
+.hf-system-row:hover .hf-system-remove,
+.hf-system-remove:focus-visible{opacity:1}
+.hf-system-remove:hover{background:#fbefef;color:#9b4949}
+
+.hf-system-name{
+  width:100%;
+  min-width:0;
+  height:30px;
+  border:0;
+  border-radius:4px;
+  background:transparent;
+  padding:0 3px;
+  color:var(--ink);
   font-family:var(--font-ui);
   font-size:11px;
-  font-weight:600;
-
+  font-weight:700;
   letter-spacing:.02em;
+  text-align:center;
+}
+
+.hf-system-name::placeholder{
+  color:#aaa39b;
+  font-weight:500;
+  letter-spacing:0;
+}
+
+.hf-system-name:hover{background:#f4f0ea}
+.hf-system-name:focus{
+  background:#fff!important;
+  box-shadow:inset 0 -1px 0 #9f9890!important;
 }
 
 .hf-system-row textarea{
   width:100%;
-
   border:0;
   resize:none;
-
   background:#fff;
-
   padding:9px 11px;
-
   font-family:var(--font-clinical);
   font-size:14px;
   font-weight:400;
-
   line-height:1.55;
   letter-spacing:0;
-
   tab-size:4;
-
   min-height:54px;
+}
+
+.hf-add-system-row{
+  display:block;
+  width:100%;
+  min-height:38px;
+  border:0;
+  border-top:0;
+  background:#fbf9f6;
+  color:#8a837c;
+  text-align:left;
+  padding:0 14px;
+  font-size:11px;
+  font-weight:600;
+  cursor:pointer;
+}
+
+.hf-add-system-row:hover{
+  background:#f3efe9;
+  color:var(--ink);
+}
+
+.hf-add-system-row:disabled,
+.hf-system-drag:disabled,
+.hf-system-remove:disabled{
+  opacity:.4;
+  cursor:default;
 }
 
 /* =========================
@@ -4690,9 +5483,18 @@ const STYLES=`
     min-width:0;
   }
 
-  .hf-system-row,
   .hf-support-row{
     grid-template-columns:58px 1fr;
+  }
+
+  .hf-system-row{
+    grid-template-columns:100px minmax(0,1fr);
+  }
+
+  .hf-system-label{
+    grid-template-columns:22px minmax(0,1fr) 22px;
+    padding-left:2px;
+    padding-right:2px;
   }
 
   .hf-metrics{
