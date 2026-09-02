@@ -5,19 +5,13 @@
 // - Right: 2D-like section view showing ONLY the same clipping cap
 // - No thin-slab logic
 //
-// Model path:
-//   assets/models/heart-echo/normal_neonatal_heart.glb
-//
-// Required index.html importmap before ./core/app.js:
-//
-// <script type="importmap">
-// {
-//   "imports": {
-//     "three": "https://cdn.jsdelivr.net/npm/three@0.176.0/build/three.module.js",
-//     "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.176.0/examples/jsm/"
-//   }
-// }
-// </script>
+// TODO: Add proper lifecycle cleanup / destroy().
+// - cancel requestAnimationFrame loop when leaving this tool
+// - remove window resize listener
+// - dispose OrbitControls
+// - dispose Three.js geometries / materials / renderers
+// - release WebGL resources to avoid leaks after repeated tool switching
+
 
 const TOOL_KEY = "heartEchoPlane";
 const MODEL_URL = "./assets/models/heart-echo/normal_neonatal_heart.glb";
