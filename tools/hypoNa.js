@@ -1,8 +1,11 @@
 // tools/hypoNa.js
-// updated: 2026-02-28
+// updated: 2026-09-03
 
-
-import { createScheduler, bindMutualDisableBySelector } from "../core/utils.js";
+import {
+  createScheduler,
+  bindMutualDisableBySelector,
+  updateCopyList,
+} from "../core/utils.js";
 
 const DEBUG = false;
 const TOOL_KEY = "hypoNa";
@@ -165,13 +168,7 @@ export function init(root){
     }
 
     // render outputs (rebuild list)
-    outputsEl.innerHTML = "";
-    [line1, line2].forEach(t => {
-      const li = document.createElement("li");
-      li.className = "list-group-item copy-item";
-      li.textContent = t;
-      outputsEl.appendChild(li);
-    });
+    updateCopyList(outputsEl, [line1, line2]);
   };
 
   const scheduleCalc = createScheduler(calc);
