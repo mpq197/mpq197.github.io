@@ -1,5 +1,5 @@
 /* assets/styles.css */
-/* updated: 2026-03-01 */
+/* updated: 2026-09-03 */
 /* 목적：右側欄(main+footer) 寬度自動扣掉 sidebar，footer 僅占右側欄 */
 
 :root{
@@ -343,14 +343,17 @@ input[type=number]{ -moz-appearance: textfield; }
 
 /* copy item */
 .copy-item{
-  background-color: var(--neo-card);
-  border-color: var(--neo-border);
   cursor: pointer;
   user-select: text;
 }
 
+.copy-item:not(.btn){
+  background-color: var(--neo-card);
+  border-color: var(--neo-border);
+}
+
 /* IMPORTANT: limit hover effects to main area only */
-.copy-item:hover,
+.copy-item:not(.btn):hover,
 .neo-main input:hover,
 .neo-main .form-select:hover{
   background-color: var(--neo-hover) !important;
