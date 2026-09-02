@@ -1,16 +1,31 @@
 // tools/jusomin.js
-// updated: 2026-02-28
+// updated: 2026-09-03
 
-
-import { createScheduler, bindMutualDisableBySelector } from "../core/utils.js";
+import {
+  createScheduler,
+  bindMutualDisableBySelector,
+  updateCopyList,
+} from "../core/utils.js";
 
 const DEBUG = false;
 const TOOL_KEY = "jusomin";
 
 /**
- * 7% NaHCO3 concentration conversion in your original code:
- * volume(ml) = mEq * 20 / 16.67  (keep same)
- * dilution ratio: central=2, peripheral=4
+ * Metabolic acidosis correction
+ *
+ * Input:
+ * - Base deficit is entered as a positive magnitude
+ *   e.g. base excess = -10 mEq/L -> base deficit = 10 mEq/L
+ *
+ * Formula:
+ * NaHCO3 (mEq) = base deficit * BW(kg) * 0.3 * correction ratio
+ *
+ * 7% NaHCO3 concentration conversion:
+ * volume(ml) = mEq * 20 / 16.67
+ *
+ * Dilution ratio:
+ * central = 2
+ * peripheral = 4
  */
 
 export function render(){
@@ -24,33 +39,63 @@ export function render(){
 
             <div class="input-group">
               <span class="input-group-text justify-content-center" style="width:20%;">BW</span>
-              <input type="number" class="form-control text-center" data-role="bw" inputmode="numeric" />
+              <input
+                type="number"
+                class="form-control text-center"
+                data-role="bw"
+                inputmode="numeric"
+              />
               <span class="input-group-text justify-content-center" style="width:20%;">g</span>
             </div>
 
             <div class="input-group">
-              <span class="input-group-text justify-content-center" style="width:20%;">BE</span>
-              <input type="number" class="form-control text-center" data-role="be" inputmode="numeric" />
+              <span class="input-group-text justify-content-center" style="width:20%;">Base deficit</span>
+              <input
+                type="number"
+                class="form-control text-center"
+                data-role="baseDeficit"
+                min="0"
+                inputmode="decimal"
+              />
               <span class="input-group-text justify-content-center" style="width:20%;">mEq/L</span>
             </div>
 
             <div class="input-group">
               <span class="input-group-text justify-content-center" style="width:20%;">Correct</span>
-              <input type="number" class="form-control text-center" data-role="ratioPct" inputmode="numeric" />
+              <input
+                type="number"
+                class="form-control text-center"
+                data-role="ratioPct"
+                inputmode="numeric"
+              />
               <span class="input-group-text justify-content-center" style="width:20%;">% = NaHCO3</span>
-              <input type="number" class="form-control text-center" data-role="meqDirect" inputmode="numeric" />
+              <input
+                type="number"
+                class="form-control text-center"
+                data-role="meqDirect"
+                inputmode="numeric"
+              />
               <span class="input-group-text justify-content-center" style="width:20%;">mEq</span>
             </div>
 
             <div class="input-group">
               <span class="input-group-text justify-content-center" style="width:20%;">Run</span>
-              <input type="number" class="form-control text-center" data-role="durationHr" placeholder="≥ 1" inputmode="numeric" />
+              <input
+                type="number"
+                class="form-control text-center"
+                data-role="durationHr"
+                placeholder="≥ 1"
+                inputmode="numeric"
+              />
               <span class="input-group-text justify-content-center" style="width:10%;">hrs</span>
+
               <span class="input-group-text justify-content-center" style="width:10%;">via</span>
+
               <select class="form-select text-center" data-role="catheter">
                 <option value="central" selected>central</option>
                 <option value="peripheral">peripheral</option>
               </select>
+
               <span class="input-group-text justify-content-center" style="width:20%;">line</span>
             </div>
 
@@ -59,15 +104,26 @@ export function render(){
 
         <div class="card-footer">
           <div class="row">
+
             <div class="col-10">
-              <ul class="list-group mt-2 mb-2" data-role="outputs"></ul>
+              <ul
+                class="list-group mt-2 mb-2"
+                data-role="outputs"
+              ></ul>
             </div>
 
             <div class="col-2" style="padding-left:0;">
               <div class="d-flex justify-content-center align-items-center h-100">
-                <button class="btn btn-secondary" type="button" data-role="reset">Reset</button>
+                <button
+                  class="btn btn-secondary"
+                  type="button"
+                  data-role="reset"
+                >
+                  Reset
+                </button>
               </div>
             </div>
+
           </div>
         </div>
 
@@ -84,7 +140,7 @@ export function init(root){
   box.dataset.bound = "1";
 
   const bwEl = box.querySelector('[data-role="bw"]');
-  const beEl = box.querySelector('[data-role="be"]');
+  const baseDeficitEl = box.querySelector('[data-role="baseDeficit"]');
   const ratioEl = box.querySelector('[data-role="ratioPct"]');
   const meqDirectEl = box.querySelector('[data-role="meqDirect"]');
   const durEl = box.querySelector('[data-role="durationHr"]');
@@ -92,114 +148,187 @@ export function init(root){
   const outputsEl = box.querySelector('[data-role="outputs"]');
   const resetBtn = box.querySelector('[data-role="reset"]');
 
-  // ✅ Mutual disable: (BE + ratio) vs (direct mEq)
+  // Mutual disable:
+  // (Base deficit + correction ratio) vs direct NaHCO3 mEq
   const mutual = bindMutualDisableBySelector(
     box,
-    '[data-role="be"],[data-role="ratioPct"]',
+    '[data-role="baseDeficit"],[data-role="ratioPct"]',
     '[data-role="meqDirect"]',
     { key: "jusominMeq" }
   );
 
-  const safeBlank = (v) => (Number.isFinite(v) ? v : "__");
+  const safeBlank = (v) => (
+    Number.isFinite(v) ? v : "__"
+  );
 
   const calc = () => {
     if (!outputsEl) return;
 
     const bw_g = parseFloat(bwEl?.value);
-    const be = parseFloat(beEl?.value);
+    const baseDeficit = parseFloat(baseDeficitEl?.value);
     const ratioPct = parseFloat(ratioEl?.value);
     const meqDirect = parseFloat(meqDirectEl?.value);
 
-    // default duration = 2 (keep your original behavior)
+    // Default duration = 2 hr
     const durationHrRaw = parseFloat(durEl?.value);
-    const durationHr = (Number.isFinite(durationHrRaw) && durationHrRaw > 0) ? durationHrRaw : 2;
+    const durationHr =
+      (Number.isFinite(durationHrRaw) && durationHrRaw > 0)
+        ? durationHrRaw
+        : 2;
 
-    const catheter = (cathEl?.value || "central");
-    const dilutionRatio = (catheter === "central") ? 2 : 4;
+    const catheter = cathEl?.value || "central";
+    const dilutionRatio =
+      catheter === "central" ? 2 : 4;
 
-    const bwKg = Number.isFinite(bw_g) ? (bw_g / 1000) : NaN;
-    const ratio = Number.isFinite(ratioPct) ? (ratioPct / 100) : NaN;
+    const bwKg =
+      Number.isFinite(bw_g)
+        ? bw_g / 1000
+        : NaN;
 
-    // Determine mEq to give
-    const useDirect = Number.isFinite(meqDirect) && meqDirect > 0;
+    const ratio =
+      Number.isFinite(ratioPct)
+        ? ratioPct / 100
+        : NaN;
+
+    // Use direct NaHCO3 mEq when entered
+    const useDirect =
+      Number.isFinite(meqDirect) && meqDirect > 0;
 
     let correctMeq = 0;
 
-    // Original formula: BE * BWkg * 0.3 * ratio
-    // (keep same; note BE is typically negative in acidosis, but you used BE directly)
     if (useDirect) {
       correctMeq = meqDirect;
     } else {
-      const base = (Number.isFinite(be) && Number.isFinite(bwKg)) ? (be * bwKg * 0.3) : NaN;
-      correctMeq = (Number.isFinite(base) && Number.isFinite(ratio)) ? (base * ratio) : 0;
+      const base =
+        (
+          Number.isFinite(baseDeficit) &&
+          baseDeficit >= 0 &&
+          Number.isFinite(bwKg)
+        )
+          ? baseDeficit * bwKg * 0.3
+          : NaN;
+
+      correctMeq =
+        (
+          Number.isFinite(base) &&
+          Number.isFinite(ratio)
+        )
+          ? base * ratio
+          : 0;
     }
 
-    // Keep original style: if negative, display 0 (avoid negative orders)
+    // Prevent invalid negative order values
     correctMeq = Math.max(correctMeq, 0);
 
-    // Convert mEq to 7% NaHCO3 volume (ml)
+    // Convert mEq to 7% NaHCO3 volume
     // volume = mEq * 20 / 16.67
-    const correctVolMl = (correctMeq > 0) ? (correctMeq * 20 / 16.67) : 0;
+    const correctVolMl =
+      correctMeq > 0
+        ? correctMeq * 20 / 16.67
+        : 0;
 
     // mEq/kg/hr
-    const meqKgHr = (Number.isFinite(bwKg) && bwKg > 0 && durationHr > 0)
-      ? (correctMeq / bwKg / durationHr)
-      : NaN;
+    const meqKgHr =
+      (
+        Number.isFinite(bwKg) &&
+        bwKg > 0 &&
+        durationHr > 0
+      )
+        ? correctMeq / bwKg / durationHr
+        : NaN;
 
-    // Build lines
+    // -----------------------------
+    // Build output lines
+    // -----------------------------
+
     const lines = [];
 
-    // Line 1: "NaHCO3 given: ..."
+    // Line 1: NaHCO3 calculation
     let line1 = "NaHCO3 given: ";
+
     if (!useDirect) {
-      const ratioShown = Number.isFinite(ratioPct) ? ratioPct.toFixed(0) : "__";
-      line1 += `${safeBlank(be)} * ${safeBlank(bwKg)} kg * 0.3 * ${ratioShown}% =`;
+      const ratioShown =
+        Number.isFinite(ratioPct)
+          ? ratioPct.toFixed(0)
+          : "__";
+
+      line1 +=
+        `${safeBlank(baseDeficit)} * ` +
+        `${safeBlank(bwKg)} kg * ` +
+        `0.3 * ${ratioShown}% =`;
     }
-    line1 += ` ${Number.isFinite(correctMeq) ? correctMeq.toFixed(1) : "__"} mEq = ${Number.isFinite(correctVolMl) ? correctVolMl.toFixed(1) : "__"} ml`;
+
+    line1 +=
+      ` ${Number.isFinite(correctMeq) ? correctMeq.toFixed(1) : "__"} mEq` +
+      ` = ${Number.isFinite(correctVolMl) ? correctVolMl.toFixed(1) : "__"} ml`;
+
     lines.push(line1);
 
-    // Line 2: order
-    const dilutedToMl = correctVolMl * dilutionRatio;
+    // Line 2: preparation / administration
+    const dilutedToMl =
+      correctVolMl * dilutionRatio;
+
     const line2 =
-      `7% NaHCO3 ${Number.isFinite(correctVolMl) ? correctVolMl.toFixed(1) : "__"} ml ` +
-      `dilute with D5W to ${Number.isFinite(dilutedToMl) ? dilutedToMl.toFixed(1) : "__"} ml ` +
+      `7% NaHCO3 ` +
+      `${Number.isFinite(correctVolMl) ? correctVolMl.toFixed(1) : "__"} ml ` +
+      `dilute with D5W to ` +
+      `${Number.isFinite(dilutedToMl) ? dilutedToMl.toFixed(1) : "__"} ml ` +
       `run ${durationHr} hrs`;
+
     lines.push(line2);
 
-    // Line 3: mEq/kg/hr
+    // Line 3: administration rate
     const line3 =
-      `= ${Number.isFinite(meqKgHr) ? meqKgHr.toFixed(1) : "__"} mEq/kg/hr  ( max 1 mEq/kg/hr )`;
+      `= ${Number.isFinite(meqKgHr) ? meqKgHr.toFixed(1) : "__"} mEq/kg/hr` +
+      `  ( max 1 mEq/kg/hr )`;
+
     lines.push(line3);
 
     if (DEBUG){
       console.groupCollapsed(`[${TOOL_KEY}] calc`);
-      console.log({ bw_g, bwKg, be, ratioPct, ratio, meqDirect, useDirect, correctMeq, correctVolMl, durationHr, catheter, dilutionRatio, dilutedToMl, meqKgHr });
+
+      console.log({
+        bw_g,
+        bwKg,
+        baseDeficit,
+        ratioPct,
+        ratio,
+        meqDirect,
+        useDirect,
+        correctMeq,
+        correctVolMl,
+        durationHr,
+        catheter,
+        dilutionRatio,
+        dilutedToMl,
+        meqKgHr,
+      });
+
       console.groupEnd();
     }
 
-    // Render outputs (rebuild list)
-    outputsEl.innerHTML = "";
-    lines.forEach(t => {
-      const li = document.createElement("li");
-      li.className = "list-group-item copy-item";
-      li.textContent = t;
-      outputsEl.appendChild(li);
-    });
+    // Preserve existing copy-item nodes
+    updateCopyList(outputsEl, lines);
   };
 
   const scheduleCalc = createScheduler(calc);
+
+  // -----------------------------
+  // Events
+  // -----------------------------
 
   box.addEventListener("input", scheduleCalc);
   box.addEventListener("change", scheduleCalc);
 
   resetBtn?.addEventListener("click", () => {
     if (bwEl) bwEl.value = "";
-    if (beEl) beEl.value = "";
+    if (baseDeficitEl) baseDeficitEl.value = "";
     if (ratioEl) ratioEl.value = "";
     if (meqDirectEl) meqDirectEl.value = "";
-    if (durEl) durEl.value = "";      // 留空 -> calc 會用 default=2
+    if (durEl) durEl.value = "";
     if (cathEl) cathEl.value = "central";
-    mutual?.update();  // ✅ 語意最清楚
+
+    mutual?.update();
     scheduleCalc();
   });
 
