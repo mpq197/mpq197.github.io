@@ -1,6 +1,6 @@
 // tools/handoff.js
+// updated: 2026-09-03
 // NeoAssist Clinical Handoff — Patient-centric V1
-// 2026-08-29
 
 const TOOL_KEY="handoff";
 const DB_NAME="neoassist-clinical-handoff";
@@ -3258,7 +3258,7 @@ function applySymbolShortcut(el){
     ["-->", "→"],
     [">--", "→"],
     ["<--", "←"],
-    ["<--", "←"],
+    ["--<", "←"],
     ["==>", "⇒"],
     [">==", "⇒"],
     ["<==", "⇐"],
