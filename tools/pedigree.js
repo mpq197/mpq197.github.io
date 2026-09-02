@@ -1,3 +1,6 @@
+// tools/pedigree.js
+// updated: 2026-09-03
+
 const TOOL_KEY = "pedigree";
 const DEFAULT_INFO = "請先選取一位成員，再選圖示或新增手足。";
 const BOARD_ROWS = 7;
@@ -1057,14 +1060,6 @@ function applyAction(state, action) {
   }
 }
 
-async function copyText(text) {
-  if (typeof navigator !== "undefined" && navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
-    await navigator.clipboard.writeText(text);
-    return true;
-  }
-  return false;
-}
-
 function renderInfo(box, state) {
   const infoEl = box.querySelector('[data-role="info"]');
   if (!infoEl) return;
@@ -1119,7 +1114,6 @@ function renderState(box, state) {
   if (insertRightBtn) insertRightBtn.disabled = !summary.canInsert;
   if (deleteBtn) deleteBtn.disabled = !summary.canDelete;
 
-  box.dataset.preview = layout.fullOutput;
   box.__pedigreeLayout = layout;
 }
 
@@ -1293,10 +1287,7 @@ export function render() {
               </div>
 
               <div class="mt-3">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <div class="pedigree-title mb-0">純文字輸出</div>
-                  <button class="btn btn-outline-secondary btn-sm" type="button" data-action="copy-output">複製</button>
-                </div>
+                <div class="pedigree-title mb-0">純文字輸出</div>
                 <pre data-role="output" class="copy-item"></pre>
               </div>
             </div>
@@ -1386,18 +1377,6 @@ export function init(root, ctx) {
       const markerKey = target.getAttribute("data-marker-key");
       if (!markerKey || !MARKER_MAP[markerKey]) return;
       applyAction(state, { type: "choose-marker", markerKey });
-      rerender();
-      return;
-    }
-
-    if (action === "copy-output") {
-      const text = box.dataset.preview || "";
-      try {
-        await copyText(text);
-        state.flash = { kind: "success", text: "已複製純文字輸出。" };
-      } catch {
-        state.flash = { kind: "danger", text: "複製失敗，請手動選取文字。" };
-      }
       rerender();
       return;
     }
