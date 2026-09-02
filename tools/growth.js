@@ -1,11 +1,12 @@
 // tools/growth.js
-// updated: 2026-02-28
+// updated: 2026-09-03
 
+import { createScheduler } from "../core/utils.js";
+import { intergrowth21Refs } from "../refs/intergrowth21Refs.js";
 
 const TOOL_KEY = "growth";
 const DEBUG = false;
 
-import { intergrowth21Refs } from "../refs/intergrowth21Refs.js";
 // ✅ 不再從本地 import fenton/lubchenco，改成從 window 讀（index.html 用 <script> 載入 intranet growthRefs.js）
 // import { fentonRefs, lubchencoRefs } from "../refs/growthRefs.js";
 
@@ -130,15 +131,6 @@ export function init(root) {
 
   const log = (...args) => { if (DEBUG) console.log(`[${TOOL_KEY}]`, ...args); };
 
-  // rAF 合併：多次 input/ change 只算一次
-  let rafId = 0;
-  const scheduleCalc = () => {
-    if (rafId) return;
-    rafId = requestAnimationFrame(() => {
-      rafId = 0;
-      calc();
-    });
-  };
 
   const templateText =
     `GA:<br>Gender:<br>BBW:<br>BBL:<br>BHC:<br>Ponderal index:`;
@@ -218,6 +210,8 @@ export function init(root) {
       ).join("<br>");
     }
   }
+
+  const scheduleCalc = createScheduler(calc);
 
   // -----------------------------
   // Text builders (pure-ish functions)
