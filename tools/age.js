@@ -1,5 +1,7 @@
 // tools/age.js
-// updated: 2026-02-28
+// updated: 2026-09-03
+
+import { createScheduler } from "../core/utils.js";
 
 const TOOL_KEY = "age";
 const DEBUG = false;
@@ -76,16 +78,6 @@ export function init(root){
   const dolOut = box.querySelector(`[data-role="dol"]`);
   const ageOut = box.querySelector(`[data-role="age"]`);
   const resetBtn = box.querySelector(`[data-role="reset"]`);
-
-  // rAF 合併多次 input
-  let rafId = 0;
-  const scheduleCalc = () => {
-    if (rafId) return;
-    rafId = requestAnimationFrame(() => {
-      rafId = 0;
-      calc();
-    });
-  };
 
   const log = (...args) => { if (DEBUG) console.log(`[${TOOL_KEY}]`, ...args); };
 
@@ -201,6 +193,7 @@ export function init(root){
 
     log({ dol, gaTotalDays, pmaDays, isPreterm });
   }
+  const scheduleCalc = createScheduler(calc);
 
   // ---------- events ----------
   box.addEventListener("input", scheduleCalc);
