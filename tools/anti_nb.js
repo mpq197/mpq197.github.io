@@ -1,19 +1,14 @@
 // tools/anti_nb.js
-// updated: 2026-03-01
+// updated: 2026-09-03
+
+import {
+  safeEvalNumber,
+  createScheduler,
+} from "../core/utils.js";
 
 const TOOL_KEY = "anti_nb";
 const DEBUG = false;
 
-import { safeEvalNumber } from "../core/utils.js";
-
-// NOTE:
-// - This tool is self-contained (no external imports besides safeEvalNumber).
-// - Uses delegated input/change listeners on the tool root.
-// - Birthday defaults to today (local).
-// - Remark will NEVER carry over between drugs (cleared every calc).
-// - UI changes in this version:
-//   (1) Reset 改回單一按鈕（保留原本行為：清 BW/GA/Birthday=今天/Calc，Drug 不變）
-//   (2) Standard / Meningitis 改成「各自一個標題列」：左標題 + 右側 Copy，同列；下一行顯示 dose；再下一行顯示 desc
 
 export function render() {
   return `
@@ -142,7 +137,7 @@ export function render() {
           <div class="row">
             <div class="col-10">
               <!-- Standard -->
-              <div class="dose-card" data-role="cardStd">
+              <div class="dose-card copy-item" data-role="cardStd">
                 <div class="title-row">
                   <div class="title">Standard</div>
                 </div>
@@ -152,7 +147,7 @@ export function render() {
               </div>
 
               <!-- Meningitis -->
-              <div class="dose-card" data-role="cardMen">
+              <div class="dose-card copy-item" data-role="cardMen">
                 <div class="title-row">
                   <div class="title">Meningitis</div>
                 </div>
@@ -204,15 +199,6 @@ export function init(root) {
 
   const log = (...args) => { if (DEBUG) console.log(`[${TOOL_KEY}]`, ...args); };
 
-  // rAF merge
-  let rafId = 0;
-  const scheduleCalc = () => {
-    if (rafId) return;
-    rafId = requestAnimationFrame(() => {
-      rafId = 0;
-      calc();
-    });
-  };
 
   function clearOutputs() {
     outStdDose.textContent = "";
@@ -221,6 +207,10 @@ export function init(root) {
     outMenDesc.textContent = "";
     outStdRemark.textContent = "";
     outMenRemark.textContent = "";
+
+    cardStd.dataset.content = "";
+    cardMen.dataset.content = "";
+
     if (outSummary) outSummary.textContent = "";
   }
 
@@ -449,23 +439,6 @@ export function init(root) {
     return s.replace(/0+$/,"").replace(/\.$/,"");
   }
 
-  async function copyToClipboard(text) {
-    if (!text) return;
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.setAttribute("readonly", "");
-      ta.style.position = "absolute";
-      ta.style.left = "-9999px";
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-    }
-  }
-
 
   // -----------------------------
   // Core
@@ -550,39 +523,38 @@ export function init(root) {
       outStdDose.textContent = buildDoseText(std, BW_g);
       outStdDesc.textContent = std.description || "";
       if (outStdRemark) outStdRemark.textContent = std.remark || "";
+
+      cardStd.dataset.content = std.description || "";
     } else {
       outStdDose.textContent = "-";
       outStdDesc.textContent = "No standard dose suggestion found.";
       if (outStdRemark) outStdRemark.textContent = "";
+
+      cardStd.dataset.content = "No standard dose suggestion found.";
     }
 
     if (men) {
       outMenDose.textContent = buildDoseText(men, BW_g);
       outMenDesc.textContent = men.description || "";
       if (outMenRemark) outMenRemark.textContent = men.remark || "";
+
+      cardMen.dataset.content = men.description || "";
     } else {
       outMenDose.textContent = "-";
       outMenDesc.textContent = "No meningitis dose suggestion found.";
       if (outMenRemark) outMenRemark.textContent = "";
+
+      cardMen.dataset.content = "No meningitis dose suggestion found.";
     }
 
     log({ drugName, BW_g, GA_w, GA_d, PNA_d, PMA_w, std, men, remarks});
   }
 
+  const scheduleCalc = createScheduler(calc);
+
   // delegated events
   box.addEventListener("input", scheduleCalc);
   box.addEventListener("change", scheduleCalc);
-
-  // copy outputs
-  function copyDescOnly(kind) {
-    const descEl = kind === "std" ? outStdDesc : outMenDesc;
-    const desc = (descEl.textContent || "").trim();
-    if (!desc || desc === "No standard dose suggestion found." || desc === "No meningitis dose suggestion found.") return;
-    copyToClipboard(desc);
-  }
-
-  cardStd?.addEventListener("click", () => copyDescOnly("std"));
-  cardMen?.addEventListener("click", () => copyDescOnly("men"));
 
   // Reset (original-style single button; keep drug)
   resetBtn?.addEventListener("click", () => {
