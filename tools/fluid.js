@@ -1,10 +1,11 @@
 // /tools/fluid.js
-// updated: 2026-03-01
+// updated: 2026-09-03
 
 import {
   createScheduler,
   bindMutualDisableBySelector,
   safeEvalNumber,
+  updateCopyList,
 } from "../core/utils.js";
 
 const DEBUG = true;
@@ -583,16 +584,7 @@ export function init(root) {
   };
 
   const setOutputs = (lines) => {
-    if (!els.out) return;
-    els.out.innerHTML = "";
-    for (const line of lines) {
-      if (!line) continue;
-      const li = document.createElement("li");
-      li.className = "list-group-item copy-item";
-      li.setAttribute("name", "fluid_order_outputs");
-      li.textContent = line;
-      els.out.appendChild(li);
-    }
+    updateCopyList(els.out, lines);
   };
 
   // ---- scheduler (spec 4.2) ----
@@ -851,31 +843,6 @@ export function init(root) {
         </td>
       `;
       els.historyTbody.appendChild(tr);
-    }
-  }
-
-  // ============================================================
-  // Clipboard helper (copy-item click)
-  // ============================================================
-  async function copyTextToClipboard(text) {
-    const s = String(text ?? "").trim();
-    if (!s) return;
-    try {
-      if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(s);
-      } else {
-        const ta = document.createElement("textarea");
-        ta.value = s;
-        ta.style.position = "fixed";
-        ta.style.left = "-9999px";
-        document.body.appendChild(ta);
-        ta.focus();
-        ta.select();
-        document.execCommand("copy");
-        ta.remove();
-      }
-    } catch {
-      // ignore
     }
   }
 
@@ -1546,21 +1513,13 @@ export function init(root) {
     }
   });
 
-  // ✅ 用 pointerdown 取代 click（避免更改輸入值後的 focus/blur 事件干擾）
-  box.addEventListener(
-    "pointerdown",
-    (e) => {
-      const copyNode = e.target?.closest?.(".copy-item");
-      if (!copyNode) return;
+  box.addEventListener("neo:copy", (e) => {
+    const copyNode = e.target?.closest?.(".copy-item");
+    if (!copyNode || !box.contains(copyNode)) return;
 
-      // // 防止 focus/blur 後續造成的干擾（可留可不留，但建議留）
-      // e.preventDefault(); //因會造成使用者無法select text, 故刪掉
+    addSnapshot("copy");
+  });
 
-      copyTextToClipboard(copyNode.textContent || "");
-      addSnapshot("copy");
-    },
-    true // capture：更早攔到事件
-  );
   box.addEventListener("input", () => scheduleCalc());
   box.addEventListener("change", () => scheduleCalc());
 
