@@ -1,5 +1,5 @@
 // core/utils.js
-// updated: 2026-02-28
+// updated: 2026-09-03
 
 /**
  * Decode HTML entities (e.g. &lt; -> <).
@@ -11,32 +11,83 @@ export function decodeHTMLEntities(str) {
 }
 
 /**
- * ✅ Copy binding (event delegation)
- * - Bind once per root (dataset.copyBound)
- * - Works for dynamically added .copy-item
+ * Safely update copyable output list without destroying existing DOM nodes.
  *
- * Copy behavior:
- * - prefers data-content if present, otherwise uses innerHTML
- * - converts <br> to \n
- * - strips HTML tags
- * - decodes HTML entities
+ * Why:
+ * - preserves existing .copy-item nodes during recalculation
+ * - prevents blur/change -> calc -> DOM rebuild -> lost click
+ *
+ * @param {HTMLElement} container
+ * @param {string[]} lines
+ */
+export function updateCopyList(container, lines) {
+  if (!container) return;
+
+  const validLines = (lines || []).filter(Boolean);
+
+  const existingItems = Array.from(
+    container.querySelectorAll(":scope > .copy-item")
+  );
+
+  // Update existing nodes or add new ones
+  validLines.forEach((text, index) => {
+    let item = existingItems[index];
+
+    if (!item) {
+      item = document.createElement("li");
+      item.className = "list-group-item copy-item";
+      container.appendChild(item);
+    }
+
+    if (item.textContent !== text) {
+      item.textContent = text;
+    }
+  });
+
+  // Remove extra nodes only when the new output is shorter
+  for (let i = existingItems.length - 1; i >= validLines.length; i--) {
+    existingItems[i].remove();
+  }
+}
+
+
+/**
+ * Copy binding (event delegation)
+ * - Bind once per root
+ * - Works for dynamically added .copy-item
+ * - Dispatches "neo:copy" after successful copy
  */
 export function bindCopyItems(root) {
   if (!root) return;
   if (root.dataset.copyBound === "1") return;
   root.dataset.copyBound = "1";
 
-  root.addEventListener("click", (e) => {
+  root.addEventListener("click", async (e) => {
     const item = e.target?.closest?.(".copy-item");
     if (!item || !root.contains(item)) return;
 
-    let content = item.dataset.content || item.innerHTML || "";
+    let content = item.hasAttribute("data-content")
+      ? item.dataset.content ?? ""
+      : item.innerHTML ?? "";
+      
+    content = content.replace(/<br\s*\/?>/gi, "\n");
+    content = content.replace(/<[^>]*>/g, "");
+    content = decodeHTMLEntities(content);
+    if (!content.trim()) return;
 
-    content = content.replace(/<br\s*\/?>/gi, "\n"); // <br> -> newline
-    content = content.replace(/<[^>]*>/g, "");       // remove tags
-    content = decodeHTMLEntities(content);           // decode entities
+    try {
+      await navigator.clipboard.writeText(content);
 
-    navigator.clipboard.writeText(content).catch(() => {});
+      // Notify tool-specific listeners after successful copy
+      item.dispatchEvent(
+        new CustomEvent("neo:copy", {
+          bubbles: true,
+          detail: { content }
+        })
+      );
+    } catch (err) {
+      console.warn("Clipboard copy failed:", err);
+    }
   });
 }
 
