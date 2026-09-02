@@ -1,5 +1,5 @@
 // /tools/medorders.js
-// updated: 2026-03-04
+// updated: 2026-09-03
 // note: 優化parse穩定性，新增教學
 
 //
@@ -229,6 +229,44 @@ const MATCH_POLICY = {
   enableFallbackB: true,
   rescueUnmatchedDc: true,
 };
+
+// ------------------------------
+// DRUG CLASSIFICATION
+// - Explicit keyword lists; easy to extend with local NICU formulary names
+// - Classification is based on normalized drugGroupKey
+// ------------------------------
+const DRUG_CLASSES = {
+  antibiotics: {
+    label: "抗生素",
+    drugs: [
+      "ampicillin", "amoxicillin", "amoxycillin", "gentamicin", "amikacin",
+      "vancomycin", "cefazolin", "cefotaxime", "ceftriaxone", "ceftazidime",
+      "cefepime", "meropenem", "piperacillin tazobactam", "piperacillin",
+      "tazobactam", "oxacillin", "nafcillin", "penicillin", "clindamycin",
+      "metronidazole", "linezolid"
+    ],
+  },
+  steroids: {
+    label: "類固醇",
+    drugs: [
+      "dexamethasone", "hydrocortisone", "prednisolone", "prednisone",
+      "methylprednisolone", "betamethasone"
+    ],
+  },
+};
+
+function classifyDrug(drugKey) {
+  const key = normalizeText(drugKey);
+
+  for (const [classKey, config] of Object.entries(DRUG_CLASSES)) {
+    const matched = config.drugs.some((name) =>
+      key.includes(normalizeText(name))
+    );
+    if (matched) return classKey;
+  }
+
+  return "other";
+}
 
 // ------------------------------
 // utils
@@ -1083,34 +1121,7 @@ function debounce(fn, ms = 250) {
     t = setTimeout(() => fn(...args), ms);
   };
 }
-function bindCopy(root) {
-  root.addEventListener("click", async (e) => {
-    const btn = e.target.closest(".copy-item");
-    if (!btn) return;
-    const text = btn.getAttribute("data-copy") || btn.textContent || "";
-    try {
-      await navigator.clipboard.writeText(text);
-      const old = btn.textContent;
-      btn.textContent = "Copied";
-      btn.classList.add("neo-copied");
-      window.setTimeout(() => {
-        btn.textContent = old;
-        btn.classList.remove("neo-copied");
-      }, 650);
-    } catch {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position = "fixed";
-      ta.style.left = "-9999px";
-      document.body.appendChild(ta);
-      ta.select();
-      try {
-        document.execCommand("copy");
-      } catch {}
-      document.body.removeChild(ta);
-    }
-  });
-}
+
 function intervalLabel(itv, showYear = false) {
   const s = itv.start ? fmtMD(itv.start, showYear) : "?";
   const e = itv.end ? fmtMD(itv.end, showYear) : "ONGOING";
@@ -1125,8 +1136,112 @@ function intervalLabel(itv, showYear = false) {
   }
   return `${s}-${e}`;
 }
-function makeSummaryLine(drug, route, itv, showYear = false) {
-  return `${drug} ${route} ${intervalLabel(itv, showYear)}`;
+function makeRouteSummary(drug, route, intervals, showYear = false) {
+  if (!intervals.length) {
+    return `${drug} ${route}`;
+  }
+
+  let lastYear = null;
+  let lastMonth = null;
+
+  const parts = intervals.map((itv) => {
+    if (!itv.start) return "?";
+
+    const start = itv.start;
+    const end = itv.end;
+
+    const year = start.getFullYear();
+    const month = start.getMonth();
+
+    const sameContext =
+      lastYear === year &&
+      lastMonth === month;
+
+    let startText;
+
+    if (showYear && !sameContext) {
+      startText =
+        `${year}/${pad2(month + 1)}/${pad2(start.getDate())}`;
+    } else if (!sameContext) {
+      startText =
+        `${pad2(month + 1)}/${pad2(start.getDate())}`;
+    } else {
+      startText = pad2(start.getDate());
+    }
+
+    lastYear = year;
+    lastMonth = month;
+
+    // ONGOING
+    if (!end) {
+      return `${startText}-ONGOING`;
+    }
+
+    const sameDay =
+      start.getFullYear() === end.getFullYear() &&
+      start.getMonth() === end.getMonth() &&
+      start.getDate() === end.getDate();
+
+    if (sameDay) {
+      return startText;
+    }
+
+    const sameMonth =
+      start.getFullYear() === end.getFullYear() &&
+      start.getMonth() === end.getMonth();
+
+    if (sameMonth) {
+      return `${startText}-${pad2(end.getDate())}`;
+    }
+
+    return `${startText}-${fmtMD(end, showYear)}`;
+  });
+
+  return `${drug} ${route} ${parts.join(", ")}`;
+}
+
+function makeAlignedRouteSummaries(items, showYear = false) {
+  if (!items.length) return [];
+
+  const rows = [];
+
+  for (const d of items) {
+    const routes = Array.from(d.routes.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]));
+
+    for (const [route, intervals] of routes) {
+      rows.push({
+        drug: d.drugDisplay,
+        route,
+        intervals,
+      });
+    }
+  }
+
+  const drugWidth = Math.max(...rows.map(r => r.drug.length));
+  const routeWidth = Math.max(...rows.map(r => r.route.length));
+
+  return rows.map(r => {
+    const summary = makeRouteSummary(
+      r.drug,
+      r.route,
+      r.intervals,
+      showYear
+    );
+
+    // makeRouteSummary 已包含 drug + route，
+    // 所以這裡只取日期部分
+    const prefix = `${r.drug} ${r.route} `;
+    const dates = summary.slice(prefix.length);
+
+    return (
+      r.drug.padEnd(drugWidth) +
+      "  " +
+      r.route.padEnd(routeWidth) +
+      "  " +
+      dates
+    );
+  });
 }
 
 // ------------------------------
@@ -1136,6 +1251,7 @@ function renderResults(root, state) {
   const meta = root.querySelector('[data-role="parse_meta"]');
   const list = root.querySelector('[data-role="result_list"]');
   const debugTop = root.querySelector('[data-role="debug_area"]');
+  const copyAllBtn = root.querySelector('[data-role="copy_all"]');
   const dbgOn = !!state.debug;
 
   const q = String(state.query || "").trim().toLowerCase();
@@ -1143,17 +1259,44 @@ function renderResults(root, state) {
   if (!state.agg.length && !state.rows.length) {
     meta.textContent = "";
     debugTop.innerHTML = "";
+
+    if (copyAllBtn) {
+      copyAllBtn.dataset.content = "";
+      copyAllBtn.disabled = true;
+    }
+
     list.innerHTML = `
       <div class="neo-muted small py-2">
         尚未解析到藥品表格。請把整段含「列印時間」與「類別 藥品名稱 … 途徑」貼上。
       </div>
     `;
+
     return;
   }
 
-  const filtered = !q
-    ? state.agg
-    : state.agg.filter((d) => d.drugDisplay.toLowerCase().includes(q) || d.drugKey.includes(q));
+  const filtered = state.agg.filter((d) => {
+    const matchesQuery =
+      !q ||
+      d.drugDisplay.toLowerCase().includes(q) ||
+      d.drugKey.includes(q);
+
+    const matchesClass =
+      state.drugClass === "all" ||
+      classifyDrug(d.drugKey) === state.drugClass;
+
+    return matchesQuery && matchesClass;
+  });
+
+    // Build "copy all" summary from currently displayed results
+  const allLines = makeAlignedRouteSummaries(
+    filtered,
+    state.showYear
+  );
+
+  if (copyAllBtn) {
+    copyAllBtn.dataset.content = allLines.join("\n");
+    copyAllBtn.disabled = allLines.length === 0;
+  }
 
   const totalRoutes = filtered.reduce((acc, d) => acc + d.routes.size, 0);
   const lastPT = state.lastPrintTime ? fmtYMDHM(state.lastPrintTime) : "—";
@@ -1241,21 +1384,21 @@ function renderResults(root, state) {
               })
               .join("");
 
-            const copyText =
-              intervals.length === 1
-                ? makeSummaryLine(d.drugDisplay, route, intervals[0], state.showYear)
-                : `${d.drugDisplay} ${route} ${intervals.map((itv) => intervalLabel(itv, state.showYear)).join(", ")}`;
-            
+            const copyText = makeRouteSummary(
+              d.drugDisplay,
+              route,
+              intervals,
+              state.showYear
+            );
+
             return `
-              <div class="d-flex align-items-start gap-2 py-1">
+              <div
+                class="d-flex align-items-start gap-2 py-1 copy-item"
+                data-content="${escapeHtml(copyText)}"
+                title="點擊複製摘要"
+              >
                 <div class="neo-route flex-shrink-0">${escapeHtml(route)}</div>
                 <div class="flex-grow-1 d-flex flex-wrap gap-2">${chips}</div>
-                <button type="button"
-                  class="btn btn-sm neo-btn-outline copy-item flex-shrink-0"
-                  data-copy="${escapeHtml(copyText)}"
-                  title="複製摘要">
-                  Copy
-                </button>
               </div>
             `;
           })
@@ -1348,7 +1491,6 @@ export function render() {
         border-radius: 999px;
       }
       [data-tool="${TOOL_KEY}"] .neo-btn-outline:hover { background: rgba(255,255,255,.45); }
-      [data-tool="${TOOL_KEY}"] .neo-copied { filter: brightness(0.98); opacity: .9; }
       [data-tool="${TOOL_KEY}"] .neo-toggle { user-select: none; }
       [data-tool="${TOOL_KEY}"] .neo-unmatched { border: 1px dashed var(--neo-border, #dee2e6); border-radius: 12px; padding: 10px; }
       [data-tool="${TOOL_KEY}"] details summary { cursor: pointer; }
@@ -1359,10 +1501,22 @@ export function render() {
 
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
-          <div class="input-group">
-            <span class="input-group-text" style="width: 90px; justify-content:center;">搜尋</span>
-            <input class="form-control text-center" data-role="q" placeholder="輸入藥名" />
-            <button class="btn neo-btn-outline" type="button" data-role="clear_q" title="清除">✕</button>
+          <div class="d-flex gap-2 flex-grow-1">
+            <div class="input-group flex-grow-1">
+              <span class="input-group-text" style="width: 90px; justify-content:center;">搜尋</span>
+              <input class="form-control text-center" data-role="q" placeholder="輸入藥名" />
+              <button class="btn neo-btn-outline" type="button" data-role="clear_q" title="清除">✕</button>
+            </div>
+
+            <div class="input-group" style="width: 220px;">
+              <span class="input-group-text">分類</span>
+              <select class="form-select text-center" data-role="drug_class">
+                <option value="all" selected>全部</option>
+                <option value="antibiotics">抗生素</option>
+                <option value="steroids">類固醇</option>
+                <option value="other">其他</option>
+              </select>
+            </div>
           </div>
 
           <div class="d-flex align-items-center gap-2">
@@ -1383,8 +1537,16 @@ export function render() {
         <div class="d-flex justify-content-between align-items-center mt-2">
           <div class="small neo-muted" data-role="parse_meta"></div>
           <div class="d-flex gap-2">
-            <button type="button" class="btn btn-secondary btn-sm" data-role="intro">教學</button>
-            <button type="button" class="btn btn-secondary btn-sm" data-role="clear_all">Reset</button>
+            <button type="button" class="btn btn-secondary btn-sm copy-item" data-role="copy_all" data-content="" disabled>
+              複製全部
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" data-role="intro">
+              教學
+            </button>
+
+            <button type="button" class="btn btn-secondary btn-sm" data-role="clear_all">
+              Reset
+            </button>
           </div>
         </div>
 
@@ -1402,6 +1564,7 @@ export function render() {
 export function init(root) {
   const elSrc = root.querySelector('[data-role="src"]');
   const elQ = root.querySelector('[data-role="q"]');
+  const elDrugClass = root.querySelector('[data-role="drug_class"]');
   const btnClearQ = root.querySelector('[data-role="clear_q"]');
   const btnClearAll = root.querySelector('[data-role="clear_all"]');
   const elShowYear = root.querySelector('[data-role="show_year_toggle"]');
@@ -1411,6 +1574,7 @@ export function init(root) {
   const state = {
     raw: "",
     query: "",
+    drugClass: "all",
     debug: false,
     showYear: false,
     rows: [],
@@ -1483,6 +1647,8 @@ NEW   Heparin sodium 25,000u/5mL/vial           0.05MLIRRE        IVF   7天
     // 3) 清搜尋，避免 demo 被過濾掉
     elQ.value = "";
     state.query = "";
+    if (elDrugClass) elDrugClass.value = "all";
+    state.drugClass = "all";
 
     // 4) 直接重算（不要 debounce）
     // 你的 recompute() 是 init() 內函數，直接呼叫
@@ -1498,8 +1664,16 @@ NEW   Heparin sodium 25,000u/5mL/vial           0.05MLIRRE        IVF   7天
 (這時會顯示病人所有的醫囑)<br> → Ctrl+A 全選<br> → Ctrl+C 複製<br> → 在這裡貼上列印內容
 ` },
       { element: root.querySelector('[data-role="parse_meta"]'), intro: "解析摘要：<br>unmatched DC(找不到開立時藥囑)<br>parse failed(解析失敗，請手動檢查!)" },
-      { element: root.querySelector('[data-role="result_list"]'), intro: "結果：每個藥品依給藥途徑分組；並顯示用藥區間。點 Copy 可複製摘要。" },
+      {
+        element: root.querySelector('[data-role="result_list"]'),
+        intro: "結果：每個藥品依給藥途徑分組並顯示用藥區間；直接點擊該途徑列即可複製摘要。"
+      },
+      {
+        element: root.querySelector('[data-role="copy_all"]'),
+        intro: "複製全部：將目前顯示的所有藥品摘要一次複製，每個藥品／途徑一行。"
+      },
       { element: root.querySelector('[data-role="q"]'), intro: "搜尋：輸入藥名關鍵字過濾" },
+      { element: root.querySelector('[data-role="drug_class"]'), intro: "分類：可只顯示抗生素、類固醇或其他藥物；複製全部也只會複製目前分類後的結果。" },
       { element: root.querySelector('[data-role="debug_toggle"]'), intro: "Debug：顯示 Parse Failures、Unmatched DC、instances 明細（用來校對貼上的內容/解析規則）。" },
       { element: root.querySelector('[data-role="clear_all"]'), intro: "Reset：清空所有輸入與狀態。" },
     ].filter((s) => s.element || s.intro);
@@ -1530,6 +1704,11 @@ NEW   Heparin sodium 25,000u/5mL/vial           0.05MLIRRE        IVF   7天
     renderResults(root, state);
   });
 
+  elDrugClass?.addEventListener("change", () => {
+    state.drugClass = elDrugClass.value || "all";
+    renderResults(root, state);
+  });
+
   btnClearQ.addEventListener("click", () => {
     elQ.value = "";
     state.query = "";
@@ -1540,8 +1719,10 @@ NEW   Heparin sodium 25,000u/5mL/vial           0.05MLIRRE        IVF   7天
   btnClearAll.addEventListener("click", () => {
     elSrc.value = "";
     elQ.value = "";
+    if (elDrugClass) elDrugClass.value = "all";
     state.raw = "";
     state.query = "";
+    state.drugClass = "all";
     state.rows = [];
     state.unmatchedDc = [];
     state.agg = [];
@@ -1563,6 +1744,5 @@ NEW   Heparin sodium 25,000u/5mL/vial           0.05MLIRRE        IVF   7天
 
   btnIntro?.addEventListener("click", () => intro());
 
-  bindCopy(root);
   renderResults(root, state);
 }
