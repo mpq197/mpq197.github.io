@@ -1,7 +1,10 @@
 // tools/gir.js
-// updated: 2026-02-28
+// updated: 2026-09-03
 
-import { safeEvalNumber } from "../core/utils.js";
+import {
+  safeEvalNumber,
+  createScheduler,
+} from "../core/utils.js";
 
 const DEBUG = false;
 const TOOL_KEY = "gir";
@@ -88,30 +91,19 @@ export function init(root){
   const bw = box.querySelector('[data-role="bw"]');
   const rows = box.querySelector('[data-role="rows"]');
   const resetBtn = box.querySelector('[data-role="reset"]');
-  const getOut = () => box.querySelector('[data-role="result"]');
-
-  // requestAnimationFrame 合併 input
-  let rafId = 0;
-  const scheduleCalc = () => {
-    if (rafId) cancelAnimationFrame(rafId);
-    rafId = requestAnimationFrame(() => {
-      rafId = 0;
-      calc();
-    });
-  };
+  const out = box.querySelector('[data-role="result"]');
 
   // expression evaluator: "" -> 0, invalid -> 0 (keep legacy behavior)
   const evalExpr = (s) => {
     const raw = String(s ?? "").trim();
     if (!raw) return 0;
+    // 例： "0.2+0.5" -> 0.7, "1+" -> 1 (容錯), "abc" -> 0
     const v = safeEvalNumber(raw, { trimTrailingOperators: true });
     return Number.isFinite(v) ? v : 0;
-    // 例： "0.2+0.5" -> 0.7, "1+" -> 1 (容錯), "abc" -> 0
   };
 
   const calc = () => {
 
-    const out = getOut();
     if (!out) return;
 
     const bwVal = parseFloat(bw?.value) || 0;
@@ -144,6 +136,8 @@ export function init(root){
 
     out.textContent = gir ? `GIR ${gir.toFixed(2)}` : "GIR 0.0";
   };
+
+  const scheduleCalc = createScheduler(calc);
 
   // ===== Event Bindings =====
 
