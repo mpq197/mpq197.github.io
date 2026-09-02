@@ -1,6 +1,7 @@
 // tools/icd10.js
-// updated: 2026-02-28
+// updated: 2026-09-03
 
+import { createScheduler } from "../core/utils.js";
 
 const DEBUG = false;
 const TOOL_KEY = "icd10";
@@ -205,15 +206,6 @@ export function init(root) {
   const listEl = box.querySelector('[data-role="list"]');
   const countEl = box.querySelector('[data-role="count"]');
 
-  let rafId = 0;
-  const scheduleCalc = () => {
-    if (rafId) cancelAnimationFrame(rafId);
-    rafId = requestAnimationFrame(() => {
-      rafId = 0;
-      calc();
-    });
-  };
-
   function calc() {
     const q = normalize(qEl.value);
     const cat = catEl.value;
@@ -228,6 +220,8 @@ export function init(root) {
       console.groupEnd();
     }
   }
+
+  const scheduleCalc = createScheduler(calc);
 
   box.addEventListener("input", e => {
     if (e.target === qEl) scheduleCalc();
