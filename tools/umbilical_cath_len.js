@@ -1,5 +1,7 @@
 // tools/umbilical_cath_len.js
-// updated: 2026-02-28
+// updated: 2026-09-03
+
+import { createScheduler } from "../core/utils.js";
 
 const DEBUG = false;
 const TOOL_KEY = "umbilical_cath_len";
@@ -58,22 +60,11 @@ export function init(root){
 
   const bwEl = box.querySelector('[data-role="bw"]');
   const resetBtn = box.querySelector('[data-role="reset"]');
-  const getUA = () => box.querySelector('[data-role="ua"]');
-  const getUV = () => box.querySelector('[data-role="uv"]');
+  const uaOut = box.querySelector('[data-role="ua"]');
+  const uvOut = box.querySelector('[data-role="uv"]');
 
-  // rAF 合併 input
-  let rafId = 0;
-  const scheduleCalc = () => {
-    if (rafId) cancelAnimationFrame(rafId);
-    rafId = requestAnimationFrame(() => {
-      rafId = 0;
-      calc();
-    });
-  };
 
   const calc = () => {
-    const uaOut = getUA();
-    const uvOut = getUV();
     if (!uaOut || !uvOut) return;
 
     const bw = parseFloat(bwEl?.value) || 0;
@@ -95,6 +86,8 @@ export function init(root){
     uaOut.textContent = bw > 0 ? `高位 ${uaHigh.toFixed(1)} cm, 低位 ${uaLow.toFixed(1)} cm` : "";
     uvOut.textContent = bw > 0 ? `${uv.toFixed(1)} cm` : "";
   };
+
+  const scheduleCalc = createScheduler(calc);
 
   // events
   bwEl?.addEventListener("input", scheduleCalc);
