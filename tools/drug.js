@@ -1,10 +1,15 @@
 // tools/drug.js
-// updated: 2026-02-28
+// updated: 2026-09-03
+
+import {
+  bindMutualDisableBySelector,
+  safeEvalNumber,
+  createScheduler,
+} from "../core/utils.js";
 
 const TOOL_KEY = "drug";
 const DEBUG = false;
 
-import { bindMutualDisableBySelector, safeEvalNumber } from "../core/utils.js"; 
 
 export function render() {
   return `
@@ -183,15 +188,6 @@ export function init(root) {
     { key: "drugDose" }
   );
 
-  let rafId = 0;
-  const scheduleCalc = () => {
-    if (rafId) return;
-    rafId = requestAnimationFrame(() => {
-      rafId = 0;
-      calc();
-    });
-  };
-
   function toNumber(v) {
     const n = Number(v);
     return Number.isFinite(n) ? n : 0;
@@ -325,6 +321,8 @@ export function init(root) {
 
     log({ bwKg, drugName, extract, totalVol, runRate, finalRate, diluterMl, pureLine });
   }
+
+  const scheduleCalc = createScheduler(calc);
 
   // events
   box.addEventListener("input", (e) => {
