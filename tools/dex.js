@@ -1,5 +1,7 @@
 // tools/dex.js
-// updated: 2026-02-28
+// updated: 2026-09-03
+
+import { createScheduler } from "../core/utils.js";
 
 const DEBUG = false;
 const TOOL_KEY = "dex";
@@ -75,20 +77,9 @@ export function init(root){
   const addConcEl  = box.querySelector('[data-role="addConc"]');
   const addAmtEl   = box.querySelector('[data-role="addAmt"]');
   const resetBtn   = box.querySelector('[data-role="reset"]');
-  const getOut     = () => box.querySelector('[data-role="result"]');
-
-  // rAF 合併 input
-  let rafId = 0;
-  const scheduleCalc = () => {
-    if (rafId) cancelAnimationFrame(rafId);
-    rafId = requestAnimationFrame(() => {
-      rafId = 0;
-      calc();
-    });
-  };
+  const out        = box.querySelector('[data-role="result"]');
 
   const calc = () => {
-    const out = getOut();
     if (!out) return;
 
     const origConc = parseFloat(origConcEl?.value) || 0;
@@ -114,6 +105,8 @@ export function init(root){
 
     out.textContent = `Dextrose = ${finalStr} %`;
   };
+
+  const scheduleCalc = createScheduler(calc);
 
   // 事件（只要 box 內 input 變動就算）
   box.addEventListener("input", (e) => {
