@@ -1,11 +1,19 @@
 // tools/handoff.js
-// updated: 2026-09-05
+// updated: 2026-09-06
 // NeoAssist Clinical Handoff — Patient-centric V1
+//
+// Changelog:
+// - 新增：完整多病人 PRINT workflow、列印設定與病人選擇。
+// - 改善：COPY 拆分 S/O/A/P、80-column 智慧折行、Weekly AI prompt。
+// - UI：PRINT 移至 Header；sidebar 改為 120px，搜尋時展開至 280px；System 欄縮至 72px。
+// - Backup：支援 TXT/JSON 匯入，並改以 TXT 匯出。
+// - Layout：Clinical workspace 更緊湊，Vent / Line / Fluids / System label 寬度統一。
 
 const TOOL_KEY="handoff";
 const DB_NAME="neoassist-clinical-handoff";
 const DB_VERSION=3;
 const AUTOSAVE_DELAY_MS=650;
+const COPY_WIDTH=80;
 
 const DEFAULT_SYSTEMS=[
   {key:"resp",label:"RESP"},
@@ -25,20 +33,41 @@ export function render(){
     <style>${STYLES}</style>
     <header class="hf-app-header">
       <h1>交班單</h1>
-      <div class="hf-backup-wrap">
-        <button class="hf-header-more" data-action="toggleBackupMenu" aria-label="資料備份選單">⋯</button>
-        <div class="hf-backup-menu" data-ref="backupMenu" hidden>
-          <button data-action="exportBackup">匯出備份</button>
-          <button data-action="importBackup">匯入備份</button>
+      <div class="hf-header-actions">
+
+        <button
+          class="hf-header-print"
+          data-action="printAllPatients"
+          type="button"
+        >PRINT</button>
+
+        <div class="hf-backup-wrap">
+          <button
+            class="hf-header-more"
+            data-action="toggleBackupMenu"
+            aria-label="資料備份選單"
+          >⋯</button>
+
+          <div class="hf-backup-menu" data-ref="backupMenu" hidden>
+            <button data-action="exportBackup">匯出備份</button>
+            <button data-action="importBackup">匯入備份</button>
+          </div>
+
+          <input
+            type="file"
+            data-ref="backupFileInput"
+            accept=".txt,.json,text/plain,application/json"
+            hidden
+          >
         </div>
-        <input type="file" data-ref="backupFileInput" accept=".json,application/json" hidden>
+
       </div>
     </header>
     <div class="hf-shell">
       <aside class="hf-left">
         <div class="hf-search-wrap">
           <input class="hf-search" data-ref="search" type="search"
-            placeholder="搜尋床號 / MRN / 關鍵字..." autocomplete="off">
+            placeholder="搜尋..." autocomplete="off">
         </div>
 
         <div class="hf-left-scroll">
@@ -87,7 +116,10 @@ export function render(){
             <div class="hf-actions">
               <div class="hf-output-group">
                 <button data-action="copyMode" data-copy-mode="full">COPY</button>
-                <button data-action="copyMode" data-copy-mode="soap">SOAP</button>
+                <button data-action="copyMode" data-copy-mode="s">S</button>
+                <button data-action="copyMode" data-copy-mode="o">O</button>
+                <button data-action="copyMode" data-copy-mode="a">A</button>
+                <button data-action="copyMode" data-copy-mode="p">P</button>
                 <button data-action="copyMode" data-copy-mode="duty">DUTY</button>
                 <button data-action="weeklySummary">WEEKLY</button>
               </div>
@@ -464,6 +496,69 @@ export function render(){
         </div>
       </div>
     </dialog>
+
+    <dialog class="hf-dialog" data-ref="printDialog">
+      <div class="hf-dialog-card hf-print-card">
+        <div class="hf-history-head">
+          <div>
+            <h3>列印交班單</h3>
+            <p class="hf-weekly-sub">210 × 270 mm · 選擇排版、字體與要列印的病人。</p>
+          </div>
+          <button type="button" data-action="closeDialog">關閉</button>
+        </div>
+
+        <div class="hf-print-settings">
+          <div class="hf-print-setting-title">排版</div>
+          <label class="hf-print-option">
+            <input type="radio" name="hfPrintLayout" value="compact" data-ref="printLayoutCompact" >
+            <span><strong>緊湊排列</strong><small>允許多位病人排在同一頁；盡量不從病人中間分頁。</small></span>
+          </label>
+          <label class="hf-print-option">
+            <input type="radio" name="hfPrintLayout" value="patient-page" data-ref="printLayoutPatientPage" checked>
+            <span><strong>每位病人從新頁開始</strong><small>每位病人至少一頁；內容過長時可自然跨頁。</small></span>
+          </label>
+        </div>
+
+        <div class="hf-print-controls">
+          <label><span>字體大小</span><select data-ref="printFontSize">
+            <option value="8">8 pt</option><option value="8.5">8.5 pt</option>
+            <option value="9">9 pt</option><option value="9.5">9.5 pt</option>
+            <option value="10">10 pt</option><option value="10.5">10.5 pt</option>
+            <option value="11">11 pt</option>
+          </select></label>
+          <label><span>行距</span><select data-ref="printLineHeight">
+            <option value="1.15">1.15</option><option value="1.20">1.20</option>
+            <option value="1.25">1.25</option><option value="1.28">1.28</option>
+            <option value="1.35">1.35</option><option value="1.40">1.40</option>
+          </select></label>
+          <label><span>邊距</span>
+          <select data-ref="printMargin">
+            <option value="3">3 mm</option>
+            <option value="5">5 mm</option>
+            <option value="7">7 mm</option>
+            <option value="10">10 mm</option>
+            <option value="12">12 mm</option>
+            <option value="15">15 mm</option>
+          </select></label>
+        </div>
+
+        <div class="hf-print-patients">
+          <div class="hf-print-patient-head">
+            <div><strong>病人</strong><small data-ref="printPatientCount"></small></div>
+            <div>
+              <button type="button" data-action="printSelectAll">全選</button>
+              <button type="button" data-action="printSelectNone">全不選</button>
+            </div>
+          </div>
+          <div class="hf-print-patient-list" data-ref="printPatientList"></div>
+        </div>
+
+        <div class="hf-dialog-actions">
+          <button type="button" data-action="closeDialog">取消</button>
+          <button type="button" class="hf-primary" data-action="startPrint">開始列印</button>
+        </div>
+      </div>
+    </dialog>
   </section>`;
 }
 
@@ -574,6 +669,14 @@ class HandoffApp{
       weeklyAnonymize:q('[data-ref="weeklyAnonymize"]'),
       weeklyBackground:q('[data-ref="weeklyBackground"]'),
       weeklyInfo:q('[data-ref="weeklyInfo"]'),
+      printDialog:q('[data-ref="printDialog"]'),
+      printLayoutCompact:q('[data-ref="printLayoutCompact"]'),
+      printLayoutPatientPage:q('[data-ref="printLayoutPatientPage"]'),
+      printFontSize:q('[data-ref="printFontSize"]'),
+      printLineHeight:q('[data-ref="printLineHeight"]'),
+      printMargin:q('[data-ref="printMargin"]'),
+      printPatientList:q('[data-ref="printPatientList"]'),
+      printPatientCount:q('[data-ref="printPatientCount"]'),
       symbolRail:q('[data-ref="symbolRail"]'),
       patientDialog:q('[data-ref="patientDialog"]'),
       backgroundDialog:q('[data-ref="backgroundDialog"]'),
@@ -616,6 +719,11 @@ class HandoffApp{
   }
 
   onFocusIn(e){
+    if(e.target===this.r.search){
+      this.updateSearchSidebar();
+      return;
+    }
+
     const el=e.target.closest?.('textarea[data-field], input[data-field][type="text"]');
     if(!el||el.disabled)return;
 
@@ -624,6 +732,10 @@ class HandoffApp{
   }
 
   onFocusOut(e){
+    if(e.target===this.r.search){
+      setTimeout(()=>this.updateSearchSidebar(),0);
+    }
+
     const systemName=e.target.closest?.("[data-system-name]");
     if(systemName){
       const key=systemName.dataset.systemName;
@@ -650,6 +762,15 @@ class HandoffApp{
         this.r.symbolRail.hidden=true;
       }
     },0);
+  }
+
+  updateSearchSidebar(){
+    const shell=this.root.querySelector(".hf-shell");
+    if(!shell||!this.r.search)return;
+
+    const searchFocused=document.activeElement===this.r.search;
+
+    shell.classList.toggle("is-searching",searchFocused);
   }
 
   renderSystems(){
@@ -701,6 +822,7 @@ class HandoffApp{
     await setSetting(this.db,"currentPatientId",this.patient.id);
 
     if(this.r.search)this.r.search.value="";
+    this.updateSearchSidebar();
     this.renderPatientLists();
     this.renderSystems();
 
@@ -769,7 +891,9 @@ class HandoffApp{
 
   async onInput(e){
     if(e.target===this.r.search){
-      this.renderPatientLists(e.target.value);
+      const query=e.target.value;
+      this.renderPatientLists(query);
+      this.updateSearchSidebar();
       return;
     }
 
@@ -832,6 +956,10 @@ class HandoffApp{
     }
     if(e.target===this.r.weeklyFrom||e.target===this.r.weeklyTo){
       await this.updateWeeklyInfo();
+      return;
+    }
+    if(e.target.matches("[data-print-patient]")){
+      this.updatePrintPatientCount();
       return;
     }
     if(e.target.matches("[data-system-name]")){
@@ -992,6 +1120,18 @@ class HandoffApp{
       if(a==="copyWeekly"){
         return this.copyWeeklySummary();
       }
+      if(a==="printAllPatients")return this.openPrintSettings();
+      if(a==="printSelectAll"){
+        this.r.printPatientList?.querySelectorAll("[data-print-patient]").forEach(x=>x.checked=true);
+        this.updatePrintPatientCount();
+        return;
+      }
+      if(a==="printSelectNone"){
+        this.r.printPatientList?.querySelectorAll("[data-print-patient]").forEach(x=>x.checked=false);
+        this.updatePrintPatientCount();
+        return;
+      }
+      if(a==="startPrint")return this.printAllPatients();
       if(a==="addSystem")return this.addSystem();
       if(a==="deleteSystem")return this.deleteSystem(b.dataset.systemKey);
       if(a==="collectProblems")return this.collectProblemsToAssessment();
@@ -1000,15 +1140,19 @@ class HandoffApp{
         const mode=b.dataset.copyMode||"full";
         await copyText(this.outputText(mode));
         if(this.r.copyMenu)this.r.copyMenu.hidden=true;
-        this.setSaveState(
-          mode==="changes"
-            ?"已複製今日變更"
-            :mode==="soap"
-              ?"已複製 SOAP"
-              :mode==="duty"
-                ?"已複製 Duty Note"
-                :"已複製"
-        );
+        
+        const copyLabels={
+          full:"完整交班",
+          s:"S",
+          o:"O",
+          a:"A",
+          p:"P",
+          duty:"Duty Note",
+          changes:"今日變更"
+        };
+
+        this.setSaveState(`已複製 ${copyLabels[mode]||""}`.trim());
+        
         setTimeout(()=>this.setSaveState(`已儲存 ${timeHHMM()}`),1200);
         return;
       }
@@ -1334,11 +1478,16 @@ class HandoffApp{
         settings:await getAll(this.db,"settings")
       }
     };
-    const blob=new Blob([JSON.stringify(backup,null,2)],{type:"application/json"});
+    const blob=new Blob(
+      [JSON.stringify(backup,null,2)],
+      {type:"text/plain;charset=utf-8"}
+    );
+
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");
+
     a.href=url;
-    a.download=`neoassist-handoff-backup-${todayISO()}.json`;
+    a.download=`neoassist-handoff-backup-${todayISO()}.txt`;
     document.body.appendChild(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),1000);
     await setSetting(this.db,"lastBackupAt",nowISO());
@@ -1348,7 +1497,9 @@ class HandoffApp{
   async prepareBackupRestore(file){
     let backup;
     try{backup=JSON.parse(await file.text());}
-    catch{throw new Error("無法讀取備份檔：JSON 格式錯誤。");}
+    catch{
+      throw new Error("無法讀取備份檔：檔案內容格式錯誤。");
+    }
 
     if(backup?.app!=="NeoAssist Handoff"||!Number.isInteger(backup?.backupVersion)||
       !backup?.data||!Array.isArray(backup.data.patients)||
@@ -2047,88 +2198,380 @@ class HandoffApp{
     const p=this.patient;
     const from=records[0]?.date||"";
     const to=records.at(-1)?.date||"";
+    const value=(v)=>String(v??"").trim();
+
     const lines=[
-      "Please generate a concise NICU weekly summary from the following longitudinal clinical records.",
+      "TASK",
+      "Generate a concise NICU weekly clinical summary from the longitudinal records below.",
       "",
-      "Requirements:",
-      "- Summarize the clinical course over the selected period rather than repeating each day.",
-      "- Highlight meaningful changes, trends, escalation/de-escalation, procedures, investigations, and unresolved issues.",
-      "- Organize the summary by clinically relevant domains such as respiratory, cardiovascular, nutrition/GI, infection, hematology, neurology, renal, lines/support, and major investigations when applicable.",
-      "- End with Current Status and Ongoing Issues / Plan.",
-      "- Avoid repeating unchanged information.",
-      "- Do not invent, infer, or add information that is not present in the source records.",
-      "- Keep important dates when they clarify the clinical course.",
+      "INSTRUCTIONS",
+      "- Synthesize the clinical course; do not simply reproduce records day by day.",
+      "- Organize the final summary by clinical problem/system.",
+      "- Identify meaningful changes, trends, escalation/de-escalation, procedures, investigations, and unresolved issues.",
+      "- Repeated information may represent carried-forward documentation and should not be interpreted as a new event each day.",
+      "- Use dates when they clarify important events or transitions.",
+      "- Do not invent or infer undocumented clinical information.",
+      "- End with:",
+      "  1. Current Status",
+      "  2. Ongoing Issues / Plan",
       "",
-      `Selected period: ${from} to ${to}`
+      "PERIOD",
+      `${from} to ${to}`
     ];
 
+    // ==================================================
+    // PATIENT IDENTITY
+    // ==================================================
     if(!anonymize){
-      const id=[p.bed,p.name,p.mrn,p.team].filter(Boolean).join(" · ");
-      if(id)lines.push(`Patient: ${id}`);
+      const id=[p.bed,p.name,p.mrn,p.team]
+        .filter(Boolean)
+        .join(" · ");
+
+      if(id){
+        lines.push("",`PATIENT: ${id}`);
+      }
     }else{
-      lines.push("Patient identifiers: removed");
+      lines.push("","PATIENT: identifiers removed");
     }
 
+    // ==================================================
+    // BACKGROUND
+    // ==================================================
     if(includeBackground){
-      const bg=[
-        p.birthDate?`DOB ${formatDate(p.birthDate)}`:"",
-        p.gaWeeks!==""?`GA ${p.gaWeeks}+${p.gaDays||0}`:"",
-        p.birthWeightG?`BBW ${p.birthWeightG} g`:"",
+      const dobFacts=[
+        p.birthDate
+          ? formatDate(p.birthDate)
+          : "",
+
+        p.gaWeeks!=="" && p.gaWeeks!=null
+          ? `GA ${p.gaWeeks}+${p.gaDays||0}`
+          : "",
+
+        p.birthWeightG!=="" && p.birthWeightG!=null
+          ? `BBW ${p.birthWeightG}g`
+          : "",
+
         formatDelivery(p),
+
         formatApgar(p)
-      ].filter(Boolean).join(" · ");
+      ].filter(Boolean);
 
-      lines.push("","=== PATIENT BACKGROUND ===");
-      if(bg)lines.push(bg);
-      if(p.momBackground?.trim())lines.push(`Mom: ${p.momBackground.trim()}`);
-      if(p.nbBackground?.trim())lines.push(`NB: ${p.nbBackground.trim()}`);
-      if(p.alert?.trim())lines.push(`Important alert: ${p.alert.trim()}`);
-    }
+      lines.push("");
+      lines.push("=== PATIENT BACKGROUND ===");
 
-    records.forEach(r=>{
-      const age=deriveAge(p,r.date);
-      lines.push("","========================================");
-      lines.push(`=== ${r.date} ===`);
-      lines.push(this.quickFactsText(r,age));
-
-      if(r.summary?.trim()){
-        lines.push("","DAILY SUMMARY",r.summary.trim());
+      if(dobFacts.length){
+        lines.push(`[DOB] ${dobFacts.join(", ")}`);
       }
 
-      const support=[];
-      if(r.vent?.trim())support.push(`Vent: ${r.vent.trim()}`);
-      if(r.line?.trim())support.push(`Line: ${r.line.trim()}`);
-      if(r.fluids?.trim())support.push(`Fluids: ${r.fluids.trim()}`);
-      if(support.length)lines.push("",...support);
+      if(p.momBackground?.trim()){
+        lines.push("","[Mom]");
+        lines.push(p.momBackground.trim());
+      }
 
-      systemEntriesForRecord(r,p).forEach(({key,label})=>{
-        const value=r.systems?.[key]?.trim();
-        if(value)lines.push("",label,value);
-      });
+      if(p.nbBackground?.trim()){
+        lines.push("","[NB]");
+        lines.push(p.nbBackground.trim());
+      }
 
-      if(r.assessment?.trim())lines.push("","ASSESSMENT",r.assessment.trim());
-      if(r.plan?.trim())lines.push("","PLAN",r.plan.trim());
+      if(p.alert?.trim()){
+        lines.push("","[Alert]");
+        lines.push(p.alert.trim());
+      }
+    }
+
+    // ==================================================
+    // DAILY RECORDS
+    // ==================================================
+    records.forEach(r=>{
+      const age=deriveAge(p,r.date);
+
+      lines.push("");
+      lines.push("============================================================");
+      lines.push(`=== DAILY RECORD: ${r.date} ===`);
+
+      // ----------------------------------------------
+      // NOW
+      // ----------------------------------------------
+      const nowFacts=[
+        r.date
+          ? formatDate(r.date)
+          : "",
+
+        age.ageLabel || "",
+
+        age.dol!==null
+          ? `DOL ${age.dol}`
+          : "",
+
+        r.metrics?.weightG!=="" &&
+        r.metrics?.weightG!=null
+          ? `BW ${r.metrics.weightG}g`
+          : "",
+
+        r.metrics?.io!=="" &&
+        r.metrics?.io!=null
+          ? `IO ${r.metrics.io}`
+          : "",
+
+        r.metrics?.urineOutput!=="" &&
+        r.metrics?.urineOutput!=null
+          ? `UO ${r.metrics.urineOutput}`
+          : "",
+
+        r.metrics?.kcal!=="" &&
+        r.metrics?.kcal!=null
+          ? `Kcal ${r.metrics.kcal}`
+          : "",
+
+        r.metrics?.stool!=="" &&
+        r.metrics?.stool!=null
+          ? `Stool ${r.metrics.stool}`
+          : ""
+      ].filter(Boolean);
+
+      if(nowFacts.length){
+        lines.push("");
+        lines.push(`[NOW] ${nowFacts.join(", ")}`);
+      }
+
+      // ----------------------------------------------
+      // TODAY'S SUMMARY
+      // ----------------------------------------------
+      if(r.summary?.trim()){
+        lines.push("");
+        lines.push("[Today's Summary]");
+        lines.push(r.summary.trim());
+      }
+
+      // ----------------------------------------------
+      // CLINICAL SYSTEMS
+      // ----------------------------------------------
+      const systems=systemEntriesForRecord(r,p)
+        .map(({key,label})=>({
+          label:value(label),
+          text:value(r.systems?.[key])
+        }))
+        .filter(x=>x.text);
+
+      if(systems.length){
+        lines.push("");
+        lines.push("[CLINICAL]");
+
+        systems.forEach(({label,text})=>{
+          lines.push("");
+          lines.push(`[${label}]`);
+          lines.push(text);
+        });
+      }
+
+      // ----------------------------------------------
+      // SUPPORT
+      // ----------------------------------------------
+      const support=[
+        ["Vent",r.vent],
+        ["Line",r.line],
+        ["Fluid",r.fluids]
+      ].filter(([,raw])=>value(raw));
+
+      if(support.length){
+        lines.push("");
+        lines.push("[SUPPORT]");
+
+        support.forEach(([label,raw])=>{
+          lines.push("");
+          lines.push(`[${label}]`);
+          lines.push(value(raw));
+        });
+      }
+
+      // ----------------------------------------------
+      // ASSESSMENT
+      // ----------------------------------------------
+      if(r.assessment?.trim()){
+        lines.push("");
+        lines.push("[IMP]");
+        lines.push(r.assessment.trim());
+      }
+
+      // ----------------------------------------------
+      // PLAN
+      // ----------------------------------------------
+      if(r.plan?.trim()){
+        lines.push("");
+        lines.push("[Plan]");
+        lines.push(r.plan.trim());
+      }
     });
 
-    lines.push("","========================================");
-    lines.push("Please return only the weekly clinical summary, without discussing the summarization process.");
+    // ==================================================
+    // FINAL INSTRUCTION
+    // ==================================================
+    lines.push("");
+    lines.push("============================================================");
+    lines.push("END OF SOURCE RECORDS");
+    lines.push("");
+    lines.push(
+      "Return only the synthesized weekly clinical summary. Do not describe the summarization process."
+    );
 
     return cleanOutput(lines);
   }
 
+  async openPrintSettings(){
+    await this.flush();
+
+    const activePatients=this.patients.filter(p=>p.status!=="discharged").sort(sortPatients);
+    const printable=[];
+
+    for(const patient of activePatients){
+      const rows=await this.getPatientRecords(patient.id,true);
+      if(rows.some(r=>r.date===todayISO()))printable.push(patient);
+    }
+
+    if(!printable.length){
+      alert("目前現有病人今天都沒有交班紀錄。");
+      return;
+    }
+
+    const saved=await getSetting(this.db,"printSettings")||{};
+    const layout=saved.layout==="compact"?"compact":"patient-page";
+    const fontSize=["8","8.5","9","9.5","10","10.5","11"].includes(String(saved.fontSize))?String(saved.fontSize):"9";
+    const lineHeight=["1.15","1.20","1.25","1.28","1.35","1.40"].includes(String(saved.lineHeight))?String(saved.lineHeight):"1.28";
+    const margin=["3","5","7","10","12","15"].includes(String(saved.margin))
+      ?String(saved.margin)
+      :"5";
+      
+    this.r.printLayoutCompact.checked=layout==="compact";
+    this.r.printLayoutPatientPage.checked=layout==="patient-page";
+    this.r.printFontSize.value=fontSize;
+    this.r.printLineHeight.value=lineHeight;
+    this.r.printMargin.value=margin;
+
+    this.r.printPatientList.innerHTML=printable.map(p=>`
+      <label class="hf-print-patient-row">
+        <input type="checkbox" data-print-patient value="${escapeAttr(p.id)}" checked>
+        <span class="hf-print-bed">${escapeHTML(p.bed||"—")}</span>
+        <span class="hf-print-mrn">${escapeHTML(p.mrn||"—")}</span>
+        <span class="hf-print-name">${escapeHTML(p.name||"")}</span>
+        <span class="hf-print-team">${escapeHTML(p.team||"")}</span>
+      </label>
+    `).join("");
+
+    this.updatePrintPatientCount();
+    this.r.printDialog?.showModal();
+  }
+
+  updatePrintPatientCount(){
+    const boxes=[...(this.r.printPatientList?.querySelectorAll("[data-print-patient]")||[])];
+    const selected=boxes.filter(x=>x.checked).length;
+    if(this.r.printPatientCount)this.r.printPatientCount.textContent=`${selected} / ${boxes.length} 位`;
+  }
+
+  async printAllPatients(){
+    const selectedIds=[...(this.r.printPatientList?.querySelectorAll("[data-print-patient]:checked")||[])].map(x=>x.value);
+
+    if(!selectedIds.length){
+      alert("請至少選擇一位病人。");
+      return;
+    }
+
+    const layout=this.r.printLayoutPatientPage?.checked?"patient-page":"compact";
+    const fontSize=Number(this.r.printFontSize?.value)||9;
+    const lineHeight=Number(this.r.printLineHeight?.value)||1.28;
+    const margin=Number(this.r.printMargin?.value)||5;
+
+    await setSetting(this.db,"printSettings",{layout,fontSize,lineHeight,margin,pageWidth:210,pageHeight:270});
+
+    const printWindow=window.open("","_blank");
+    if(!printWindow){
+      alert("瀏覽器阻擋了列印視窗，請允許此網站開啟彈出式視窗。");
+      return;
+    }
+
+    printWindow.document.write('<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><title>NeoAssist Handoff</title></head><body style="font-family:Arial,sans-serif;padding:24px">正在準備列印資料…</body></html>');
+    printWindow.document.close();
+
+    const selectedSet=new Set(selectedIds);
+    const activePatients=this.patients.filter(p=>p.status!=="discharged"&&selectedSet.has(p.id)).sort(sortPatients);
+
+    const originalPatient=this.patient;
+    const originalRecord=this.record;
+    const originalPreviousRecord=this.previousRecord;
+    const pages=[];
+
+    try{
+      for(const patient of activePatients){
+        const rows=await this.getPatientRecords(patient.id,true);
+        const todayRecord=rows.find(r=>r.date===todayISO());
+        if(!todayRecord)continue;
+
+        this.patient=clone(patient);
+        this.record=normalizeRecord(todayRecord);
+        this.previousRecord=latestBefore(rows,todayISO());
+
+        const output=this.outputText("full").trim();
+        if(output)pages.push({patient:clone(patient),text:output});
+      }
+    }finally{
+      this.patient=originalPatient;
+      this.record=originalRecord;
+      this.previousRecord=originalPreviousRecord;
+    }
+
+    if(!pages.length){
+      printWindow.close();
+      alert("選取的病人今天沒有可列印的交班紀錄。");
+      return;
+    }
+
+    const patientHtml=pages.map(({text})=>`<section class="patient"><pre>${escapeHTML(text)}</pre></section>`).join("");
+
+    const layoutCss=layout==="patient-page"
+      ?`.patient{break-before:page;page-break-before:always;margin:0}.patient:first-child{break-before:auto;page-break-before:auto}`
+      :`.patient{margin:0 0 7mm;break-inside:avoid;page-break-inside:avoid}.patient:last-child{margin-bottom:0}`;
+
+    printWindow.document.open();
+    printWindow.document.write(`
+      <!doctype html>
+      <html lang="zh-Hant">
+        <head>
+          <meta charset="utf-8">
+          <title>NeoAssist Handoff - ${escapeHTML(formatDate(todayISO()))}</title>
+          <style>
+            @page{size:210mm 270mm;margin:${margin}mm}
+            *{box-sizing:border-box}
+            html,body{margin:0;padding:0;background:#fff}
+            body{color:#000;font-family:"Cascadia Mono","Consolas","Microsoft JhengHei","Noto Sans TC",monospace}
+            ${layoutCss}
+            pre{margin:0;white-space:pre-wrap;overflow-wrap:break-word;font-family:inherit;font-size:${fontSize}pt;font-weight:400;line-height:${lineHeight};color:#000}
+          </style>
+        </head>
+        <body>${patientHtml}</body>
+      </html>
+    `);
+    printWindow.document.close();
+    this.r.printDialog?.close();
+
+    setTimeout(()=>{printWindow.focus();printWindow.print();},300);
+    this.setSaveState(`列印 · ${pages.length} 位病人`);
+    setTimeout(()=>this.setSaveState(`已儲存 ${timeHHMM()}`),1500);
+  }
+
   outputText(mode="full"){
     if(mode==="changes") return this.outputChangesText();
-    if(mode==="soap") return this.outputSOAPText();
+    if(mode==="s") return this.outputSText();
+    if(mode==="o") return this.outputOText();
+    if(mode==="a") return this.outputAText();
+    if(mode==="p") return this.outputPText();
     if(mode==="duty") return this.outputDutyNoteText();
-  
+    
     const p=this.patient;
     const r=this.record;
     const age=deriveAge(p,r.date);
     const lines=[];
   
-    const HEAVY="▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬";
-    const THIN ="--------------------------------------------------";
-  
+    const HEAVY="═".repeat(COPY_WIDTH);
+    const THIN ="-".repeat(COPY_WIDTH);
     const value=(v)=>String(v??"").trim();
   
   
@@ -2211,17 +2654,7 @@ class HandoffApp{
   
     if(patientHead && alert){
       // 只是視覺上的 padding，不依賴精確右對齊
-      const targetWidth=48;
-  
-      const spaces=" ".repeat(
-        Math.max(
-          3,
-          targetWidth-patientHead.length-alert.length
-        )
-      );
-  
-      lines.push(`${patientHead}${spaces}⚠️ ${alert}`);
-  
+      lines.push(`${patientHead}             ⚠️ ${alert}`);  
     }else if(patientHead){
   
       lines.push(patientHead);
@@ -2271,6 +2704,10 @@ class HandoffApp{
         : "",
   
       age.ageLabel || "",
+
+      age.dol!==null
+        ? `DOL ${age.dol}`
+        : "",
   
       r.metrics?.weightG!=="" &&
       r.metrics?.weightG!=null
@@ -2436,7 +2873,7 @@ class HandoffApp{
        FINAL OUTPUT
        ========================================================= */
   
-    return cleanOutput(lines);
+    return wrapCopyText(cleanOutput(lines));
   }
 
   quickFactsText(r=this.record,age=deriveAge(this.patient,r.date)){
@@ -2452,100 +2889,215 @@ class HandoffApp{
     ].filter(Boolean).join(" · ");
   }
 
-  outputSOAPText(){
+  outputSText(){
     const p=this.patient;
     const r=this.record;
     const age=deriveAge(p,r.date);
     const lines=[];
 
-    // S — birth background + today's quick facts + DAILY SUMMARY
-    lines.push("[S]");
+    // --------------------------------------------------
+    // DOB
+    // --------------------------------------------------
+    const dobFacts=[
+      p.birthDate
+        ? formatDate(p.birthDate)
+        : "",
 
-    const birthFacts=[
-      p.birthDate?formatDate(p.birthDate):"",
-      p.gaWeeks!==""?`GA ${p.gaWeeks}+${p.gaDays||0}`:"",
-      p.birthWeightG?`BBW ${p.birthWeightG} g`:"",
+      p.gaWeeks!=="" && p.gaWeeks!=null
+        ? `GA ${p.gaWeeks}+${p.gaDays||0}`
+        : "",
+
+      p.birthWeightG!=="" && p.birthWeightG!=null
+        ? `BBW ${p.birthWeightG}g`
+        : "",
+
       formatDelivery(p),
+
       formatApgar(p)
     ].filter(Boolean);
 
-    if(birthFacts.length)lines.push(birthFacts.join(" · "));
-    lines.push(this.quickFactsText(r,age));
+    if(dobFacts.length){
+      lines.push(`[DOB] ${dobFacts.join(", ")}`);
+    }
 
-    if(r.summary?.trim())lines.push(r.summary.trim());
+    // --------------------------------------------------
+    // NOW
+    // --------------------------------------------------
+    const nowFacts=[
+      r.date
+        ? formatDate(r.date)
+        : "",
 
-    // O — current support + systems
-    lines.push("","[O]");
+      age.ageLabel || "",
 
-    const pushSection=(label,value)=>{
-      const text=value?.trim();
-      if(!text)return;
+      age.dol!==null
+        ? `DOL ${age.dol}`
+        : "",
 
-      const indented=text
-        .split("\n")
-        .map(line=>`   ${line}`)
-        .join("\n");
+      r.metrics?.weightG!=="" &&
+      r.metrics?.weightG!=null
+        ? `BW ${r.metrics.weightG}g`
+        : "",
 
-      lines.push("",`# ${label}`,indented);
+      r.metrics?.io!=="" &&
+      r.metrics?.io!=null
+        ? `IO ${r.metrics.io}`
+        : "",
+
+      r.metrics?.urineOutput!=="" &&
+      r.metrics?.urineOutput!=null
+        ? `UO ${r.metrics.urineOutput}`
+        : "",
+
+      r.metrics?.kcal!=="" &&
+      r.metrics?.kcal!=null
+        ? `Kcal ${r.metrics.kcal}`
+        : "",
+
+      r.metrics?.stool!=="" &&
+      r.metrics?.stool!=null
+        ? `Stool ${r.metrics.stool}`
+        : ""
+    ].filter(Boolean);
+    if(nowFacts.length){
+      lines.push(`[NOW] ${nowFacts.join(", ")}`);
+    }
+
+    // --------------------------------------------------
+    // Today's Summary
+    // --------------------------------------------------
+    const summary=String(r.summary??"").trim();
+
+    if(summary){
+      lines.push("");
+      lines.push(summary);
+    }
+
+    return cleanOutput(lines);
+  }
+
+
+  outputOText(){
+    const p=this.patient;
+    const r=this.record;
+    const lines=[];
+
+    const value=(v)=>String(v??"").trim();
+
+    // --------------------------------------------------
+    // Clinical formatter
+    //
+    // [RESP]
+    //  # RDS
+    //    detail
+    // --------------------------------------------------
+    const formatClinical=(text)=>{
+      const raw=value(text);
+      if(!raw)return "";
+
+      let inProblem=false;
+
+      return raw.split("\n").map(line=>{
+        const original=String(line??"");
+        const trimmed=original.trim();
+
+        if(!trimmed)return "";
+
+        // # problem
+        if(/^#\s*\S/.test(trimmed)){
+          inProblem=true;
+          return " "+trimmed;
+        }
+
+        const existing=(original.match(/^ */)?.[0]||"").length;
+        const base=inProblem ? 3 : 1;
+
+        return " ".repeat(base+existing)+trimmed;
+      }).join("\n");
     };
 
-    pushSection("Vent",r.vent);
-    pushSection("Line",r.line);
-    pushSection("Fluids",r.fluids);
-
+    // --------------------------------------------------
+    // Systems
+    // --------------------------------------------------
     systemEntriesForRecord(r,p).forEach(({key,label})=>{
-      pushSection(label,r.systems?.[key]);
+      const text=value(r.systems?.[key]);
+
+      if(!text)return;
+
+      if(lines.length){
+        lines.push("");
+      }
+
+      lines.push(`[${label}]`);
+      lines.push(formatClinical(text));
     });
 
-    // A — Assessment
-    lines.push("","[A]");
-    if(r.assessment?.trim())lines.push(r.assessment.trim());
+    // --------------------------------------------------
+    // Vent / Line / Fluid
+    // --------------------------------------------------
+    const support=[
+      ["Vent",r.vent],
+      ["Line",r.line],
+      ["Fluid",r.fluids]
+    ];
 
-    // P — Plan
-    lines.push("","[P]");
-    if(r.plan?.trim())lines.push(r.plan.trim());
+    support.forEach(([label,raw])=>{
+      const text=value(raw);
+
+      if(!text)return;
+
+      if(lines.length){
+        lines.push("");
+      }
+
+      lines.push(`[${label}]`);
+
+      text.split("\n").forEach(line=>{
+        if(line.trim()){
+          lines.push(` ${line.trim()}`);
+        }
+      });
+    });
+
+    return wrapCopyText(cleanOutput(lines));
+  }
+
+
+  outputAText(){
+    const r=this.record;
+    const lines=["[IMP]"];
+
+    const assessment=String(r.assessment??"").trim();
+
+    if(assessment){
+      lines.push(assessment);
+    }
+
+    return cleanOutput(lines);
+  }
+
+
+  outputPText(){
+    const r=this.record;
+    const lines=["[Plan]"];
+
+    const plan=String(r.plan??"").trim();
+
+    if(plan){
+      lines.push(plan);
+    }
 
     return cleanOutput(lines);
   }
 
   outputDutyNoteText(){
-    const p=this.patient;
-    const r=this.record;
-    const age=deriveAge(p,r.date);
-    const lines=[];
-
-    // S
-    lines.push("[S]");
-
-    const birthFacts=[
-      p.birthDate?formatDate(p.birthDate):"",
-      p.gaWeeks!==""?`GA ${p.gaWeeks}+${p.gaDays||0}`:"",
-      p.birthWeightG?`BBW ${p.birthWeightG} g`:"",
-      formatDelivery(p),
-      formatApgar(p)
+    const sections=[
+      this.outputSText().trim(),
+      this.outputAText().trim(),
+      this.outputPText().trim()
     ].filter(Boolean);
 
-    if(birthFacts.length){
-      lines.push(birthFacts.join(" · "));
-    }
-
-    lines.push(this.quickFactsText(r,age));
-
-    if(r.summary?.trim()){
-      lines.push(r.summary.trim());
-    }
-
-    // A
-    if(r.assessment?.trim()){
-      lines.push("","[A]",r.assessment.trim());
-    }
-
-    // P
-    if(r.plan?.trim()){
-      lines.push("","[P]",r.plan.trim());
-    }
-
-    return cleanOutput(lines);
+    return sections.join("\n\n")+"\n";
   }
 
   loadTemplate(name){
@@ -3183,6 +3735,151 @@ function formatDiffValue(v){
 function trimOneLine(s){return String(s??"").replace(/\s+/g," ").trim().slice(0,100);}
 function cleanOutput(lines){return lines.filter((x,i,a)=>!(x===""&&a[i-1]==="")).join("\n").replace(/\n{3,}/g,"\n\n").trim()+"\n";}
 
+/* =========================================================
+   COPY TEXT WRAPPING
+   ========================================================= */
+
+function wrapCopyText(text,width=COPY_WIDTH){
+  const raw=String(text??"");
+  if(!raw)return "";
+
+  return raw.split("\n").map(line=>{
+    if(!line)return "";
+
+    const indent=(line.match(/^ */)||[""])[0];
+    const content=line.slice(indent.length);
+
+    if(!content)return indent;
+
+    // 如果這行是 # problem，
+    // 自動換行後 continuation 多縮排 2 spaces
+    const isProblem=/^#\s*\S/.test(content);
+
+    const continuationIndent=isProblem
+      ?indent+"  "
+      :indent;
+
+    // 第一行可使用的寬度
+    const firstAvailable=Math.max(
+      10,
+      width-displayWidth(indent)
+    );
+
+    // continuation line 可使用的寬度
+    const continuationAvailable=Math.max(
+      10,
+      width-displayWidth(continuationIndent)
+    );
+
+    if(displayWidth(content)<=firstAvailable)return line;
+
+    const out=[];
+    const words=content.split(/\s+/).filter(Boolean);
+
+    let current="";
+    let available=firstAvailable;
+    let currentIndent=indent;
+
+    for(const word of words){
+      const candidate=current
+        ?`${current} ${word}`
+        :word;
+
+      if(displayWidth(candidate)<=available){
+        current=candidate;
+        continue;
+      }
+
+      if(current){
+        out.push(currentIndent+current);
+
+        // 第一行輸出後，後續全部改用 continuation indent
+        currentIndent=continuationIndent;
+        available=continuationAvailable;
+        current="";
+      }
+
+      // 單一 token 本身超過可用寬度
+      if(displayWidth(word)>available){
+        const chunks=splitByDisplayWidth(word,available);
+
+        chunks.slice(0,-1).forEach(chunk=>{
+          out.push(currentIndent+chunk);
+
+          currentIndent=continuationIndent;
+          available=continuationAvailable;
+        });
+
+        current=chunks.at(-1)||"";
+      }else{
+        current=word;
+      }
+    }
+
+    if(current){
+      out.push(currentIndent+current);
+    }
+
+    return out.join("\n");
+  }).join("\n");
+}
+
+
+function displayWidth(text){
+  let width=0;
+
+  for(const ch of String(text??"")){
+    const code=ch.codePointAt(0);
+
+    const wide=
+      code>=0x1100 && (
+        code<=0x115f ||
+        code===0x2329 ||
+        code===0x232a ||
+        (code>=0x2e80 && code<=0xa4cf) ||
+        (code>=0xac00 && code<=0xd7a3) ||
+        (code>=0xf900 && code<=0xfaff) ||
+        (code>=0xfe10 && code<=0xfe19) ||
+        (code>=0xfe30 && code<=0xfe6f) ||
+        (code>=0xff00 && code<=0xff60) ||
+        (code>=0xffe0 && code<=0xffe6)
+      );
+
+    width+=wide?2:1;
+  }
+
+  return width;
+}
+
+
+function splitByDisplayWidth(text,maxWidth){
+  const chunks=[];
+  let current="";
+  let width=0;
+
+  for(const ch of String(text??"")){
+    const chWidth=displayWidth(ch);
+
+    if(current && width+chWidth>maxWidth){
+      chunks.push(current);
+      current="";
+      width=0;
+    }
+
+    current+=ch;
+    width+=chWidth;
+  }
+
+  if(current)chunks.push(current);
+
+  return chunks;
+}
+
+
+/* =========================================================
+   END COPY TEXT WRAPPING
+   ========================================================= */
+
 function recordId(pid,date){return `${pid}::${date}`;}
 
 function latestBefore(list,date){
@@ -3587,8 +4284,13 @@ const STYLES=`
 
 .hf-shell{
   display:grid;
-  grid-template-columns:220px minmax(0,1fr);
+  grid-template-columns:120px minmax(0,1fr);
   min-height:760px;
+  transition:grid-template-columns .18s ease;
+}
+
+.hf-shell.is-searching{
+  grid-template-columns:280px minmax(0,1fr);
 }
 
 /* =========================
@@ -3611,6 +4313,33 @@ const STYLES=`
   font-weight:700;
   letter-spacing:.04em;
   color:#fff;
+}
+
+.hf-header-actions{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.hf-header-print{
+  height:32px;
+  padding:0 11px;
+
+  border:1px solid #666;
+  border-radius:6px;
+
+  background:transparent;
+  color:#fff;
+
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.04em;
+
+  cursor:pointer;
+}
+
+.hf-header-print:hover{
+  background:#ffffff18;
 }
 
 /* =========================
@@ -3689,8 +4418,12 @@ const STYLES=`
 }
 
 .hf-search-wrap{
-  padding:14px 12px 12px;
+  padding:8px 6px;
   border-bottom:1px solid var(--line);
+}
+
+.hf-shell.is-searching .hf-search-wrap{
+  padding:14px 12px 12px;
 }
 
 .hf-search{
@@ -3701,10 +4434,14 @@ const STYLES=`
   border-radius:6px;
 
   background:#fff;
-  padding:0 10px;
+  padding:0 6px;
 
   font-family:var(--font-ui);
   font-size:13px;
+}
+
+.hf-shell.is-searching .hf-search{
+  padding:0 10px;
 }
 
 .hf-left-scroll{
@@ -3767,13 +4504,28 @@ const STYLES=`
   border:0;
   background:transparent;
   display:grid;
-  grid-template-columns:58px minmax(0,1fr);
-  gap:8px;
+  grid-template-columns:1fr;
+  gap:0;
   align-items:center;
   text-align:left;
   padding:8px 4px 8px 12px;
   cursor:pointer;
   color:var(--ink);
+}
+
+.hf-patient-row .hf-mrn,
+.hf-patient-row small{
+  display:none;
+}
+
+.hf-shell.is-searching .hf-patient-row{
+  grid-template-columns:58px minmax(0,1fr);
+  gap:8px;
+}
+
+.hf-shell.is-searching .hf-patient-row .hf-mrn,
+.hf-shell.is-searching .hf-patient-row small{
+  display:block;
 }
 
 .hf-patient-row:hover{background:transparent}
@@ -3842,6 +4594,7 @@ const STYLES=`
   font-size:13px;
   font-weight:700;
   font-variant-numeric:tabular-nums;
+  text-align:center;
 }
 
 .hf-mrn{
@@ -3861,6 +4614,30 @@ const STYLES=`
   overflow:hidden;
   text-overflow:ellipsis;
 }
+
+
+/* =========================
+   DISCHARGED PATIENTS
+========================= */
+
+[data-ref="dischargedPatientList"] .hf-bed{
+  color:#9a948d;
+  font-weight:600;
+}
+
+[data-ref="dischargedPatientList"] .hf-mrn,
+[data-ref="dischargedPatientList"] .hf-patient-row small{
+  color:#aaa39b;
+}
+
+[data-ref="dischargedPatientList"] .hf-patient-more{
+  color:#b5aea7;
+}
+
+[data-ref="dischargedPatientList"] .hf-patient-item:hover .hf-bed{
+  color:var(--ink);
+}
+
 
 .hf-empty-list{
   padding:9px 12px 12px;
@@ -4590,7 +5367,7 @@ const STYLES=`
 .hf-system-row{
   position:relative;
   display:grid;
-  grid-template-columns:118px minmax(0,1fr);
+  grid-template-columns:72px minmax(0,1fr);
   border-bottom:1px solid var(--line2);
   background:#fff;
 }
@@ -4616,17 +5393,17 @@ const STYLES=`
 .hf-system-label{
   min-width:0;
   display:grid;
-  grid-template-columns:24px minmax(0,1fr) 24px;
+  grid-template-columns:18px minmax(0,1fr) 18px;
   align-items:center;
-  gap:2px;
-  padding:7px 4px;
+  gap:1px;
+  padding:7px 2px;
   background:#fbf9f6;
   border-right:1px solid var(--line2);
 }
 
 .hf-system-drag,
 .hf-system-remove{
-  width:24px;
+  width:18px;
   height:30px;
   padding:0;
   border:0;
@@ -5369,6 +6146,44 @@ const STYLES=`
 }
 
 /* =========================
+   PRINT DIALOG
+========================= */
+
+.hf-print-card{width:min(700px,94vw);max-height:86vh;overflow:auto}
+.hf-print-settings{display:grid;gap:8px;margin-top:14px}
+.hf-print-setting-title{font-size:11px;font-weight:700;color:#6f6963;letter-spacing:.04em}
+.hf-print-option{display:grid!important;grid-template-columns:20px minmax(0,1fr)!important;gap:9px!important;align-items:start!important;margin:0!important;padding:10px 11px;border:1px solid var(--line);border-radius:7px;background:#fff;cursor:pointer}
+.hf-print-option input{width:15px!important;height:15px!important;margin:2px 0 0!important}
+.hf-print-option span{display:grid;gap:2px}
+.hf-print-option strong{font-size:12px}
+.hf-print-option small{color:var(--muted);font-size:11px;line-height:1.4}
+
+.hf-print-controls{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:13px;}
+.hf-print-controls label{display:grid;grid-template-columns:90px minmax(0,1fr);align-items:center;gap:10px;margin:0}
+.hf-print-controls label>span{font-size:11px;font-weight:600;color:#6f6963}
+.hf-print-controls select{width:100%;height:34px;border:1px solid #cfc8bf;border-radius:6px;background:#fff;padding:0 8px;color:var(--ink);font-family:var(--font-ui);font-size:12px}
+
+.hf-print-patients{margin-top:14px;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:#fff}
+.hf-print-patient-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border-bottom:1px solid var(--line2);background:#f6f2ed}
+.hf-print-patient-head>div:first-child{display:flex;align-items:baseline;gap:8px}
+.hf-print-patient-head strong{font-size:12px}
+.hf-print-patient-head small{color:var(--muted);font-size:11px}
+.hf-print-patient-head>div:last-child{display:flex;gap:5px}
+.hf-print-patient-head button{height:27px;border:1px solid #cfc8bf;border-radius:5px;background:#fff;color:var(--ink);padding:0 8px;font-size:10px;cursor:pointer}
+.hf-print-patient-head button:hover{background:#eee9e2}
+
+.hf-print-patient-list{max-height:300px;overflow:auto}
+.hf-print-patient-row{display:grid!important;grid-template-columns:22px 70px 110px minmax(0,1fr) minmax(0,1fr)!important;gap:8px!important;align-items:center!important;margin:0!important;padding:8px 10px;border-bottom:1px solid var(--line2);cursor:pointer}
+.hf-print-patient-row:last-child{border-bottom:0}
+.hf-print-patient-row:hover{background:#faf8f5}
+.hf-print-patient-row input{width:15px!important;height:15px!important;margin:0!important}
+.hf-print-bed,.hf-print-mrn{font-family:var(--font-clinical);font-variant-numeric:tabular-nums}
+.hf-print-bed{font-size:12px;font-weight:700}
+.hf-print-mrn{font-size:11px}
+.hf-print-name,.hf-print-team{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hf-print-team{color:var(--muted)}
+
+/* =========================
    RESTORE DIALOG
 ========================= */
 
@@ -5582,31 +6397,8 @@ const STYLES=`
 ========================= */
 
 @media(max-width:900px){
-
-  .hf-shell{
-    grid-template-columns:180px minmax(0,1fr);
-  }
-
-  .hf-main{
-    padding:14px;
-  }
-
-  .hf-header-row{
-    align-items:flex-start;
-    flex-direction:column;
-  }
-
-  .hf-actions{
-    width:100%;
-    justify-content:flex-start;
-  }
-
-  .hf-save-state{
-    display:none;
-  }
-
-  .hf-bg-grid{
-    grid-template-columns:1fr;
+  .hf-shell.is-searching{
+    grid-template-columns:min(280px,42vw) minmax(0,1fr);
   }
 }
 
@@ -5620,38 +6412,18 @@ const STYLES=`
     display:none;
   }
 
-  .hf-shell{
-    grid-template-columns:128px minmax(0,1fr);
-  }
-
-  .hf-search-wrap{
-    padding:8px 6px;
-  }
-
-  .hf-search{
-    font-size:11px;
-    padding:0 6px;
-  }
-
   .hf-group-title{
     padding-left:7px;
     padding-right:7px;
   }
 
   .hf-patient-item{grid-template-columns:minmax(0,1fr) 26px}
-  .hf-patient-row{
-    grid-template-columns:42px minmax(0,1fr);
-    gap:5px;
-    padding:7px 2px 7px 7px;
-  }
+  .hf-patient-row{padding:7px 2px 7px 7px}
+  .hf-shell.is-searching .hf-patient-row{padding:8px 4px 8px 12px}
   .hf-patient-more{width:23px}
 
   .hf-bed{
     font-size:12px;
-  }
-
-  .hf-mrn{
-    font-size:10px;
   }
 
   .hf-new-patient{
@@ -5691,16 +6463,6 @@ const STYLES=`
 
   .hf-support-row{
     grid-template-columns:58px 1fr;
-  }
-
-  .hf-system-row{
-    grid-template-columns:100px minmax(0,1fr);
-  }
-
-  .hf-system-label{
-    grid-template-columns:22px minmax(0,1fr) 22px;
-    padding-left:2px;
-    padding-right:2px;
   }
 
   .hf-metrics{
