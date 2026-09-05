@@ -1,5 +1,5 @@
 // tools/handoff.js
-// updated: 2026-09-03
+// updated: 2026-09-05
 // NeoAssist Clinical Handoff — Patient-centric V1
 
 const TOOL_KEY="handoff";
@@ -2117,119 +2117,325 @@ class HandoffApp{
   }
 
   outputText(mode="full"){
-    if(mode==="changes")return this.outputChangesText();
-    if(mode==="soap")return this.outputSOAPText();
-    if(mode==="duty")return this.outputDutyNoteText();
-
+    if(mode==="changes") return this.outputChangesText();
+    if(mode==="soap") return this.outputSOAPText();
+    if(mode==="duty") return this.outputDutyNoteText();
+  
     const p=this.patient;
     const r=this.record;
     const age=deriveAge(p,r.date);
     const lines=[];
-
-    const indent=(text,spaces=2)=>{
-      const pad=" ".repeat(spaces);
-      return String(text??"")
-        .split("\n")
-        .map(line=>line.trim()===""?"":pad+line)
-        .join("\n");
-    };
-
+  
+    const HEAVY="▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬";
+    const THIN ="--------------------------------------------------";
+  
+    const value=(v)=>String(v??"").trim();
+  
+  
+    /* =========================================================
+       FORMATTERS
+       ========================================================= */
+  
     // Clinical hierarchy:
-    // ▶ System
-    //   # Problem
-    //     detail
-    // Existing indentation entered by the user is preserved.
-    const formatClinical=(text,problemIndent=4,detailIndent=6)=>{
-      const raw=String(text??"").trim();
-      if(!raw)return "";
-
+    //
+    // [RESP]
+    //  # RDS
+    //    NCPAP 5, FiO2 25%
+    //    s/p Surfactant x1
+    //
+    // 保留原本 # problem 的結構
+    const formatClinical=(text)=>{
+      const raw=value(text);
+      if(!raw) return "";
+  
       let inProblem=false;
-
+  
       return raw.split("\n").map(line=>{
         const original=String(line??"");
         const trimmed=original.trim();
-        if(!trimmed)return "";
-
+  
+        if(!trimmed) return "";
+  
+        // Problem line
         if(/^#\s*\S/.test(trimmed)){
           inProblem=true;
-          return " ".repeat(problemIndent)+trimmed;
+          return " "+trimmed;
         }
-
+  
+        // 保留使用者額外輸入的縮排
         const existing=(original.match(/^ */)?.[0]||"").length;
-        const base=inProblem?detailIndent:problemIndent;
+  
+        // # problem 後面的 detail 用 3 spaces
+        // 若 system 內沒有 #，一般文字用 1 space
+        const base=inProblem ? 3 : 1;
+  
         return " ".repeat(base+existing)+trimmed;
       }).join("\n");
     };
-
-    const field=(label,value)=>{
-      const v=String(value??"").trim();
-      if(!v)return;
-      lines.push(`  ▶ ${label}`);
-      lines.push(indent(v,4));
+  
+  
+    // IMP / Plan / Summary 等一般文字區塊：
+    // 不自動編號、不修改內容，只增加一格基本縮排
+    const formatBlock=(text)=>{
+      const raw=value(text);
+      if(!raw) return "";
+  
+      return raw.split("\n").map(line=>{
+        const original=String(line??"");
+        const trimmed=original.trim();
+  
+        if(!trimmed) return "";
+  
+        // 保留使用者原本額外的 leading spaces
+        const existing=(original.match(/^ */)?.[0]||"").length;
+  
+        return " ".repeat(1+existing)+trimmed;
+      }).join("\n");
     };
-
-    // Patient header — intentionally minimal, no ASCII frame.
-    const head=[p.team,p.bed,p.mrn,p.name].filter(Boolean).join(" · ");
-    if(head)lines.push(head);
-
-    if(p.alert?.trim()){
-      lines.push("",`⚠ IMPORTANT  ${p.alert.trim()}`);
+  
+  
+    /* =========================================================
+       PATIENT HEADER
+       ========================================================= */
+  
+    lines.push(HEAVY);
+  
+    const patientHead=[
+      value(p.team),
+      value(p.bed),
+      value(p.mrn),
+      value(p.name)
+    ].filter(Boolean).join(" ");
+  
+    const alert=value(p.alert);
+  
+    if(patientHead && alert){
+      // 只是視覺上的 padding，不依賴精確右對齊
+      const targetWidth=48;
+  
+      const spaces=" ".repeat(
+        Math.max(
+          3,
+          targetWidth-patientHead.length-alert.length
+        )
+      );
+  
+      lines.push(`${patientHead}${spaces}⚠️ ${alert}`);
+  
+    }else if(patientHead){
+  
+      lines.push(patientHead);
+  
+    }else if(alert){
+  
+      lines.push(`⚠️ ${alert}`);
     }
-
-    // BACKGROUND
-    const bg=[
-      p.birthDate?`DOB ${formatDate(p.birthDate)}`:"",
-      p.gaWeeks!==""?`GA ${p.gaWeeks}+${p.gaDays||0}`:"",
-      p.birthWeightG?`BBW ${p.birthWeightG} g`:"",
+  
+    lines.push(HEAVY);
+  
+  
+    /* =========================================================
+       DOB
+       ========================================================= */
+  
+    const dobFacts=[
+      p.birthDate
+        ? formatDate(p.birthDate)
+        : "",
+  
+      p.gaWeeks!=="" && p.gaWeeks!=null
+        ? `GA ${p.gaWeeks}+${p.gaDays||0}`
+        : "",
+  
+      p.birthWeightG!=="" && p.birthWeightG!=null
+        ? `BBW ${p.birthWeightG}g`
+        : "",
+  
       formatDelivery(p),
+  
       formatApgar(p)
-    ].filter(Boolean).join(" · ");
-
-    if(bg||p.momBackground?.trim()||p.nbBackground?.trim()){
-      lines.push("","[BACKGROUND]");
-      if(bg)lines.push(indent(bg,2));
-      field("Mom",p.momBackground);
-      field("NB",p.nbBackground);
+    ].filter(Boolean);
+  
+    if(dobFacts.length){
+      lines.push(`[DOB] ${dobFacts.join(", ")}`);
     }
-
-    // DAILY SUMMARY
-    lines.push("","[DAILY SUMMARY]");
-    lines.push(indent(this.quickFactsText(r,age),2));
-
-    field("Summary",r.summary);
-    field("Vent",r.vent);
-    field("Line",r.line);
-    field("Fluids",r.fluids);
-
-    // CLINICAL
+  
+  
+    /* =========================================================
+       NOW
+       ========================================================= */
+  
+    const nowFacts=[
+      r.date
+        ? formatDate(r.date)
+        : "",
+  
+      age.ageLabel || "",
+  
+      r.metrics?.weightG!=="" &&
+      r.metrics?.weightG!=null
+        ? `BW ${r.metrics.weightG}g`
+        : "",
+  
+      r.metrics?.io!=="" &&
+      r.metrics?.io!=null
+        ? `IO ${r.metrics.io}`
+        : "",
+  
+      r.metrics?.urineOutput!=="" &&
+      r.metrics?.urineOutput!=null
+        ? `UO ${r.metrics.urineOutput}`
+        : "",
+  
+      r.metrics?.kcal!=="" &&
+      r.metrics?.kcal!=null
+        ? `Kcal ${r.metrics.kcal}`
+        : "",
+  
+      r.metrics?.stool!=="" &&
+      r.metrics?.stool!=null
+        ? `Stool ${r.metrics.stool}`
+        : ""
+    ].filter(Boolean);
+  
+    if(nowFacts.length){
+      lines.push(`[NOW] ${nowFacts.join(", ")}`);
+    }
+  
+  
+    /* =========================================================
+       MATERNAL / NEONATAL BACKGROUND
+       ========================================================= */
+  
+    const mom=value(p.momBackground);
+    const nb=value(p.nbBackground);
+  
+    if(mom || nb){
+  
+      lines.push(THIN);
+  
+      if(mom){
+        const momLines=mom.split("\n");
+  
+        lines.push(`[Mx] ${momLines[0].trim()}`);
+  
+        momLines.slice(1).forEach(line=>{
+          if(line.trim()){
+            lines.push(`     ${line.trim()}`);
+          }
+        });
+      }
+  
+      if(nb){
+        const nbLines=nb.split("\n");
+  
+        lines.push(`[NB] ${nbLines[0].trim()}`);
+  
+        nbLines.slice(1).forEach(line=>{
+          if(line.trim()){
+            lines.push(`     ${line.trim()}`);
+          }
+        });
+      }
+    }
+  
+  
+    /* =========================================================
+       CLINICAL SYSTEMS
+       ========================================================= */
+  
     const systems=systemEntriesForRecord(r,p)
       .map(({key,label})=>({
-        label,
-        value:String(r.systems?.[key]??"").trim()
+        label:value(label),
+        text:value(r.systems?.[key])
       }))
-      .filter(x=>x.value);
-
+      .filter(x=>x.text);
+  
     if(systems.length){
-      lines.push("","[CLINICAL]");
-
-      systems.forEach(({label,value})=>{
-        lines.push("",`  ▶ ${label}`);
-        lines.push(formatClinical(value,4,6));
+  
+      lines.push(THIN);
+  
+      systems.forEach(({label,text},index)=>{
+  
+        // system 與 system 中間空一行
+        if(index>0){
+          lines.push("");
+        }
+  
+        lines.push(`[${label}]`);
+        lines.push(formatClinical(text));
       });
     }
-
-    // ASSESSMENT
-    if(r.assessment?.trim()){
-      lines.push("","[ASSESSMENT]");
-      lines.push(formatClinical(r.assessment.trim(),2,4));
+  
+  
+    /* =========================================================
+       IMPRESSION
+       ========================================================= */
+  
+    const assessment=value(r.assessment);
+  
+    if(assessment){
+  
+      lines.push(THIN);
+      lines.push("[IMP]");
+  
+      // 不自動編號
+      lines.push(formatBlock(assessment));
     }
-
-    // PLAN
-    if(r.plan?.trim()){
-      lines.push("","[PLAN]");
-      lines.push(indent(r.plan.trim(),2));
+  
+  
+    /* =========================================================
+       TODAY'S SUMMARY
+       ========================================================= */
+  
+    const summary=value(r.summary);
+    const vent=value(r.vent);
+    const line=value(r.line);
+    const fluid=value(r.fluids);
+  
+    if(summary || vent || line || fluid){
+  
+      lines.push(THIN);
+      lines.push("[Today's Summary]");
+  
+      if(summary){
+        lines.push(formatBlock(summary));
+      }
+  
+      if(vent){
+        lines.push(` Vent : ${vent}`);
+      }
+  
+      if(line){
+        lines.push(` Line : ${line}`);
+      }
+  
+      if(fluid){
+        lines.push(` Fluid: ${fluid}`);
+      }
     }
-
+  
+  
+    /* =========================================================
+       PLAN
+       ========================================================= */
+  
+    const plan=value(r.plan);
+  
+    if(plan){
+  
+      lines.push("");
+      lines.push("[Plan]");
+  
+      // 不自動編號
+      lines.push(formatBlock(plan));
+    }
+  
+  
+    /* =========================================================
+       FINAL OUTPUT
+       ========================================================= */
+  
     return cleanOutput(lines);
   }
 
