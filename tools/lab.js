@@ -1,16 +1,10 @@
 // tools/lab.js
-// updated: 2026-05-19
+// updated: 2026-09-06
 // note:
-// - fix order UI double-render bug
-// - preserve manual item selection across specimen rebuilds
-// - fix preset detection with duplicate lab names across specimens
-// - fix horizontal output when duplicate labels exist
-// - fix extra blank line before specimen legend
-// - normalize output reset behavior
-// - add normal range parsing for trend charts
-// - render one chart per selected lab item
-// - optimize each chart y-axis using both values and normal range
-// - draw normal range band / limit lines on each chart
+// - add cross-site HIS lab-name mappings for different hospital naming formats
+// - add additional lab abbreviations including eGFR, Vanco, and alternate BUN/Cr/Ca/DB/TP names
+// - add CJK/full-width character-aware alignment for text output
+// - reset Order/Bar to the standard preset layout when switching lab presets
 
 import { createScheduler } from "../core/utils.js";
 
@@ -413,23 +407,30 @@ export function init(root) {
     "Blast cell": "Blast",
     "Nucleated RBC": "nRBC",
     "Glucose(AC)": "Sugar",
+    "BUN": "BUN",
+    "BUN (B)": "BUN",
+    "Creatinine(B)": "Cr",
     "Creatinine": "Cr",
+    "Estimated GFR": "eGFR",
     "AST/GOT": "AST",
     "ALT/GPT": "ALT",
     "Na(Sodium)": "Na",
     "K(Potassium)": "K",
     "Cl(Chloride)": "Cl",
+    "Calcium": "Ca",
     "Ca(Calcium)": "Ca",
     "Mg(Magnesium)": "Mg",
     "Inorganic P": "P",
     "Zn(Zinc)": "Zn",
     "Total Bilirubin": "TB",
     "D.Bilirubin": "DB",
+    "Direct Bilirubi": "DB",
     "Amylase(B)": "Amylase",
     "Albumin": "Alb",
     "Triglyceride": "TG",
     "T-Cholesterol": "Chol",
     "Total Protein": "TP",
+    "TP (B)": "TP",
     "ALK-P": "ALP",
     "γ-GT": "γGT",
     "Intact-PTH": "iPTH",
@@ -451,6 +452,9 @@ export function init(root) {
     "Uric Acid (B)": "Uric acid",
     "Lactate(B)": "Lactate",
     "Osmolality(B)": "Osmo",
+
+
+    "Vancomycin": "Vanco",
 
     "Urea N (U)": "Urea",
     "Ca(Calcium)(U)": "Ca",
@@ -628,9 +632,9 @@ export function init(root) {
 
     const Chemistry = new Set([
       "Na","K","Cl","iCa","Ca","Mg","P","Zn",
-      "BUN","Cr","AST","ALT","DB","TB","ALP","γGT",
+      "BUN","Cr", "eGFR","AST","ALT","DB","TB","ALP","γGT",
       "CRP","Pct","Ferritin",
-      "TG","Chol","TP","Alb",
+      "TG","Chol","TP","Alb", "Amylase","Lipase",
       "iPTH","fT4","TSH",
       "Sugar"
     ]);
@@ -1649,25 +1653,72 @@ export function init(root) {
     return matrix;
   }
 
+
+
+  // 計算文字實際顯示寬度
+  // 一般英數字 = 1 格；中文 / 日文 / 韓文 / 全形字元 = 2 格
+  function displayWidth(text) {
+    let width = 0;
+
+    for (const ch of String(text ?? "")) {
+      const cp = ch.codePointAt(0);
+
+      const isWide =
+        (cp >= 0x1100 && cp <= 0x115f) || // Hangul Jamo
+        (cp >= 0x2e80 && cp <= 0xa4cf) || // CJK / radicals / kana
+        (cp >= 0xac00 && cp <= 0xd7a3) || // Hangul
+        (cp >= 0xf900 && cp <= 0xfaff) || // CJK compatibility
+        (cp >= 0xfe10 && cp <= 0xfe19) ||
+        (cp >= 0xfe30 && cp <= 0xfe6f) ||
+        (cp >= 0xff01 && cp <= 0xff60) || // Full-width forms
+        (cp >= 0xffe0 && cp <= 0xffe6);
+
+      width += isWide ? 2 : 1;
+    }
+
+    return width;
+  }
+
+
+  // 依「實際顯示寬度」補空白
+  function padEndDisplay(text, targetWidth) {
+    const s = String(text ?? "");
+    const padding = Math.max(0, targetWidth - displayWidth(s));
+    return s + " ".repeat(padding);
+  }
+
+
   function toAlignedText(matrix) {
     if (!matrix || !matrix[0]) return "";
 
     const MIN_VALUE_COL_WIDTH = 3;
     const isBarCol = (i) => String(matrix[0][i] ?? "") === "|";
 
+    // 計算每一欄真正需要的顯示寬度
     const widths = matrix[0].map((_, i) => {
       if (isBarCol(i)) return 1;
-      const maxLen = Math.max(...matrix.map((row) => String(row[i] ?? "").length));
-      return i === 0 ? maxLen : Math.max(maxLen, MIN_VALUE_COL_WIDTH);
+
+      const maxWidth = Math.max(
+        ...matrix.map((row) => displayWidth(row[i] ?? ""))
+      );
+
+      return i === 0
+        ? maxWidth
+        : Math.max(maxWidth, MIN_VALUE_COL_WIDTH);
     });
 
+    // 依顯示寬度補空白
     return matrix
       .map((row) =>
         row
           .map((cell, i) => {
             const s = String(cell ?? "");
-            if (isBarCol(i)) return s.padEnd(1);
-            return s.padEnd(widths[i]);
+
+            if (isBarCol(i)) {
+              return padEndDisplay(s, 1);
+            }
+
+            return padEndDisplay(s, widths[i]);
           })
           .join(" ")
       )
@@ -2126,7 +2177,8 @@ export function init(root) {
       applyItemPreset();
       syncVisibleSelectedItemsFromDOM();
 
-      syncOrderTokensFromSelection({ reset: false });
+      // 套用 preset 時重新建立標準 Order + Bar
+      syncOrderTokensFromSelection({ reset: true });
       rebuildOrderUI();
 
       if (isAutoLastNPreset()) applyDatePreset();
