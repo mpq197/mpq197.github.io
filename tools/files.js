@@ -1,5 +1,5 @@
 // tools/files.js
-// updated: 2026-03-01
+// updated: 2026-09-07
 
 const DEBUG = false;
 const TOOL_KEY = "files";
@@ -11,21 +11,21 @@ const FILES = [
   {
     key: "hx",
     title: "病史詢問",
-    path: "./files/病史詢問.pdf",
+    path: "./files/history.pdf",
     type: "PDF",
     description: ""
   },
   {
     key: "bed",
     title: "控床交班",
-    path: "./files/控床交班.pdf",
+    path: "./files/bed.pdf",
     type: "PDF",
     description: ""
   },
   {
     key: "external",
     title: "外接交班",
-    path: "./files/外接交班.pdf",
+    path: "./files/retrieval.pdf",
     type: "PDF",
     description: ""
   }
