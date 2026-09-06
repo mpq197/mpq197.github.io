@@ -4661,9 +4661,10 @@ const STYLES=`
 /* 第一列 */
 .hf-toolbar-row{
   display:flex;
-  align-items:center;
+  align-items:flex-start;
   justify-content:space-between;
-  gap:14px;
+  flex-wrap:wrap;
+  gap:8px 14px;
   min-height:34px;
 }
 
@@ -4743,8 +4744,9 @@ const STYLES=`
 .hf-actions{
   display:flex;
   gap:7px;
-  flex-wrap:wrap;
+  flex-wrap:nowrap;
   justify-content:flex-end;
+  margin-left:auto;
 }
 
 .hf-actions > button,
