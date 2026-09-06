@@ -1,13 +1,9 @@
 // tools/lab.js
-// updated: 2026-09-06
+// updated: 2026-09-07
 // note:
-// - expand cross-site HIS lab-name mappings and standardized abbreviations
-// - add structured lab categories with category-specific UI ordering (CBC/Coag/Chem/Gas/Meta/TORCH/Drug)
-// - add qualitative result normalization with dynamic result legends
-// - add additional specimen-aware lab mappings and output labels
-// - add CJK/full-width character-aware alignment for text output
-// - reset Order/Bar to the standard preset layout when switching lab presets
-//
+// - add U10B10 preset
+// - fix lab name
+
 // Todo:
 // - review remaining drug-level naming/abbreviations
 // - review result normalization rules and legends (e.g., "Indeterminate" vs "Equivocal" vs "weekly positive" ...?)
@@ -286,6 +282,9 @@ export function render() {
                     <input type="radio" class="btn-check" name="lab_presets_selection" id="lab_preset_hema" autocomplete="off">
                     <label class="btn btn-outline-secondary" for="lab_preset_hema">Hema</label>
 
+                    <input type="radio" class="btn-check" name="lab_presets_selection" id="lab_preset_u10b10" autocomplete="off">
+                    <label class="btn btn-outline-secondary" for="lab_preset_u10b10">U10B10</label>
+
                     <input type="radio" class="btn-check" name="lab_presets_selection" id="lab_preset_none" autocomplete="off">
                     <label class="btn btn-outline-secondary" for="lab_preset_none">全不選</label>
                   </div>
@@ -479,6 +478,7 @@ export function init(root) {
     "Hb-A1c": "HbA1c",
     "hs-Troponin I": "hs-TnI",
     "CMV-DNA Q-PCR": "CMV-DNA",
+    "HIV Ag/Ab Test": "HIV Ag/Ab",
     "BloodKetone": "Ketone",
 
     "LDL-C(calc)": "LDL-C",
@@ -548,6 +548,7 @@ export function init(root) {
     "lab_preset_gi": ["BUN","Cr","AST","ALT","DB","TB","ALP","γGT","Amylase","Lipase","Na","K","Cl","iCa","Ca","Mg","P"],
     "lab_preset_inf": ["WBC","Seg","Lym","ANC","CRP","Pct","Ferritin"],
     "lab_preset_hema": ["Hb","Hct","Plt","PT","INR","aPTT","aPTT/m","Fibrinogen","D-dimer","FDP"],
+    "lab_preset_u10b10": ["Cr", "Na", "K", "Cl", "Ca", "Mg", "P", "Uric acid", "BUN", "Urea", "Osmo"],
   };
 
   const uniq = (arr) => Array.from(new Set(arr));
@@ -701,7 +702,7 @@ export function init(root) {
       "Na","K","Cl","iCa","Ca","Mg","P","Zn",
 
       // Renal
-      "BUN","Cr","eGFR","Uric acid",
+      "BUN", "Urea","Cr","eGFR","Uric acid",
 
       // Liver
       "AST","ALT","DB","TB","ALP","γGT",
