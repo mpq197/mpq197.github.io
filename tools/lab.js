@@ -1,10 +1,16 @@
 // tools/lab.js
 // updated: 2026-09-06
 // note:
-// - add cross-site HIS lab-name mappings for different hospital naming formats
-// - add additional lab abbreviations including eGFR, Vanco, and alternate BUN/Cr/Ca/DB/TP names
+// - expand cross-site HIS lab-name mappings and standardized abbreviations
+// - add structured lab categories with category-specific UI ordering (CBC/Coag/Chem/Gas/Meta/TORCH/Drug)
+// - add qualitative result normalization with dynamic result legends
+// - add additional specimen-aware lab mappings and output labels
 // - add CJK/full-width character-aware alignment for text output
 // - reset Order/Bar to the standard preset layout when switching lab presets
+//
+// Todo:
+// - review remaining drug-level naming/abbreviations
+// - review result normalization rules and legends (e.g., "Indeterminate" vs "Equivocal" vs "weekly positive" ...?)
 
 import { createScheduler } from "../core/utils.js";
 
@@ -448,13 +454,37 @@ export function init(root) {
     "pCO2(Vein)": "pCO2",
     "pO2(Vein)": "pO2",
     "cHCO3(Vein)": "HCO3",
+    "TCO2(Vein)": "tCO2",
     "BEecf(Vein)": "SBE",
     "Uric Acid (B)": "Uric acid",
     "Lactate(B)": "Lactate",
     "Osmolality(B)": "Osmo",
 
+    "CK-MB": "CKMB",
+    "BB": "CK-BB%",
+    "MM": "CK-MM%",
+    "MB": "CK-MB%",
+
+    "HSV-1 IgG": "HSV1-IgG",
+    "HSV-2 IgG": "HSV2-IgG",
+
+    "Total Vitamin D": "Total VitD",
+
+    "T HB": "tHb",
+    "O2 HB": "O2Hb",
+    "CO HB": "COHb",
+    "MET HB": "MetHb",
+    "CTO2": "ctO2",
+
+    "Hb-A1c": "HbA1c",
+    "hs-Troponin I": "hs-TnI",
+    "CMV-DNA Q-PCR": "CMV-DNA",
+    "BloodKetone": "Ketone",
+
+    "LDL-C(calc)": "LDL-C",
 
     "Vancomycin": "Vanco",
+    "Heel blood total low range IgE": "Heel-IgE",
 
     "Urea N (U)": "Urea",
     "Ca(Calcium)(U)": "Ca",
@@ -471,6 +501,32 @@ export function init(root) {
     "WBC esterase": "WBCe",
   };
 
+  // -----------------------------
+  // Lab result normalization
+  // -----------------------------
+  const labResultNormalizeRules = [
+    {
+      terms: ["Positive", "Reactive"],
+      symbol: "(+)",
+      legend: "Positive/Reactive",
+    },
+    {
+      terms: ["Negative", "Nonreactive"],
+      symbol: "(-)",
+      legend: "Negative/Nonreactive",
+    },
+    {
+      terms: ["Equivocal", "Borderline"],
+      symbol: "(~)",
+      legend: "Equivocal/Borderline",
+    },
+    {
+      terms: ["Indeterminate"],
+      symbol: "(?)",
+      legend: "Indeterminate",
+    },
+  ];
+
   const excludingRowKeywords = {
     "項目代號": [
       "72A285","72B285","72C285","72D285","72E285","72F285","72G285","72H285","72I285","72J285","72K285","72L285","72M285","72N285","72O285","72P285","72Q285","72R285","72S285","72T285","72U285","72V285","72W285","72X285","72Y285","72Z285",
@@ -480,6 +536,7 @@ export function init(root) {
       "72-065",
       "72A530","72G530","72L530","72M530","72A530","72A530","72K530","72L530","72M530",
       "72B001","72E001","72F001","72G001","72H001","72K001","72L001",
+      "72A687","72B687","72C687","72D687"
     ],
   };
 
@@ -487,7 +544,7 @@ export function init(root) {
     "lab_preset_TPN_minor": ["WBC","Hb","Hct","Plt","Na","K","Cl","Ca","Mg","P","BUN","Cr","AST","ALT","DB","TB","CRP","Pct"],
     "lab_preset_TPN_major": ["TG","Chol","TP","Alb","ALP","γGT","iPTH"],
     "lab_preset_gas": ["pH","pCO2","pO2","HCO3","SBE"],
-    "lab_preset_cv": ["CK-MB","hs-Troponin I","Lactate","BNP","NT-ProBNP"],
+    "lab_preset_cv": ["CKMB","hs-TnI","Lactate","BNP","NT-ProBNP"],
     "lab_preset_gi": ["BUN","Cr","AST","ALT","DB","TB","ALP","γGT","Amylase","Lipase","Na","K","Cl","iCa","Ca","Mg","P"],
     "lab_preset_inf": ["WBC","Seg","Lym","ANC","CRP","Pct","Ferritin"],
     "lab_preset_hema": ["Hb","Hct","Plt","PT","INR","aPTT","aPTT/m","Fibrinogen","D-dimer","FDP"],
@@ -620,31 +677,125 @@ export function init(root) {
     if (!specList.length) clearToBr(specimenSelEl);
   }
 
-  function getLabCategory(lab) {
-    const CBC = new Set([
+
+  // -----------------------------
+  // Lab categories + UI order
+  // Set 內順序 = category 內顯示順序
+  // Object 順序 = category 顯示順序
+  // -----------------------------
+  const labCategories = {
+    CBC: new Set([
       "WBC","Hb","Hct","Plt","MCV",
       "Seg","Band","Lym","Mono","Eos","Baso",
       "Atyp-Lym","Meta-Mye","Myelocyte","Promyelocyte","Blast","Megakaryocyte",
       "ANC","nRBC"
-    ]);
+    ]),
 
-    const Coag = new Set(["PT","INR","aPTT","aPTT/m","Fibrinogen","D-dimer","FDP"]);
+    Coag: new Set([
+      "PT","INR","aPTT","aPTT/m",
+      "Fibrinogen","D-dimer","FDP"
+    ]),
 
-    const Chemistry = new Set([
+    Chem: new Set([
+      // Electrolytes
       "Na","K","Cl","iCa","Ca","Mg","P","Zn",
-      "BUN","Cr", "eGFR","AST","ALT","DB","TB","ALP","γGT",
+
+      // Renal
+      "BUN","Cr","eGFR","Uric acid",
+
+      // Liver
+      "AST","ALT","DB","TB","ALP","γGT",
+
+      // Protein / glucose
+      "TP","Alb","Sugar",
+
+      // Inflammation
       "CRP","Pct","Ferritin",
-      "TG","Chol","TP","Alb", "Amylase","Lipase",
-      "iPTH","fT4","TSH",
-      "Sugar"
-    ]);
 
-    const Gas = new Set(["pH","pCO2","pO2","HCO3","SBE"]);
+      // Pancreas
+      "Amylase","Lipase",
 
-    if (CBC.has(lab)) return "CBC";
-    if (Coag.has(lab)) return "Coag";
-    if (Chemistry.has(lab)) return "Chem";
-    if (Gas.has(lab)) return "Gas";
+      // Lipid
+      "TG","Chol","HDL-C","LDL-C","Non-HDL-C",
+      "T-CHOL/HDL-C","LDL-C/HDL-C",
+
+      // Cardiac / muscle
+      "BNP","NT-ProBNP","hs-TnI","CKMB",
+      "CK", "Total CK", "CK-BB%", "CK-MM%", "CK-MB%", 
+
+      // Other
+      "Osmo"
+
+    ]),
+
+    Gas: new Set([
+      "pH","pCO2","pO2","HCO3","SBE","tCO2"
+    ]),
+
+    Meta: new Set([
+      // Metabolic
+      "Lactate","Pyruvate","Ammonia","Ketone",
+
+      // Glucose / insulin
+      "HbA1c","Insulin","C-Peptide",
+      // "Estimated AG",
+      // "ZnT8 Ab","GAD-Ab","IA2-Ab",
+
+      // Thyroid
+      "TSH","fT4","T4","T3",
+      // "Anti-TPO","Anti-THYG","Anti-TSHR",
+
+      // Adrenal / gonadal
+      "Cortisol","ACTH","LH","FSH",
+      // "Estradiol","Progesterone","Testosterone",
+
+      // Bone / vitamin
+      "iPTH","Total VitD"
+      // "17-OHP",
+      // "Vitamin-A","Vitamin E",
+      // "anti-tTG IgA","anti-dGP IgA"
+    ]),
+
+
+    TORCH: new Set([
+      // Syphilis
+      "RPR","TPPA",
+
+      // Rubella
+      "RUB-IgG","RUB-IgM",
+
+      // CMV
+      "CMV-IgG","CMV-IgM","CMV-DNA","CMV-SV",
+
+      // HSV
+      "HSV1-IgG","HSV2-IgG","HSV-IgM",
+
+      // Toxoplasma
+      "TOXO-IgG","TOXO-IgM",
+
+      // HBV
+      "HBsAg","Anti-HBs","Anti-HBc","HBeAg","HBeAb",
+
+      // HCV
+      "Anti-HCV",
+
+      // HIV
+      "HIV Ag/Ab Test","HIV-1 p24 Ag","HIV-1/2 Ab",
+
+      // Other congenital / perinatal infection
+      "ParvoB19 DNA"
+    ]),
+
+    Drug: new Set([
+      "Vanco","Free Valproic", "Valproic acid", "Amikacin", "Phenobarbital", "Gentamicin", "Theophylline", "Digoxin"
+    ]),
+  };
+
+  function getLabCategory(lab) {
+    for (const [category, labs] of Object.entries(labCategories)) {
+      if (labs.has(lab)) return category;
+    }
+
     return "Other";
   }
 
@@ -657,18 +808,39 @@ export function init(root) {
     itemSelEl.replaceChildren();
 
     const groups = new Map();
+
     rows.forEach((row, idx) => {
       const lab = String(row[0] ?? "").trim();
       const cat = getLabCategory(lab);
+
       if (!groups.has(cat)) groups.set(cat, []);
       groups.get(cat).push(idx);
     });
 
-    const catOrder = ["CBC", "Coag", "Chem", "Gas", "Other"];
+    // labCategories 的 Object 順序 = category UI 順序
+    // Other 永遠放最後
+    const catOrder = [...Object.keys(labCategories), "Other"];
 
     for (const cat of catOrder) {
       const idxs = groups.get(cat);
       if (!idxs || !idxs.length) continue;
+
+      // labCategories 裡 Set 的順序 = category 內 item UI 順序
+      if (labCategories[cat]) {
+        const orderMap = new Map(
+          Array.from(labCategories[cat]).map((lab, index) => [lab, index])
+        );
+
+        idxs.sort((a, b) => {
+          const labA = String(rows[a]?.[0] ?? "").trim();
+          const labB = String(rows[b]?.[0] ?? "").trim();
+
+          const orderA = orderMap.get(labA) ?? Infinity;
+          const orderB = orderMap.get(labB) ?? Infinity;
+
+          return orderA - orderB;
+        });
+      }
 
       const groupRow = document.createElement("div");
       groupRow.className = "lab-cat-group";
@@ -1018,6 +1190,22 @@ export function init(root) {
     return `Specimen legend: ${items.join(", ")}`;
   }
 
+  function buildResultLegendLine(text) {
+    const s = String(text ?? "");
+    const items = [];
+
+    for (const rule of labResultNormalizeRules) {
+      if (!s.includes(rule.symbol)) continue;
+
+      const item = `${rule.symbol}=${rule.legend}`;
+      if (!items.includes(item)) items.push(item);
+    }
+
+    if (!items.length) return "";
+
+    return `Result legend: ${items.join(", ")}`;
+  }
+
   // -----------------------------
   // Order / Bar logic
   // -----------------------------
@@ -1291,6 +1479,35 @@ export function init(root) {
   // -----------------------------
   // Parser helpers
   // -----------------------------
+
+  function normalizeResultText(value) {
+    let s = String(value ?? "");
+
+    for (const rule of labResultNormalizeRules) {
+      // 文字結果 → symbol
+      for (const term of rule.terms) {
+        const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        s = s.replace(
+          new RegExp(`\\b${escapedTerm}\\b`, "gi"),
+          rule.symbol
+        );
+      }
+
+      // symbol 後若有內容，移除中間空白
+      const escapedSymbol = rule.symbol.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        "\\$&"
+      );
+
+      s = s.replace(
+        new RegExp(`^(${escapedSymbol})\\s+(.+)$`),
+        "$1$2"
+      );
+    }
+
+    return s;
+  }
+
   function parseNormalRange(refText) {
     let s = String(refText ?? "").trim();
     if (!s || s === "-") return { low: null, high: null, raw: s };
@@ -1407,6 +1624,8 @@ export function init(root) {
       return str.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
     };
 
+    
+
     function normalizeLabName(text) {
       return String(text ?? "")
         .replace(/[\u4e00-\u9fff]/g, "") // 去中文
@@ -1461,7 +1680,10 @@ export function init(root) {
           .replace(/( [H,L])$/, "")
           .replace(/^< /, "<")
           .trim();
+
+        s = normalizeResultText(s);
         s = trimTrailingZeros(s);
+
         return s;
       });
 
@@ -2101,8 +2323,13 @@ export function init(root) {
     if (ctx.headerLine) lines.push(ctx.headerLine);
     if (mainText) lines.push(mainText);
 
-    const legendLine = buildLegendLine(usedLegendSet, ctx);
-    if (legendLine) lines.push(legendLine);
+    // Specimen legend
+    const specimenLegendLine = buildLegendLine(usedLegendSet, ctx);
+    if (specimenLegendLine) lines.push(specimenLegendLine);
+
+    // Result legend
+    const resultLegendLine = buildResultLegendLine(mainText);
+    if (resultLegendLine) lines.push(resultLegendLine);
 
     setOutputText(lines.join("\n"));
 
