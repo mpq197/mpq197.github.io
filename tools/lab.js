@@ -644,8 +644,6 @@ export function init(root) {
       ],
       barsAfter: [
         { lab: "P", specimen: "B" },
-        { lab: "Cr", specimen: "B" },
-        { lab: "γGT", specimen: "B" },
       ],
     },
 
@@ -659,9 +657,7 @@ export function init(root) {
         { lab: "Pct", specimen: "B" },
         { lab: "Ferritin", specimen: "B" },
       ],
-      barsAfter: [
-        { lab: "ANC", specimen: "B" },
-      ],
+      barsAfter: [],
     },
 
     "lab_preset_hema": {
@@ -669,17 +665,13 @@ export function init(root) {
         { lab: "Hb", specimen: "B" },
         { lab: "Hct", specimen: "B" },
         { lab: "Plt", specimen: "B" },
-        { lab: "PT", specimen: "B" },
         { lab: "INR", specimen: "B" },
         { lab: "aPTT", specimen: "B" },
-        { lab: "aPTT/m", specimen: "B" },
         { lab: "Fibrinogen", specimen: "B" },
         { lab: "D-dimer", specimen: "B" },
         { lab: "FDP", specimen: "B" },
       ],
-      barsAfter: [
-        { lab: "Plt", specimen: "B" },
-      ],
+      barsAfter: [],
     },
 
     "lab_preset_u10b10": {
