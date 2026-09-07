@@ -1,12 +1,7 @@
 // tools/lab.js
-// updated: 2026-09-07
+// updated: 2026-09-08
 // note:
-// - add U10B10 preset
-// - fix lab name
-// - refactor Order/Bar: anchored default bars + independent drag ordering
-// - fix orphan/duplicate bars when specimen selection changes
-// - move default Bar placement into per-preset configuration
-// - make preset items specimen-aware and authoritative for selection/order
+// - Revise U10B10 order
 
 // Todo:
 // - review remaining drug-level naming/abbreviations
@@ -691,24 +686,24 @@ export function init(root) {
       // Explicit B block followed by U block.
       items: [
         { lab: "Cr", specimen: "B" },
-        { lab: "Na", specimen: "B" },
-        { lab: "K", specimen: "B" },
-        { lab: "Cl", specimen: "B" },
-        { lab: "Ca", specimen: "B" },
-        { lab: "Mg", specimen: "B" },
-        { lab: "P", specimen: "B" },
-        { lab: "Uric acid", specimen: "B" },
-        { lab: "BUN", specimen: "B" },
-
         { lab: "Cr", specimen: "U" },
+        { lab: "Na", specimen: "B" },
         { lab: "Na", specimen: "U" },
+        { lab: "K", specimen: "B" },
         { lab: "K", specimen: "U" },
+        { lab: "Cl", specimen: "B" },
         { lab: "Cl", specimen: "U" },
+        { lab: "Ca", specimen: "B" },
         { lab: "Ca", specimen: "U" },
+        { lab: "Mg", specimen: "B" },
         { lab: "Mg", specimen: "U" },
+        { lab: "P", specimen: "B" },
         { lab: "P", specimen: "U" },
+        { lab: "Uric acid", specimen: "B" },
         { lab: "Uric acid", specimen: "U" },
+        { lab: "BUN", specimen: "B" },     
         { lab: "Urea", specimen: "U" },
+        { lab: "Osmo", specimen: "B" },
         { lab: "Osmo", specimen: "U" },
       ],
       barsAfter: [],
