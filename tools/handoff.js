@@ -13,7 +13,7 @@ const TOOL_KEY="handoff";
 const DB_NAME="neoassist-clinical-handoff";
 const DB_VERSION=3;
 const AUTOSAVE_DELAY_MS=650;
-const COPY_WIDTH=80;
+const COPY_WIDTH=100;
 
 const DEFAULT_SYSTEMS=[
   {key:"resp",label:"RESP"},
