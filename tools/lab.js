@@ -1,7 +1,7 @@
 // tools/lab.js
 // updated: 2026-09-08
 // note:
-// - Revise U10B10 order
+// - Revise U10B10 order, add myoglobin
 
 // Todo:
 // - review remaining drug-level naming/abbreviations
@@ -933,7 +933,7 @@ export function init(root) {
 
       // Cardiac / muscle
       "BNP","NT-ProBNP","hs-TnI","CKMB",
-      "CK", "Total CK", "CK-BB%", "CK-MM%", "CK-MB%", 
+      "Myoglobin", "CK", "Total CK", "CK-BB%", "CK-MM%", "CK-MB%", 
 
       // Other
       "Osmo"
