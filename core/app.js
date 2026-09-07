@@ -47,7 +47,7 @@ const GROUPS = [
       { key: "icd10", label: "常用診斷碼", module: "../tools/icd10.js"  },
       { key: "pedigree", label: "家族樹", module: "../tools/pedigree.js"  },
       { key: "docs", label: "常用文件", module: "../tools/files.js"  },
-      { key: "handoff", label: "交班單", module: "../tools/handoff.js"  },
+      { key: "handoff", label: "交班單", module: "../tools/handoffRedirect.js"  },
     ],
   },
 ];
