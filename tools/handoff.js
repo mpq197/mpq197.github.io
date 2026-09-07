@@ -3,6 +3,7 @@
 // NeoAssist Clinical Handoff — Patient-centric V1
 //
 // Changelog:
+// - 新增：Standalone Handoff 左下角 NeoAssist 返回按鈕；離開前先 flush 未儲存內容。
 // - 新增：Dark Mode；Header 可切換 Light / Dark，主題偏好自動保存，Preview / PRINT 維持白底列印樣式。
 // - 新增：即時 PRINT Preview；採 60:40 編輯／預覽配置，可調整字體、行距與邊距，並支援目前病人直接列印。
 // - 新增：Preview auto-follow；編輯 Summary / Clinical / Assessment / Plan 時，自動定位至對應預覽區段。
@@ -296,6 +297,14 @@ export function render(){
         </div>
       </main>
     </div>
+
+    <button
+      type="button"
+      class="hf-back-neoassist"
+      data-action="backToNeoAssist"
+      title="回到 NeoAssist"
+      aria-label="回到 NeoAssist"
+    >← NeoAssist</button>
 
     <div class="hf-symbol-rail" data-ref="symbolRail" hidden aria-label="常用符號">
       <button type="button" data-symbol="↑" title="上升">↑</button>
@@ -1152,6 +1161,13 @@ class HandoffApp{
     const a=b.dataset.action;
 
     try{
+      if(a==="backToNeoAssist"){
+        b.disabled=true;
+        this.setSaveState("正在儲存…");
+        await this.flush();
+        window.location.href="../";
+        return;
+      }
       if(a==="toggleTheme"){
         return this.toggleTheme();
       }
@@ -6218,6 +6234,52 @@ const STYLES=`
   outline:1px solid #bdb6ae;
   outline-offset:1px;
   box-shadow:none !important;
+}
+
+/* =========================
+   BACK TO NEOASSIST
+========================= */
+
+.hf-back-neoassist{
+  position:fixed;
+  left:12px;
+  bottom:12px;
+  z-index:110;
+
+  height:30px;
+  padding:0 10px;
+
+  border:1px solid var(--control-border);
+  border-radius:6px;
+
+  background:var(--control-bg);
+  color:var(--label-text);
+
+  font-family:var(--font-ui);
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.01em;
+
+  cursor:pointer;
+  opacity:.72;
+
+  box-shadow:0 3px 12px #0002;
+  transition:
+    opacity .15s ease,
+    background .15s ease,
+    color .15s ease,
+    border-color .15s ease;
+}
+
+.hf-back-neoassist:hover{
+  opacity:1;
+  background:var(--surface-hover);
+  color:var(--ink);
+}
+
+.hf-back-neoassist:disabled{
+  opacity:.45;
+  cursor:wait;
 }
 
 /* =========================
