@@ -1,13 +1,18 @@
 // tools/handoff.js
-// updated: 2026-09-06
+// updated: 2026-09-08
 // NeoAssist Clinical Handoff — Patient-centric V1
 //
 // Changelog:
-// - 新增：完整多病人 PRINT workflow、列印設定與病人選擇。
-// - 改善：COPY 拆分 S/O/A/P、80-column 智慧折行、Weekly AI prompt。
-// - UI：PRINT 移至 Header；sidebar 改為 120px，搜尋時展開至 280px；System 欄縮至 72px。
-// - Backup：支援 TXT/JSON 匯入，並改以 TXT 匯出。
-// - Layout：Clinical workspace 更緊湊，Vent / Line / Fluids / System label 寬度統一。
+// - 新增：Dark Mode；Header 可切換 Light / Dark，主題偏好自動保存，Preview / PRINT 維持白底列印樣式。
+// - 新增：即時 PRINT Preview；採 60:40 編輯／預覽配置，可調整字體、行距與邊距，並支援目前病人直接列印。
+// - 新增：Preview auto-follow；編輯 Summary / Clinical / Assessment / Plan 時，自動定位至對應預覽區段。
+// - 改善：PRINT / Preview 採 section-aware pagination；短區塊盡量保持同頁，避免 section heading 落在頁尾。
+// - 改善：Preview 改為 viewport-sticky，頁面向下編輯時仍持續顯示；窄螢幕自動切換為上下排列。
+// - 改善：左側病人清單新增今日 Note 狀態；✓ = FINAL、• = DRAFT，無今日紀錄則留白。
+// - 改善：Header PRINT 改為 PRINT ALL；單一病人列印整合至 Preview，並共用 Preview 的排版設定。
+// - 改善：PRINT 字體與行距提供更多選項，Preview 與 PRINT 共用顯示設定。
+// - 修正：Dark Mode 下 COPY、日期列與各控制元件的 hover / focus 樣式一致性。
+// - 維護：重構 Light / Dark semantic CSS variables，整併重複 theme overrides 與共用 surface / control / dialog / alert 樣式。
 
 const TOOL_KEY="handoff";
 const DB_NAME="neoassist-clinical-handoff";
@@ -36,10 +41,19 @@ export function render(){
       <div class="hf-header-actions">
 
         <button
+          class="hf-theme-toggle"
+          data-action="toggleTheme"
+          data-ref="themeToggle"
+          type="button"
+          aria-label="切換深色模式"
+          title="切換深色模式"
+        >☾</button>
+
+        <button
           class="hf-header-print"
           data-action="printAllPatients"
           type="button"
-        >PRINT</button>
+        >PRINT ALL</button>
 
         <div class="hf-backup-wrap">
           <button
@@ -114,6 +128,15 @@ export function render(){
             </div>
 
             <div class="hf-actions">
+              <button
+                type="button"
+                class="hf-preview-toggle"
+                data-action="togglePreview"
+                data-ref="previewToggle"
+                aria-pressed="false"
+                title="切換即時列印預覽"
+              >Preview</button>
+
               <div class="hf-output-group">
                 <button data-action="copyMode" data-copy-mode="full">COPY</button>
                 <button data-action="copyMode" data-copy-mode="s">S</button>
@@ -135,6 +158,9 @@ export function render(){
 
 
         </header>
+
+        <div class="hf-workspace">
+          <div class="hf-editor-pane">
 
         <div class="hf-alert-strip" data-ref="alertStrip" hidden></div>
 
@@ -218,6 +244,56 @@ export function render(){
           </div>
           <textarea class="hf-large-text" rows="4" data-field="plan"></textarea>
         </section>
+
+          </div>
+
+          <aside class="hf-preview-pane" data-ref="previewPane" aria-label="列印預覽">
+            <div class="hf-preview-toolbar">
+              <div class="hf-preview-title">
+                <div class="hf-preview-title-main">
+                  <strong>PREVIEW</strong>
+                  <span>210 × 270 mm · ${COPY_WIDTH} COL</span>
+                </div>
+                <button type="button" class="hf-preview-print" data-action="printCurrentPatient" title="列印目前病人">PRINT</button>
+              </div>
+
+              <div class="hf-preview-controls">
+                <label>
+                  <span>字體</span>
+                  <select data-ref="previewFontSize">
+                    <option value="8">8 pt</option><option value="8.5">8.5 pt</option>
+                    <option value="9">9 pt</option><option value="9.5">9.5 pt</option>
+                    <option value="10">10 pt</option><option value="10.5">10.5 pt</option>
+                    <option value="11">11 pt</option><option value="11.5">11.5 pt</option>
+                    <option value="12">12 pt</option>
+                  </select>
+                </label>
+                <label>
+                  <span>行距</span>
+                  <select data-ref="previewLineHeight">
+                    <option value="1.05">1.05</option><option value="1.10">1.10</option>
+                    <option value="1.15">1.15</option><option value="1.20">1.20</option>
+                    <option value="1.25">1.25</option><option value="1.28">1.28</option>
+                    <option value="1.35">1.35</option><option value="1.40">1.40</option>
+                    <option value="1.45">1.45</option><option value="1.50">1.50</option>
+                  </select>
+                </label>
+                <label>
+                  <span>邊距</span>
+                  <select data-ref="previewMargin">
+                    <option value="3">3 mm</option><option value="5">5 mm</option>
+                    <option value="7">7 mm</option><option value="10">10 mm</option>
+                    <option value="12">12 mm</option><option value="15">15 mm</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div class="hf-preview-scroll">
+              <div class="hf-preview-pages" data-ref="previewPages"></div>
+            </div>
+          </aside>
+        </div>
       </main>
     </div>
 
@@ -524,12 +600,15 @@ export function render(){
             <option value="8">8 pt</option><option value="8.5">8.5 pt</option>
             <option value="9">9 pt</option><option value="9.5">9.5 pt</option>
             <option value="10">10 pt</option><option value="10.5">10.5 pt</option>
-            <option value="11">11 pt</option>
+            <option value="11">11 pt</option><option value="11.5">11.5 pt</option>
+            <option value="12">12 pt</option>
           </select></label>
           <label><span>行距</span><select data-ref="printLineHeight">
+            <option value="1.05">1.05</option><option value="1.10">1.10</option>
             <option value="1.15">1.15</option><option value="1.20">1.20</option>
             <option value="1.25">1.25</option><option value="1.28">1.28</option>
             <option value="1.35">1.35</option><option value="1.40">1.40</option>
+            <option value="1.45">1.45</option><option value="1.50">1.50</option>
           </select></label>
           <label><span>邊距</span>
           <select data-ref="printMargin">
@@ -590,11 +669,15 @@ class HandoffApp{
     this.previousRecord=null;
     this.recordCache=new Map();
     this.searchIndex=new Map();
+    this.todayNoteStatus=new Map();
     this.saveTimer=null;
     this.dirty=false;
     this.patientDirty=false;
     this.backgroundEditing=false;
     this.lastTextField=null;
+    this.previewOpen=false;
+    this.theme="light";
+    this.previewSettings={fontSize:9,lineHeight:1.28,margin:5};
 
     this.onInput=this.onInput.bind(this);
     this.onChange=this.onChange.bind(this);
@@ -616,6 +699,9 @@ class HandoffApp{
     this.bind();
     this.db=await openDb();
 
+    const savedTheme=await getSetting(this.db,"theme");
+    this.applyTheme(savedTheme==="dark"?"dark":"light",false);
+
     this.patients=(await getAll(this.db,"patients"))
       .map(normalizePatient)
       .sort(sortPatients);
@@ -627,6 +713,18 @@ class HandoffApp{
     }
 
     await this.rebuildSearchIndex();
+    await this.refreshTodayNoteStatus();
+
+    const savedPrint=await getSetting(this.db,"printSettings")||{};
+    this.previewSettings={
+      fontSize:["8","8.5","9","9.5","10","10.5","11", "11.5", "12"].includes(String(savedPrint.fontSize))
+        ?Number(savedPrint.fontSize):9,
+      lineHeight:["1.05", "1.10", "1.15","1.20","1.25","1.28","1.35","1.40","1.45","1.50"].includes(String(savedPrint.lineHeight))
+        ?Number(savedPrint.lineHeight):1.28,
+      margin:["3","5","7","10","12","15"].includes(String(savedPrint.margin))
+        ?Number(savedPrint.margin):5
+    };
+    this.syncPreviewControls();
 
     const savedId=await getSetting(this.db,"currentPatientId");
     const firstId=this.patients.some(p=>p.id===savedId)
@@ -645,6 +743,14 @@ class HandoffApp{
       dischargedPatientList:q('[data-ref="dischargedPatientList"]'),
       patientTitle:q('[data-ref="patientTitle"]'),
       finalizeBtn:q('[data-ref="finalizeBtn"]'),
+      themeToggle:q('[data-ref="themeToggle"]'),
+      previewToggle:q('[data-ref="previewToggle"]'),
+      previewPane:q('[data-ref="previewPane"]'),
+      previewScroll:q('.hf-preview-scroll'),
+      previewPages:q('[data-ref="previewPages"]'),
+      previewFontSize:q('[data-ref="previewFontSize"]'),
+      previewLineHeight:q('[data-ref="previewLineHeight"]'),
+      previewMargin:q('[data-ref="previewMargin"]'),
       date:q('[data-ref="date"]'),
       saveState:q('[data-ref="saveState"]'),
       recordBadge:q('[data-ref="recordBadge"]'),
@@ -729,6 +835,12 @@ class HandoffApp{
 
     this.lastTextField=el;
     if(this.r.symbolRail)this.r.symbolRail.hidden=false;
+
+    // Preview auto-follow only changes the preview scroll position.
+    // It deliberately leaves the <pre> rendering untouched so Preview/PRINT layout stays identical.
+    if(this.previewOpen){
+      requestAnimationFrame(()=>this.followPreviewForField(el));
+    }
   }
 
   onFocusOut(e){
@@ -931,6 +1043,7 @@ class HandoffApp{
     this.renderDerived();
     this.renderPatientHeader();
     this.renderApgarFields();
+    if(this.previewOpen)this.renderPreview();
   }
 
   async onChange(e){
@@ -956,6 +1069,14 @@ class HandoffApp{
     }
     if(e.target===this.r.weeklyFrom||e.target===this.r.weeklyTo){
       await this.updateWeeklyInfo();
+      return;
+    }
+    if(
+      e.target===this.r.previewFontSize||
+      e.target===this.r.previewLineHeight||
+      e.target===this.r.previewMargin
+    ){
+      await this.updatePreviewSettings();
       return;
     }
     if(e.target.matches("[data-print-patient]")){
@@ -1031,6 +1152,9 @@ class HandoffApp{
     const a=b.dataset.action;
 
     try{
+      if(a==="toggleTheme"){
+        return this.toggleTheme();
+      }
       if(a==="toggleBackupMenu"){
         if(this.r.backupMenu)this.r.backupMenu.hidden=!this.r.backupMenu.hidden;
         return;
@@ -1089,6 +1213,11 @@ class HandoffApp{
       }
       if(a==="today")return this.loadDate(todayISO(),true);
       if(a==="history")return this.openHistory();
+      if(a==="togglePreview"){
+        this.previewOpen=!this.previewOpen;
+        this.renderPreview();
+        return;
+      }
       if(a==="historyDate"){
         this.r.historyDialog?.close();
         return this.loadDate(b.dataset.date,true);
@@ -1120,6 +1249,7 @@ class HandoffApp{
       if(a==="copyWeekly"){
         return this.copyWeeklySummary();
       }
+      if(a==="printCurrentPatient")return this.printCurrentPatient();
       if(a==="printAllPatients")return this.openPrintSettings();
       if(a==="printSelectAll"){
         this.r.printPatientList?.querySelectorAll("[data-print-patient]").forEach(x=>x.checked=true);
@@ -1169,6 +1299,28 @@ class HandoffApp{
       console.error(err);
       alert(err.message||String(err));
     }
+  }
+
+  applyTheme(theme,persist=true){
+    const next=theme==="dark"?"dark":"light";
+    this.theme=next;
+    this.root.dataset.theme=next;
+
+    if(this.r?.themeToggle){
+      const dark=next==="dark";
+      this.r.themeToggle.textContent=dark?"☀":"☾";
+      this.r.themeToggle.setAttribute("aria-label",dark?"切換淺色模式":"切換深色模式");
+      this.r.themeToggle.title=dark?"切換淺色模式":"切換深色模式";
+      this.r.themeToggle.setAttribute("aria-pressed",dark?"true":"false");
+    }
+
+    if(persist&&this.db)setSetting(this.db,"theme",next).catch(console.error);
+  }
+
+  async toggleTheme(){
+    const next=this.theme==="dark"?"light":"dark";
+    this.applyTheme(next,false);
+    if(this.db)await setSetting(this.db,"theme",next);
   }
 
   async addSystem(){
@@ -1544,6 +1696,7 @@ class HandoffApp{
     }
 
     await this.rebuildSearchIndex();
+    await this.refreshTodayNoteStatus();
     const savedId=await getSetting(this.db,"currentPatientId");
     const id=this.patients.some(p=>p.id===savedId)?savedId:
       (this.patients.find(p=>p.status==="active")?.id||this.patients[0].id);
@@ -1707,6 +1860,7 @@ class HandoffApp{
     this.patientDirty=false;
     this.recordCache.delete(this.patient.id);
     await this.updateSearchIndexForPatient(this.patient.id);
+    this.updateTodayNoteStatusForCurrent();
 
     this.setSaveState(`已儲存 ${timeHHMM()}`);
     this.renderAll();
@@ -1749,6 +1903,7 @@ class HandoffApp{
 
     this.recordCache.delete(this.patient.id);
     await this.updateSearchIndexForPatient(this.patient.id);
+    this.updateTodayNoteStatusForCurrent();
     this.renderAll();
     this.setSaveState("今日已完成");
   }
@@ -1764,6 +1919,112 @@ class HandoffApp{
     this.renderRecordState();
     this.renderApgarFields();
     this.syncReadonly();
+    this.renderPreview();
+  }
+
+  syncPreviewControls(){
+    if(this.r.previewFontSize)this.r.previewFontSize.value=String(this.previewSettings.fontSize);
+    if(this.r.previewLineHeight)this.r.previewLineHeight.value=Number(this.previewSettings.lineHeight).toFixed(2);
+    if(this.r.previewMargin)this.r.previewMargin.value=String(this.previewSettings.margin);
+  }
+
+  async updatePreviewSettings(){
+    this.previewSettings={
+      fontSize:Number(this.r.previewFontSize?.value)||9,
+      lineHeight:Number(this.r.previewLineHeight?.value)||1.28,
+      margin:Number(this.r.previewMargin?.value)||5
+    };
+
+    // Preview shares appearance settings with PRINT, but does not change
+    // PRINT's multi-patient layout preference.
+    const saved=await getSetting(this.db,"printSettings")||{};
+    await setSetting(this.db,"printSettings",{
+      ...saved,
+      ...this.previewSettings,
+      pageWidth:210,
+      pageHeight:270
+    });
+    this.renderPreview();
+  }
+
+  renderPreview(){
+    this.root.classList.toggle("is-preview-open",this.previewOpen);
+
+    if(this.r.previewToggle){
+      this.r.previewToggle.classList.toggle("is-active",this.previewOpen);
+      this.r.previewToggle.setAttribute("aria-pressed",this.previewOpen?"true":"false");
+    }
+
+    if(!this.r.previewPages)return;
+    if(!this.previewOpen||!this.record||!this.patient){
+      this.r.previewPages.innerHTML="";
+      return;
+    }
+
+    this.syncPreviewControls();
+
+    const text=this.outputText("full").trim();
+    if(!text){
+      this.r.previewPages.innerHTML='<div class="hf-preview-empty">目前沒有可預覽的內容</div>';
+      return;
+    }
+
+    const {fontSize,lineHeight,margin}=this.previewSettings;
+    const linesPerPage=printLinesPerPage(fontSize,lineHeight,margin);
+    const pages=paginateHandoffText(text,linesPerPage);
+
+    this.r.previewPages.innerHTML=pages.map((page,index)=>`
+      <section class="hf-preview-page"
+        style="--hf-preview-margin:${margin}mm;--hf-preview-font:${fontSize}pt;--hf-preview-line:${lineHeight}">
+        <div class="hf-preview-page-no">${index+1}</div>
+        <pre>${escapeHTML(page.join("\n"))}</pre>
+      </section>
+    `).join("");
+  }
+
+  previewHeadingForField(el){
+    const path=String(el?.dataset?.field||"");
+    if(!path)return "";
+
+    if(path==="summary"||path==="vent"||path==="line"||path==="fluids")
+      return "[Today's Summary]";
+    if(path==="assessment")return "[IMP]";
+    if(path==="plan")return "[Plan]";
+
+    if(path.startsWith("systems.")){
+      const key=path.slice("systems.".length);
+      const item=getPatientSystemLayout(this.patient).find(x=>x.key===key);
+      return item?.label?`[${item.label}]`:"";
+    }
+
+    return "";
+  }
+
+  followPreviewForField(el){
+    if(!this.previewOpen||!this.r.previewScroll||!this.r.previewPages)return;
+
+    const heading=this.previewHeadingForField(el);
+    if(!heading)return;
+
+    // Reuse the exact same text + pagination as renderPreview(), without adding
+    // spans/anchors inside <pre>. This preserves line-height and WYSIWYG rendering.
+    const text=this.outputText("full").trim();
+    if(!text)return;
+
+    const {fontSize,lineHeight,margin}=this.previewSettings;
+    const pages=paginateHandoffText(text,printLinesPerPage(fontSize,lineHeight,margin));
+    const pageIndex=pages.findIndex(page=>
+      page.some(line=>String(line??"").trim()===heading)
+    );
+    if(pageIndex<0)return;
+
+    const pageEls=this.r.previewPages.querySelectorAll(".hf-preview-page");
+    const pageEl=pageEls[pageIndex];
+    if(!pageEl)return;
+
+    const scroller=this.r.previewScroll;
+    const target=Math.max(0,pageEl.offsetTop-12);
+    scroller.scrollTo({top:target,behavior:"smooth"});
   }
 
   renderApgarFields(){
@@ -2034,6 +2295,23 @@ class HandoffApp{
     this.searchIndex.set(patientId,buildSearchText(p,records));
   }
 
+  async refreshTodayNoteStatus(){
+    this.todayNoteStatus.clear();
+    const rows=await getByIndex(this.db,"dailyRecords","date",todayISO());
+    rows.forEach(raw=>{
+      const r=normalizeRecord(raw);
+      this.todayNoteStatus.set(r.patientId,r.status==="finalized"?"finalized":"draft");
+    });
+  }
+
+  updateTodayNoteStatusForCurrent(){
+    if(!this.patient||!this.record||this.record.date!==todayISO())return;
+    this.todayNoteStatus.set(
+      this.patient.id,
+      this.record.status==="finalized"?"finalized":"draft"
+    );
+  }
+
   renderPatientLists(query=""){
     const q=normalizeSearch(query);
 
@@ -2063,12 +2341,18 @@ class HandoffApp{
     const active=p.id===this.patient?.id;
     const snippet=q?this.searchSnippet(p,q):"";
     const transferLabel=p.status==="discharged"?"轉入":"轉出";
+    const todayStatus=this.todayNoteStatus.get(p.id)||"";
+    const statusMark=todayStatus==="finalized"?"✓":todayStatus==="draft"?"•":"";
+    const statusTitle=todayStatus==="finalized"?"今日已完成":todayStatus==="draft"?"今日已有草稿":"今日尚無紀錄";
 
     return `
       <div class="hf-patient-item ${active?"is-active":""}">
         <button class="hf-patient-row"
           data-action="patientSwitch" data-patient-id="${escapeAttr(p.id)}">
-          <span class="hf-bed">${escapeHTML(p.bed||"—")}</span>
+          <span class="hf-bed-wrap">
+            <span class="hf-bed">${escapeHTML(p.bed||"—")}</span>
+            ${statusMark?`<span class="hf-note-status is-${todayStatus}" title="${statusTitle}" aria-label="${statusTitle}">${statusMark}</span>`:""}
+          </span>
           <span class="hf-mrn">${escapeHTML(p.mrn||"—")}</span>
           ${snippet?`<small>${escapeHTML(snippet)}</small>`:""}
         </button>
@@ -2433,10 +2717,10 @@ class HandoffApp{
       return;
     }
 
-    const saved=await getSetting(this.db,"printSettings")||{};
+    const saved=await getSetting(this.db,"printSettings")||this.previewSettings||{};
     const layout=saved.layout==="compact"?"compact":"patient-page";
-    const fontSize=["8","8.5","9","9.5","10","10.5","11"].includes(String(saved.fontSize))?String(saved.fontSize):"9";
-    const lineHeight=["1.15","1.20","1.25","1.28","1.35","1.40"].includes(String(saved.lineHeight))?String(saved.lineHeight):"1.28";
+    const fontSize=["8","8.5","9","9.5","10","10.5","11", "11.5", "12"].includes(String(saved.fontSize))?String(saved.fontSize):"9";
+    const lineHeight=["1.05", "1.10", "1.15","1.20","1.25","1.28","1.35","1.40","1.45","1.50"].includes(String(saved.lineHeight))?String(saved.lineHeight):"1.28";
     const margin=["3","5","7","10","12","15"].includes(String(saved.margin))
       ?String(saved.margin)
       :"5";
@@ -2467,6 +2751,34 @@ class HandoffApp{
     if(this.r.printPatientCount)this.r.printPatientCount.textContent=`${selected} / ${boxes.length} 位`;
   }
 
+  async printCurrentPatient(){
+    if(!this.patient||!this.record)return;
+    await this.flush();
+    const {fontSize,lineHeight,margin}=this.previewSettings;
+    const text=this.outputText("full").trim();
+    if(!text){alert("目前病人沒有可列印的交班內容。");return;}
+    const printWindow=window.open("","_blank");
+    if(!printWindow){alert("瀏覽器阻擋了列印視窗，請允許此網站開啟彈出式視窗。");return;}
+    const printPages=paginateHandoffText(text,printLinesPerPage(fontSize,lineHeight,margin));
+    const pagesHtml=printPages.map((page,index)=>`
+      <section class="print-page ${index>0?"is-continuation":""}">
+        <pre>${escapeHTML(page.join("\n"))}</pre>
+      </section>`).join("");
+    printWindow.document.open();
+    printWindow.document.write(`<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><title>NeoAssist Handoff - ${escapeHTML(patientLabel(this.patient))}</title><style>
+      @page{size:210mm 270mm;margin:${margin}mm}
+      *{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff}
+      body{color:#000;font-family:"Cascadia Mono","Consolas","Microsoft JhengHei","Noto Sans TC",monospace}
+      .print-page{break-inside:avoid;page-break-inside:avoid}
+      .print-page.is-continuation{break-before:page;page-break-before:always}
+      pre{margin:0;white-space:pre-wrap;overflow-wrap:break-word;font-family:inherit;font-size:${fontSize}pt;font-weight:400;line-height:${lineHeight};color:#000}
+    </style></head><body>${pagesHtml}</body></html>`);
+    printWindow.document.close();
+    setTimeout(()=>{printWindow.focus();printWindow.print();},300);
+    this.setSaveState(`列印 · ${patientLabel(this.patient)}`);
+    setTimeout(()=>this.setSaveState(`已儲存 ${timeHHMM()}`),1500);
+  }
+
   async printAllPatients(){
     const selectedIds=[...(this.r.printPatientList?.querySelectorAll("[data-print-patient]:checked")||[])].map(x=>x.value);
 
@@ -2481,6 +2793,9 @@ class HandoffApp{
     const margin=Number(this.r.printMargin?.value)||5;
 
     await setSetting(this.db,"printSettings",{layout,fontSize,lineHeight,margin,pageWidth:210,pageHeight:270});
+    this.previewSettings={fontSize,lineHeight,margin};
+    this.syncPreviewControls();
+    if(this.previewOpen)this.renderPreview();
 
     const printWindow=window.open("","_blank");
     if(!printWindow){
@@ -2524,11 +2839,22 @@ class HandoffApp{
       return;
     }
 
-    const patientHtml=pages.map(({text})=>`<section class="patient"><pre>${escapeHTML(text)}</pre></section>`).join("");
+    const linesPerPage=printLinesPerPage(fontSize,lineHeight,margin);
+
+    const patientHtml=pages.map(({text})=>{
+      const printPages=paginateHandoffText(text,linesPerPage);
+      return `<section class="patient">${
+        printPages.map((page,index)=>`
+          <section class="print-page ${index>0?"is-continuation":""}">
+            <pre>${escapeHTML(page.join("\n"))}</pre>
+          </section>
+        `).join("")
+      }</section>`;
+    }).join("");
 
     const layoutCss=layout==="patient-page"
       ?`.patient{break-before:page;page-break-before:always;margin:0}.patient:first-child{break-before:auto;page-break-before:auto}`
-      :`.patient{margin:0 0 7mm;break-inside:avoid;page-break-inside:avoid}.patient:last-child{margin-bottom:0}`;
+      :`.patient{margin:0 0 7mm}.patient:last-child{margin-bottom:0}`;
 
     printWindow.document.open();
     printWindow.document.write(`
@@ -2543,6 +2869,8 @@ class HandoffApp{
             html,body{margin:0;padding:0;background:#fff}
             body{color:#000;font-family:"Cascadia Mono","Consolas","Microsoft JhengHei","Noto Sans TC",monospace}
             ${layoutCss}
+            .print-page{break-inside:avoid;page-break-inside:avoid}
+            .print-page.is-continuation{break-before:page;page-break-before:always}
             pre{margin:0;white-space:pre-wrap;overflow-wrap:break-word;font-family:inherit;font-size:${fontSize}pt;font-weight:400;line-height:${lineHeight};color:#000}
           </style>
         </head>
@@ -2634,6 +2962,30 @@ class HandoffApp{
   
         return " ".repeat(1+existing)+trimmed;
       }).join("\n");
+    };
+
+    // Vent / Line / Fluid
+    // 第一行接在 label 後面；後續手動換行使用 hanging indent
+    const formatSupport=(label,text)=>{
+      const raw=value(text);
+      if(!raw)return [];
+
+      const prefix=` ${label.padEnd(5," ")}: `;
+      const continuation=" ".repeat(displayWidth(prefix));
+
+      const rows=raw.split("\n");
+
+      return rows.map((line,index)=>{
+        const content=String(line??"").trim();
+
+        if(index===0){
+          return prefix+content;
+        }
+
+        return content
+          ?continuation+content
+          :"";
+      });
     };
   
   
@@ -2840,15 +3192,15 @@ class HandoffApp{
       }
   
       if(vent){
-        lines.push(` Vent : ${vent}`);
+        lines.push(...formatSupport("Vent",vent));
       }
-  
+
       if(line){
-        lines.push(` Line : ${line}`);
+        lines.push(...formatSupport("Line",line));
       }
-  
+
       if(fluid){
-        lines.push(` Fluid: ${fluid}`);
+        lines.push(...formatSupport("Fluid",fluid));
       }
     }
   
@@ -3751,13 +4103,22 @@ function wrapCopyText(text,width=COPY_WIDTH){
 
     if(!content)return indent;
 
-    // 如果這行是 # problem，
-    // 自動換行後 continuation 多縮排 2 spaces
+    // # problem：continuation 多縮排 2 spaces
     const isProblem=/^#\s*\S/.test(content);
 
-    const continuationIndent=isProblem
-      ?indent+"  "
-      :indent;
+    // Vent / Line / Fluid：continuation 對齊正文起始位置
+    // e.g.
+    //  Vent : NIMV PC 18/6 ...
+    //         continuation...
+    const supportMatch=content.match(/^(Vent\s*:|Line\s*:|Fluid\s*:)\s*/);
+
+    let continuationIndent=indent;
+
+    if(isProblem){
+      continuationIndent=indent+"  ";
+    }else if(supportMatch){
+      continuationIndent=indent+" ".repeat(displayWidth(supportMatch[0]));
+    }
 
     // 第一行可使用的寬度
     const firstAvailable=Math.max(
@@ -3879,6 +4240,119 @@ function splitByDisplayWidth(text,maxWidth){
 /* =========================================================
    END COPY TEXT WRAPPING
    ========================================================= */
+
+
+/* =========================================================
+   SECTION-AWARE PRINT PAGINATION
+   ========================================================= */
+
+function printLinesPerPage(fontSize=9,lineHeight=1.28,margin=5){
+  const pageHeight=270;
+  const usableHeightMm=Math.max(20,pageHeight-(Number(margin)||0)*2);
+  const mmToPx=96/25.4;
+  const linePx=(Number(fontSize)||9)*(96/72)*(Number(lineHeight)||1.28);
+  return Math.max(1,Math.floor((usableHeightMm*mmToPx)/linePx));
+}
+
+function isHandoffSectionHeading(line){
+  const s=String(line??"").trim();
+  return /^\[[^\]]+\](?:\s+.*)?$/.test(s);
+}
+
+function isHandoffRule(line){
+  const s=String(line??"").trim();
+  return s.length>=8 && (/^═+$/.test(s)||/^-+$/.test(s));
+}
+
+function splitHandoffSections(text){
+  const lines=String(text??"").replace(/\r/g,"").split("\n");
+  const blocks=[];
+  let current=[];
+
+  const push=()=>{
+    if(current.length){
+      blocks.push(current);
+      current=[];
+    }
+  };
+
+  lines.forEach((line,index)=>{
+    const heading=isHandoffSectionHeading(line);
+    const rule=isHandoffRule(line);
+
+    // A section starts at [RESP], [IMP], [Today's Summary], [Plan], etc.
+    // Keep a separator immediately before the heading with that section.
+    if(heading){
+      if(current.length && isHandoffRule(current.at(-1))){
+        const separator=current.pop();
+        push();
+        current=[separator,line];
+      }else{
+        push();
+        current=[line];
+      }
+      return;
+    }
+
+    // Header heavy rules stay with the patient header rather than becoming
+    // independent blocks.
+    if(rule && index>1){
+      current.push(line);
+      return;
+    }
+
+    current.push(line);
+  });
+
+  push();
+  return blocks;
+}
+
+function paginateHandoffText(text,linesPerPage){
+  const capacity=Math.max(4,Number(linesPerPage)||1);
+  const pages=[[]];
+
+  const page=()=>pages.at(-1);
+  const remaining=()=>capacity-page().length;
+  const newPage=()=>{
+    if(page().length)pages.push([]);
+  };
+
+  const appendLongBlock=(block)=>{
+    let rest=[...block];
+
+    while(rest.length){
+      // Orphan protection: do not leave only a section heading (or separator +
+      // heading) at the bottom. Move the start to the next page when possible.
+      const headingOffset=isHandoffRule(rest[0])&&isHandoffSectionHeading(rest[1])?1:0;
+      const minStart=Math.min(rest.length,headingOffset+3);
+
+      if(page().length && remaining()<minStart)newPage();
+
+      const take=Math.min(remaining(),rest.length);
+      page().push(...rest.splice(0,take));
+
+      if(rest.length)newPage();
+    }
+  };
+
+  splitHandoffSections(text).forEach(block=>{
+    if(!block.length)return;
+
+    // Short section: keep the whole block together whenever it fits on one page.
+    if(block.length<=capacity){
+      if(page().length && block.length>remaining())newPage();
+      page().push(...block);
+      return;
+    }
+
+    // Oversized section: it must split, but protect its heading from becoming
+    // an orphan at the bottom of a page.
+    appendLongBlock(block);
+  });
+
+  return pages.filter(p=>p.length);
+}
 
 function recordId(pid,date){return `${pid}::${date}`;}
 
@@ -4250,6 +4724,33 @@ const STYLES=`
   --accent:#4b4743;
   --active:#efe9e1;
 
+  /* semantic theme tokens */
+  --surface:#fff;
+  --surface-soft:#faf8f5;
+  --surface-muted:#f3efe9;
+  --surface-hover:#eee9e2;
+  --surface-active:#efe9e1;
+  --control-bg:#fff;
+  --control-hover:#eee9e2;
+  --control-focus:#f3eee8;
+  --control-border:#cfc8bf;
+  --control-border-strong:#bdb6ae;
+  --control-text:#5c5650;
+  --label-bg:#fbf9f6;
+  --label-text:#6f6963;
+  --subtle-text:#8a837c;
+  --menu-shadow:#0003;
+  --dialog-bg:#faf8f5;
+  --dialog-footer:#faf8f5f2;
+  --selection-bg:#cfc6bc;
+  --selection-text:#242220;
+  --danger:#9b4949;
+  --danger-bg:#fbefef;
+  --alert-bg:#fbf6ed;
+  --alert-hover:#f8efe5;
+  --alert-border:#9b5b55;
+  --alert-text:#554b3f;
+
   --font-ui:
     Arial,
     "Microsoft JhengHei",
@@ -4267,7 +4768,7 @@ const STYLES=`
   background:var(--bg);
   min-height:760px;
   border-radius:8px;
-  overflow:hidden;
+  overflow:visible;
 }
 
 .hf[data-tool="handoff"] *{
@@ -4375,7 +4876,7 @@ const STYLES=`
   min-width:130px;
   padding:5px;
 
-  background:#fff;
+  background:var(--control-bg);
   border:1px solid var(--line);
   border-radius:7px;
   box-shadow:0 8px 24px #0003;
@@ -4389,7 +4890,7 @@ const STYLES=`
   border:0;
   border-radius:4px;
 
-  background:#fff;
+  background:var(--control-bg);
   color:var(--ink);
 
   text-align:left;
@@ -4400,7 +4901,7 @@ const STYLES=`
 }
 
 .hf-backup-menu button:hover{
-  background:#f3efe9;
+  background:var(--surface-muted);
 }
 
 /* =========================
@@ -4430,10 +4931,10 @@ const STYLES=`
   width:100%;
   height:38px;
 
-  border:1px solid #cfc8bf;
+  border:1px solid var(--control-border);
   border-radius:6px;
 
-  background:#fff;
+  background:var(--control-bg);
   padding:0 6px;
 
   font-family:var(--font-ui);
@@ -4458,7 +4959,7 @@ const STYLES=`
   border:1px solid var(--line);
   border-radius:6px;
 
-  background:#fff;
+  background:var(--control-bg);
   cursor:pointer;
 
   font-size:12px;
@@ -4466,7 +4967,7 @@ const STYLES=`
 }
 
 .hf-new-patient:hover{
-  background:#f3efe9;
+  background:var(--surface-muted);
 }
 
 .hf-patient-group + .hf-patient-group{
@@ -4544,7 +5045,7 @@ const STYLES=`
   border:0;
   border-radius:5px;
   background:transparent;
-  color:#8a837c;
+  color:var(--subtle-text);
   font-size:17px;
   line-height:1;
   cursor:pointer;
@@ -4562,7 +5063,7 @@ const STYLES=`
   z-index:40;
   min-width:112px;
   padding:5px;
-  background:#fff;
+  background:var(--control-bg);
   border:1px solid var(--line);
   border-radius:7px;
   box-shadow:0 8px 24px #0002;
@@ -4577,7 +5078,7 @@ const STYLES=`
   padding:0 9px;
   border:0;
   border-radius:4px;
-  background:#fff;
+  background:var(--control-bg);
   color:var(--ink);
   text-align:left;
   font-size:11px;
@@ -4588,6 +5089,28 @@ const STYLES=`
 .hf-patient-menu-divider{height:1px;margin:4px 2px;background:var(--line2)}
 .hf-patient-menu .hf-danger-text{color:#9b4949}
 .hf-patient-menu .hf-danger-text:hover{background:#fbefef}
+
+.hf-bed-wrap{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  min-width:0;
+}
+
+.hf-note-status{
+  display:inline-block;
+  flex:0 0 auto;
+  width:8px;
+  text-align:center;
+  font-family:var(--font-ui);
+  font-size:10px;
+  font-weight:700;
+  line-height:1;
+}
+
+.hf-note-status.is-finalized{color:#607565}
+.hf-note-status.is-draft{color:#9a8170;font-size:12px}
 
 .hf-bed{
   font-family:var(--font-clinical);
@@ -4652,6 +5175,143 @@ const STYLES=`
 .hf-main{
   min-width:0;
   padding:18px 22px 34px;
+}
+
+.hf-workspace{
+  display:block;
+}
+
+.hf-editor-pane{
+  min-width:0;
+}
+
+.hf-preview-pane{
+  display:none;
+  min-width:0;
+}
+
+.hf.is-preview-open .hf-workspace{
+  display:grid;
+  grid-template-columns:minmax(0,11fr) minmax(0,9fr);
+  gap:14px;
+  align-items:start;
+}
+
+.hf.is-preview-open .hf-preview-pane{
+  display:block;
+  position:sticky;
+  top:10px;
+  height:calc(100vh - 84px);
+  min-height:620px;
+  overflow:hidden;
+  border:1px solid var(--line);
+  border-radius:7px;
+  background:#e8e3dc;
+}
+
+.hf-preview-toolbar{
+  position:relative;
+  z-index:3;
+  padding:9px 10px 10px;
+  border-bottom:1px solid var(--line);
+  background:var(--surface-soft);
+}
+
+.hf-preview-title{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:8px;
+}
+.hf-preview-title-main{display:flex;align-items:baseline;gap:8px;min-width:0}
+.hf-preview-title-main strong{font-size:11px;letter-spacing:.08em}
+.hf-preview-title-main span{color:var(--muted);font-size:10px}
+.hf-preview-print{flex:0 0 auto;height:28px;padding:0 10px;border:1px solid var(--control-border-strong);border-radius:5px;background:var(--control-bg);color:#4b4743;font-size:10px;font-weight:700;letter-spacing:.04em;cursor:pointer}
+.hf-preview-print:hover{background:#eee9e2}
+
+.hf-preview-controls{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:6px;
+}
+
+.hf-preview-controls label{
+  display:grid;
+  gap:3px;
+  min-width:0;
+}
+
+.hf-preview-controls label>span{
+  color:var(--label-text);
+  font-size:9px;
+  font-weight:600;
+}
+
+.hf-preview-controls select{
+  width:100%;
+  min-width:0;
+  height:29px;
+  padding:0 5px;
+  border:1px solid var(--control-border);
+  border-radius:5px;
+  background:var(--control-bg);
+  color:var(--ink);
+  font-family:var(--font-ui);
+  font-size:10px;
+}
+
+.hf-preview-scroll{
+  height:calc(100% - 88px);
+  overflow:auto;
+  padding:16px;
+}
+
+.hf-preview-pages{
+  display:grid;
+  justify-items:center;
+  gap:16px;
+}
+
+.hf-preview-page{
+  position:relative;
+  width:210mm;
+  height:270mm;
+  padding:var(--hf-preview-margin);
+  overflow:hidden;
+  flex:none;
+  background:#fff;
+  color:#000;
+  box-shadow:0 2px 10px #0002;
+  transform-origin:top center;
+  /* Scale an actual 210 × 270 mm sheet to fit the preview column. */
+  zoom:min(1, calc((100vw - 190px) * .40 / 794px));
+}
+
+
+.hf-preview-page pre{
+  margin:0;
+  white-space:pre-wrap;
+  overflow-wrap:break-word;
+  font-family:"Cascadia Mono","Consolas","Microsoft JhengHei","Noto Sans TC",monospace;
+  font-size:var(--hf-preview-font);
+  font-weight:400;
+  line-height:var(--hf-preview-line);
+  color:#000;
+}
+
+.hf-preview-page-no{
+  position:absolute;
+  right:4mm;
+  bottom:2mm;
+  color:#aaa;
+  font:8pt Arial,sans-serif;
+}
+
+.hf-preview-empty{
+  padding:30px;
+  color:var(--muted);
+  font-size:12px;
 }
 
 .hf-header{
@@ -4753,10 +5413,10 @@ const STYLES=`
 .hf-dialog-actions button{
   height:34px;
 
-  border:1px solid #cfc8bf;
+  border:1px solid var(--control-border);
   border-radius:6px;
 
-  background:#fff;
+  background:var(--control-bg);
   color:var(--ink);
 
   padding:0 11px;
@@ -4767,7 +5427,36 @@ const STYLES=`
 
 .hf-actions > button:hover,
 .hf-dialog-actions button:hover{
-  background:#f3efe9;
+  background:var(--surface-muted);
+}
+
+.hf-preview-toggle{
+  height:34px;
+  padding:0 13px;
+
+  border:1px solid var(--control-border-strong) !important;
+  border-radius:7px;
+
+  background:#fff !important;
+  color:#5c5650 !important;
+
+  font-family:var(--font-ui);
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.03em;
+
+  cursor:pointer;
+}
+
+.hf-preview-toggle:hover{
+  background:#eee9e2 !important;
+  color:#2f2b28 !important;
+}
+
+.hf-preview-toggle.is-active{
+  background:var(--accent) !important;
+  border-color:var(--accent) !important;
+  color:#fff !important;
 }
 
 .hf-primary{
@@ -4783,11 +5472,11 @@ const STYLES=`
 .hf-output-group{
   display:flex;
 
-  border:1px solid #bdb6ae;
+  border:1px solid var(--control-border-strong);
   border-radius:7px;
 
   overflow:hidden;
-  background:#fff;
+  background:var(--control-bg);
 }
 
 .hf-output-group button{
@@ -4829,11 +5518,11 @@ const STYLES=`
 
   height:34px;
 
-  border:1px solid #bdb6ae;
+  border:1px solid var(--control-border-strong);
   border-radius:7px;
 
   overflow:hidden;
-  background:#fff;
+  background:var(--control-bg);
 }
 
 .hf-date-group button{
@@ -4843,7 +5532,7 @@ const STYLES=`
   border-right:1px solid #bdb6ae;
   border-radius:0;
 
-  background:#fff;
+  background:var(--control-bg);
   color:var(--ink);
 
   padding:0 11px;
@@ -4855,7 +5544,7 @@ const STYLES=`
 }
 
 .hf-date-group button:hover{
-  background:#eee9e2;
+  background:var(--surface-hover);
 }
 
 .hf-date-group button:last-child{
@@ -4869,7 +5558,7 @@ const STYLES=`
   border-right:1px solid #bdb6ae;
   border-radius:0;
 
-  background:#fff;
+  background:var(--control-bg);
 
   padding:0 9px;
 
@@ -4883,7 +5572,7 @@ const STYLES=`
 
 .hf-date-group input[type="date"]:focus{
   outline:none;
-  background:#faf8f5;
+  background:var(--surface-soft);
 }
 
 .hf-date-group .hf-date-arrow{
@@ -4967,7 +5656,7 @@ const STYLES=`
   padding:0 8px;
   border:1px solid #d4ccc3;
   border-radius:5px;
-  background:#fff;
+  background:var(--control-bg);
   color:#776f68;
   font-size:10px;
   font-weight:600;
@@ -5078,10 +5767,10 @@ const STYLES=`
   height:26px;
   padding:0 9px;
 
-  border:1px solid #d3ccc4;
+  border:1px solid var(--control-border);
   border-radius:5px;
 
-  background:#fff;
+  background:var(--control-bg);
   color:#625c56;
 
   font-size:11px;
@@ -5090,7 +5779,7 @@ const STYLES=`
 }
 
 .hf-heading-action:hover{
-  background:#eee9e2;
+  background:var(--surface-hover);
   color:var(--ink);
 }
 
@@ -5146,7 +5835,7 @@ const STYLES=`
   align-items:center;
   justify-content:center;
 
-  background:#fbf9f6;
+  background:var(--label-bg);
   border-right:1px solid var(--line2);
 
   font-family:var(--font-ui);
@@ -5184,7 +5873,7 @@ const STYLES=`
   padding:8px 14px;
 
   border-bottom:1px solid var(--line2);
-  background:#fff;
+  background:var(--control-bg);
 }
 
 .hf-age-metrics{
@@ -5288,7 +5977,7 @@ const STYLES=`
   border:0;
   resize:none;
 
-  background:#fff;
+  background:var(--control-bg);
 
   padding:10px 12px;
 
@@ -5325,7 +6014,7 @@ const STYLES=`
   align-items:center;
   justify-content:center;
 
-  background:#fbf9f6;
+  background:var(--label-bg);
 
   border-right:1px solid var(--line2);
 
@@ -5342,7 +6031,7 @@ const STYLES=`
   border:0;
   resize:none;
 
-  background:#fff;
+  background:var(--control-bg);
 
   padding:8px 10px;
 
@@ -5371,7 +6060,7 @@ const STYLES=`
   display:grid;
   grid-template-columns:72px minmax(0,1fr);
   border-bottom:1px solid var(--line2);
-  background:#fff;
+  background:var(--control-bg);
 }
 
 .hf-system-row.is-dragging{
@@ -5399,7 +6088,7 @@ const STYLES=`
   align-items:center;
   gap:1px;
   padding:7px 2px;
-  background:#fbf9f6;
+  background:var(--label-bg);
   border-right:1px solid var(--line2);
 }
 
@@ -5421,7 +6110,7 @@ const STYLES=`
 }
 
 .hf-system-drag:active{cursor:grabbing}
-.hf-system-drag:hover{background:#eee9e2;color:#625c56}
+.hf-system-drag:hover{background:var(--surface-hover);color:#625c56}
 
 .hf-system-remove{
   font-size:17px;
@@ -5431,7 +6120,7 @@ const STYLES=`
 
 .hf-system-row:hover .hf-system-remove,
 .hf-system-remove:focus-visible{opacity:1}
-.hf-system-remove:hover{background:#fbefef;color:#9b4949}
+.hf-system-remove:hover{background:var(--danger-bg);color:#9b4949}
 
 .hf-system-name{
   width:100%;
@@ -5465,7 +6154,7 @@ const STYLES=`
   width:100%;
   border:0;
   resize:none;
-  background:#fff;
+  background:var(--control-bg);
   padding:9px 11px;
   font-family:var(--font-clinical);
   font-size:14px;
@@ -5482,8 +6171,8 @@ const STYLES=`
   min-height:38px;
   border:0;
   border-top:0;
-  background:#fbf9f6;
-  color:#8a837c;
+  background:var(--label-bg);
+  color:var(--subtle-text);
   text-align:left;
   padding:0 14px;
   font-size:11px;
@@ -5492,7 +6181,7 @@ const STYLES=`
 }
 
 .hf-add-system-row:hover{
-  background:#f3efe9;
+  background:var(--surface-muted);
   color:var(--ink);
 }
 
@@ -5618,7 +6307,7 @@ const STYLES=`
 .hf-dialog-card{
   width:min(460px,92vw);
 
-  background:#faf8f5;
+  background:var(--dialog-bg);
   padding:18px;
 }
 
@@ -5662,7 +6351,7 @@ const STYLES=`
   font-size:10px;
   font-weight:700;
   letter-spacing:.10em;
-  color:#8a837c;
+  color:var(--subtle-text);
 }
 
 .hf-bg-form-grid{
@@ -5685,15 +6374,15 @@ const STYLES=`
 .hf-dialog-text > span{
   font-size:11px;
   font-weight:600;
-  color:#6f6963;
+  color:var(--label-text);
 }
 
 /* Background dialog controls — one visual system */
 .hf-bg-dialog-card input{
   height:36px;
-  border:1px solid #cfc8bf;
+  border:1px solid var(--control-border);
   border-radius:6px;
-  background:#fff;
+  background:var(--control-bg);
   color:var(--ink);
   padding:0 9px;
 
@@ -5705,9 +6394,9 @@ const STYLES=`
 
 .hf-bg-dialog-card textarea{
   width:100%;
-  border:1px solid #cfc8bf;
+  border:1px solid var(--control-border);
   border-radius:6px;
-  background:#fff;
+  background:var(--control-bg);
   color:var(--ink);
 
   font-family:var(--font-clinical);
@@ -5773,7 +6462,7 @@ const STYLES=`
 .hf-birth-row > label > span{
   font-size:11px;
   font-weight:600;
-  color:#6f6963;
+  color:var(--label-text);
 }
 
 .hf-birth-apgar{
@@ -5806,7 +6495,7 @@ const STYLES=`
   font-family:var(--font-ui);
   font-size:11px;
   font-weight:700;
-  color:#6f6963;
+  color:var(--label-text);
 }
 
 .hf-apgar-cell{
@@ -5851,15 +6540,15 @@ const STYLES=`
 .hf-field-label-row > span{
   font-size:11px;
   font-weight:600;
-  color:#6f6963;
+  color:var(--label-text);
 }
 
 .hf-template-btn{
   height:24px;
   padding:0 8px;
-  border:1px solid #d3ccc4;
+  border:1px solid var(--control-border);
   border-radius:5px;
-  background:#fff;
+  background:var(--control-bg);
   color:#625c56;
   font-size:10px;
   font-weight:600;
@@ -5867,7 +6556,7 @@ const STYLES=`
 }
 
 .hf-template-btn:hover{
-  background:#eee9e2;
+  background:var(--surface-hover);
   color:var(--ink);
 }
 
@@ -5925,7 +6614,7 @@ const STYLES=`
   margin:4px -18px -18px;
   padding:12px 18px;
   border-top:1px solid var(--line);
-  background:#faf8f5f2;
+  background:var(--dialog-footer);
   backdrop-filter:blur(4px);
 }
 
@@ -5995,17 +6684,17 @@ const STYLES=`
 .hf-new-patient-form label > span{
   font-size:12px;
   font-weight:600;
-  color:#6f6963;
+  color:var(--label-text);
 }
 
 .hf-new-patient-form input{
   width:100%;
   height:38px;
 
-  border:1px solid #cfc8bf;
+  border:1px solid var(--control-border);
   border-radius:6px;
 
-  background:#fff;
+  background:var(--control-bg);
   color:var(--ink);
 
   padding:0 10px;
@@ -6019,7 +6708,7 @@ const STYLES=`
   outline:none !important;
   box-shadow:none !important;
   border-color:#9f9890 !important;
-  background:#fff;
+  background:var(--control-bg);
 }
 
 /* =========================
@@ -6049,10 +6738,10 @@ const STYLES=`
 .hf-weekly-presets button{
   height:32px;
 
-  border:1px solid #cfc8bf;
+  border:1px solid var(--control-border);
   border-radius:6px;
 
-  background:#fff;
+  background:var(--control-bg);
   color:var(--ink);
 
   padding:0 11px;
@@ -6061,7 +6750,7 @@ const STYLES=`
 }
 
 .hf-weekly-presets button:hover{
-  background:#f3efe9;
+  background:var(--surface-muted);
 }
 
 .hf-weekly-range{
@@ -6076,7 +6765,7 @@ const STYLES=`
   border:1px solid var(--line);
   border-radius:7px;
 
-  background:#fff;
+  background:var(--control-bg);
 }
 
 .hf-weekly-range label{
@@ -6093,10 +6782,10 @@ const STYLES=`
 .hf-weekly-range input{
   height:36px;
 
-  border:1px solid #cfc8bf;
+  border:1px solid var(--control-border);
   border-radius:5px;
 
-  background:#fff;
+  background:var(--control-bg);
 
   padding:0 8px;
 
@@ -6153,8 +6842,8 @@ const STYLES=`
 
 .hf-print-card{width:min(700px,94vw);max-height:86vh;overflow:auto}
 .hf-print-settings{display:grid;gap:8px;margin-top:14px}
-.hf-print-setting-title{font-size:11px;font-weight:700;color:#6f6963;letter-spacing:.04em}
-.hf-print-option{display:grid!important;grid-template-columns:20px minmax(0,1fr)!important;gap:9px!important;align-items:start!important;margin:0!important;padding:10px 11px;border:1px solid var(--line);border-radius:7px;background:#fff;cursor:pointer}
+.hf-print-setting-title{font-size:11px;font-weight:700;color:var(--label-text);letter-spacing:.04em}
+.hf-print-option{display:grid!important;grid-template-columns:20px minmax(0,1fr)!important;gap:9px!important;align-items:start!important;margin:0!important;padding:10px 11px;border:1px solid var(--line);border-radius:7px;background:var(--control-bg);cursor:pointer}
 .hf-print-option input{width:15px!important;height:15px!important;margin:2px 0 0!important}
 .hf-print-option span{display:grid;gap:2px}
 .hf-print-option strong{font-size:12px}
@@ -6163,7 +6852,7 @@ const STYLES=`
 .hf-print-controls{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:13px;}
 .hf-print-controls label{display:grid;grid-template-columns:90px minmax(0,1fr);align-items:center;gap:10px;margin:0}
 .hf-print-controls label>span{font-size:11px;font-weight:600;color:#6f6963}
-.hf-print-controls select{width:100%;height:34px;border:1px solid #cfc8bf;border-radius:6px;background:#fff;padding:0 8px;color:var(--ink);font-family:var(--font-ui);font-size:12px}
+.hf-print-controls select{width:100%;height:34px;border:1px solid var(--control-border);border-radius:6px;background:var(--control-bg);padding:0 8px;color:var(--ink);font-family:var(--font-ui);font-size:12px}
 
 .hf-print-patients{margin-top:14px;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:#fff}
 .hf-print-patient-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border-bottom:1px solid var(--line2);background:#f6f2ed}
@@ -6171,7 +6860,7 @@ const STYLES=`
 .hf-print-patient-head strong{font-size:12px}
 .hf-print-patient-head small{color:var(--muted);font-size:11px}
 .hf-print-patient-head>div:last-child{display:flex;gap:5px}
-.hf-print-patient-head button{height:27px;border:1px solid #cfc8bf;border-radius:5px;background:#fff;color:var(--ink);padding:0 8px;font-size:10px;cursor:pointer}
+.hf-print-patient-head button{height:27px;border:1px solid var(--control-border);border-radius:5px;background:var(--control-bg);color:var(--ink);padding:0 8px;font-size:10px;cursor:pointer}
 .hf-print-patient-head button:hover{background:#eee9e2}
 
 .hf-print-patient-list{max-height:300px;overflow:auto}
@@ -6213,7 +6902,7 @@ const STYLES=`
   border:1px solid var(--line);
   border-radius:7px;
 
-  background:#fff;
+  background:var(--control-bg);
 
   cursor:pointer;
 }
@@ -6263,7 +6952,7 @@ const STYLES=`
 .hf-history-head button{
   border:1px solid var(--line);
   border-radius:5px;
-  background:#fff;
+  background:var(--control-bg);
   padding:6px 10px;
   cursor:pointer;
 }
@@ -6279,7 +6968,7 @@ const STYLES=`
   display:grid;
   grid-template-columns:minmax(0,1fr) 42px;
   align-items:stretch;
-  background:#fff;
+  background:var(--control-bg);
   border-bottom:1px solid var(--line2);
 }
 
@@ -6334,7 +7023,7 @@ const STYLES=`
   border:0!important;
   border-radius:5px!important;
   background:transparent!important;
-  color:#8a837c;
+  color:var(--subtle-text);
   font-size:18px;
   line-height:1;
   cursor:pointer;
@@ -6352,7 +7041,7 @@ const STYLES=`
   z-index:60;
   min-width:130px;
   padding:5px;
-  background:#fff;
+  background:var(--control-bg);
   border:1px solid var(--line);
   border-radius:7px;
   box-shadow:0 8px 24px #0002;
@@ -6367,7 +7056,7 @@ const STYLES=`
   padding:0 10px;
   border:0;
   border-radius:4px;
-  background:#fff;
+  background:var(--control-bg);
   text-align:left;
   font-size:12px;
   cursor:pointer;
@@ -6394,9 +7083,290 @@ const STYLES=`
   color:#555;
 }
 
+
+/* =========================
+   THEME TOGGLE / DARK MODE
+========================= */
+
+.hf-theme-toggle{
+  width:36px;
+  height:32px;
+  border:1px solid #666;
+  border-radius:6px;
+  background:transparent;
+  color:#fff;
+  font-size:16px;
+  line-height:1;
+  cursor:pointer;
+}
+.hf-theme-toggle:hover{background:#ffffff18}
+
+/* Warm charcoal theme. Preview paper remains intentionally white. */
+.hf[data-tool="handoff"][data-theme="dark"]{
+  --bg:#1c1b1a;
+  --panel:#252321;
+  --soft:#2b2926;
+  --ink:#e8e3dc;
+  --muted:#aaa39b;
+  --line:#45413d;
+  --line2:#373431;
+  --accent:#b8aea3;
+  --active:#34302c;
+
+  --surface:#252321;
+  --surface-soft:#2b2926;
+  --surface-muted:#302d2a;
+  --surface-hover:#37332f;
+  --surface-active:#34302c;
+  --control-bg:#292725;
+  --control-hover:#34312e;
+  --control-focus:#38342f;
+  --control-border:#514b45;
+  --control-border-strong:#4c4742;
+  --control-text:#d8d1c9;
+  --label-bg:#292725;
+  --label-text:#b8b0a7;
+  --subtle-text:#aaa29a;
+  --menu-shadow:#0008;
+  --dialog-bg:#252321;
+  --dialog-footer:#252321f2;
+  --selection-bg:#b8aea3;
+  --selection-text:#1f1d1b;
+  --danger:#d88f89;
+  --danger-bg:#3b2928;
+  --alert-bg:#2d2725;
+  --alert-hover:#332a28;
+  --alert-border:#76504c;
+  --alert-text:#ded5cc;
+
+  color-scheme:dark;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-app-header{
+  background:#171615;
+  border-bottom-color:#3f3b37;
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-left{background:#211f1d}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-search,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-new-patient,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-backup-menu,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-backup-menu button,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-patient-menu,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-patient-menu button,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-actions > button,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog-actions button,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-output-group,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-output-group button,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-date-group,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-date-group button,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-date-group input[type="date"],
+.hf[data-tool="handoff"][data-theme="dark"] .hf-heading-action,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-add-alert,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-template-btn,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-weekly-presets button,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-weekly-range,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-weekly-range input,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-print-option,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-print-controls select,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-print-patients,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-print-patient-head button,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-restore-options label,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-history-head button,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-history-entry,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-history-menu,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-history-menu button{
+  background:var(--control-bg);
+  color:var(--ink);
+  border-color:var(--control-border-strong);
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-preview-toggle{
+  background:var(--control-bg)!important;
+  color:#d8d1c9!important;
+  border-color:var(--control-border-strong)!important;
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-preview-toggle:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-output-group button:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-date-group button:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-heading-action:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-template-btn:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-weekly-presets button:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-print-patient-head button:hover{
+  background:var(--surface-hover)!important;
+  color:#f2eee9!important;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-primary,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-preview-toggle.is-active{
+  background:#b8aea3!important;
+  border-color:#b8aea3!important;
+  color:#211f1d!important;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-patient-item:hover{background:#2c2926}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-patient-more:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-history-more:hover{
+  background:#3a3632!important;
+  color:var(--ink);
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-backup-menu button:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-patient-menu button:hover{
+  background:var(--surface-hover);
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-patient-menu .hf-danger-text,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-history-menu .hf-danger-text{color:#d88f89}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-patient-menu .hf-danger-text:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-history-menu .hf-danger-text:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-system-remove:hover{
+  background:#422d2c;
+  color:#efa49d;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-preview-pane{background:#161514}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-preview-toolbar{background:var(--dialog-bg)}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-preview-controls label>span{color:var(--muted)}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-preview-controls select{
+  background:var(--control-bg);
+  color:var(--ink);
+  border-color:var(--control-border-strong);
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-preview-print{
+  background:var(--control-bg);
+  color:var(--ink);
+  border-color:var(--control-border-strong);
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-preview-print:hover{background:var(--surface-hover)}
+
+/* WYSIWYG print preview is deliberately theme-independent. */
+.hf[data-tool="handoff"][data-theme="dark"] .hf-preview-page{
+  background:#fff;
+  color:#000;
+  box-shadow:0 3px 18px #0008;
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-preview-page pre{color:#000}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-preview-page-no{color:#aaa}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-record-badge{
+  background:#393531;
+  color:#c2bab1;
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-record-badge.is-final{
+  background:#29362d;
+  color:#a8c0ad;
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-note-status.is-finalized{color:#91aa96}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-note-status.is-draft{color:#c19e86}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-alert-strip{
+  border-color:#80534f;
+  background:#352b27;
+  color:#e3d5c7;
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-alert-strip:hover{background:#3d302b}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-alert-strip small{color:#cf958f}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-alert-strip strong{
+  background:#a9655f;
+  color:#fff;
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-add-alert:hover{
+  border-color:#9d6b66;
+  color:#e3a19a;
+  background:#352827;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-bg-row > span,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-support-row > span,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-system-label,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-add-system-row{
+  background:var(--control-bg);
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-metrics,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-summary,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-large-text,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-support-row textarea,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-system-row,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-system-row textarea{
+  background:var(--panel);
+  color:var(--ink);
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-fact > span,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-team{color:#b9b1a8}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-metric input:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-system-name:hover{background:#322f2c}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-metric input:focus,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-system-name:focus{
+  background:var(--control-hover)!important;
+  box-shadow:inset 0 -1px 0 #817970!important;
+}
+.hf[data-tool="handoff"][data-theme="dark"] textarea::placeholder,
+.hf[data-tool="handoff"][data-theme="dark"] input::placeholder{color:#77716b}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-symbol-rail{
+  background:#272421ee;
+  box-shadow:0 4px 18px #0007;
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-symbol-rail button{color:#c5bdb4}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-symbol-rail button:hover{
+  background:#393530;
+  color:#f0ebe5;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog{background:var(--dialog-bg);color:var(--ink)}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog::backdrop{background:#0009}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog-card{background:var(--dialog-bg);color:var(--ink)}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-bg-dialog-card input,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-bg-dialog-card textarea,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-new-patient-form input{
+  background:#302d2a;
+  color:var(--ink);
+  border-color:var(--control-border);
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-alert-dialog-field textarea{
+  background:#312826;
+  color:var(--ink);
+  border-color:#76504c;
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog-actions{
+  background:var(--dialog-footer);
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-weekly-info{
+  background:#302d2a;
+  color:#c5bdb4;
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-print-patient-head{background:#302d2a}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-print-patient-row:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-history-entry:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-history-entry.is-current{background:#322f2c}
+
+.hf[data-tool="handoff"][data-theme="dark"].is-finalized .hf-section{border-color:#465049}
+.hf[data-tool="handoff"][data-theme="dark"].is-finalized .hf-section-heading{background:#29302b}
+.hf[data-tool="handoff"][data-theme="dark"].is-finalized textarea:disabled,
+.hf[data-tool="handoff"][data-theme="dark"].is-finalized input:disabled{
+  background:#242825;
+  color:#aaa;
+}
+
+
 /* =========================
    RESPONSIVE
 ========================= */
+
+@media(max-width:1200px){
+  .hf.is-preview-open .hf-workspace{
+    grid-template-columns:1fr;
+  }
+
+  .hf.is-preview-open .hf-preview-pane{
+    position:relative;
+    top:auto;
+    height:720px;
+    min-height:0;
+  }
+
+  .hf-preview-page{
+    zoom:min(1, calc((100vw - 80px) / 794px));
+  }
+}
 
 @media(max-width:900px){
   .hf-shell.is-searching{
@@ -6482,6 +7452,497 @@ const STYLES=`
     max-width:8ch;
   }
 }
+
+
+/* =========================
+   DARK MODE AUDIT v4
+   Complete dialogs / menus / native controls / residual light surfaces
+========================= */
+
+.hf[data-tool="handoff"][data-theme="dark"]{
+  --control:var(--control-bg);
+  --ink-soft:#c7beb4;
+}
+
+/* ---------- generic form controls ---------- */
+.hf[data-tool="handoff"][data-theme="dark"] input,
+.hf[data-tool="handoff"][data-theme="dark"] textarea,
+.hf[data-tool="handoff"][data-theme="dark"] select{
+  color:var(--ink);
+  caret-color:var(--ink);
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] input[type="date"],
+.hf[data-tool="handoff"][data-theme="dark"] select{
+  color-scheme:dark;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] input[type="checkbox"],
+.hf[data-tool="handoff"][data-theme="dark"] input[type="radio"]{
+  accent-color:#a89e93;
+}
+
+/* Firefox / Chromium date icon */
+.hf[data-tool="handoff"][data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator{
+  filter:invert(.85) sepia(.08);
+  opacity:.85;
+}
+
+/* Search native decoration */
+.hf[data-tool="handoff"][data-theme="dark"] input[type="search"]::-webkit-search-cancel-button{
+  filter:invert(.85);
+  opacity:.8;
+}
+
+/* ---------- all dialogs ---------- */
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog{
+  background:var(--dialog-bg);
+  color:var(--ink);
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog-card{
+  background:var(--dialog-bg);
+  color:var(--ink);
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog h3,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog strong{
+  color:var(--ink);
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog label,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog-text > span,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-field-label-row > span,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-new-patient-form label > span,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-bg-form-grid > label > span,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-ga-field > span,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-birth-row > label > span,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-apgar-label,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-apgar-cell span,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-print-setting-title,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-print-controls label>span,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-weekly-range label span{
+  color:#b8b0a7;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-bg-block-title{
+  color:#9f978f;
+}
+
+/* Dialog text/date/number controls */
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog input[type="text"],
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog input[type="number"],
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog input[type="date"],
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog textarea,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog select{
+  background:var(--control)!important;
+  border-color:var(--control-border)!important;
+  color:var(--ink)!important;
+  -webkit-text-fill-color:var(--ink)!important;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog input[type="text"]:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog input[type="number"]:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog input[type="date"]:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog textarea:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog select:hover{
+  background:var(--control-hover)!important;
+  color:#f2eee9!important;
+  -webkit-text-fill-color:#f2eee9!important;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog input[type="text"]:focus,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog input[type="number"]:focus,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog input[type="date"]:focus,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog textarea:focus,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog select:focus{
+  background:var(--control-focus)!important;
+  color:#f2eee9!important;
+  -webkit-text-fill-color:#f2eee9!important;
+  caret-color:#f2eee9!important;
+  border-color:#756d65!important;
+}
+
+/* New patient focus had a hard-coded white background */
+.hf[data-tool="handoff"][data-theme="dark"] .hf-new-patient-form input:focus{
+  background:var(--control-focus)!important;
+  border-color:#756d65!important;
+  color:#f2eee9!important;
+  -webkit-text-fill-color:#f2eee9!important;
+}
+
+/* Background / alert dialog */
+.hf[data-tool="handoff"][data-theme="dark"] .hf-bg-block,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-birth-block{
+  border-color:var(--line2);
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-ga-inputs b,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-ga-inputs small{
+  color:#aaa29a;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-alert-dialog-field textarea{
+  background:#302827!important;
+  border-color:#76504c!important;
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-alert-dialog-field textarea:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-alert-dialog-field textarea:focus{
+  background:#372d2b!important;
+  border-color:#8d5d58!important;
+}
+
+/* ---------- weekly ---------- */
+.hf[data-tool="handoff"][data-theme="dark"] .hf-weekly-range{
+  background:var(--control-bg);
+  border-color:var(--line);
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-weekly-options label{
+  color:var(--ink-soft);
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-weekly-info{
+  background:#302d2a;
+  color:#c7beb4;
+}
+
+/* ---------- print ---------- */
+.hf[data-tool="handoff"][data-theme="dark"] .hf-print-option{
+  background:var(--control-bg);
+  border-color:var(--line);
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-print-option:hover{
+  background:#322f2c;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-print-patients{
+  background:var(--control-bg);
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-print-patient-head{
+  background:#302d2a;
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-print-patient-row{
+  color:var(--ink);
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-print-team{
+  color:var(--muted);
+}
+
+/* ---------- restore ---------- */
+.hf[data-tool="handoff"][data-theme="dark"] .hf-restore-options label{
+  background:var(--control-bg);
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-restore-options label:hover{
+  background:#322f2c;
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-restore-options small{
+  color:var(--muted);
+}
+
+/* ---------- history ---------- */
+.hf[data-tool="handoff"][data-theme="dark"] .hf-history-list{
+  border-color:var(--line);
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-history-entry{
+  background:var(--control-bg);
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-history-item{
+  color:var(--ink);
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-history-item span{
+  color:#b8afa6;
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-history-item span.is-final{
+  color:#c7beb4;
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-history-item small{
+  color:var(--muted);
+}
+
+/* ---------- dialog footer ---------- */
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog-actions{
+  background:var(--dialog-footer);
+  border-color:var(--line);
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog-actions button:not(.hf-primary){
+  background:var(--control-bg);
+  border-color:var(--control-border-strong);
+  color:var(--ink);
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog-actions button:not(.hf-primary):hover{
+  background:var(--surface-hover)!important;
+  color:#f2eee9!important;
+}
+
+/* ---------- residual main-workspace light surfaces ---------- */
+.hf[data-tool="handoff"][data-theme="dark"] .hf-bg-row > span,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-support-row > span,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-system-label,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-add-system-row{
+  background:var(--control-bg)!important;
+  color:var(--ink-soft);
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-add-system-row:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-system-drag:hover{
+  background:var(--surface-hover)!important;
+  color:#e8e3dc!important;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-system-remove:hover{
+  background:var(--danger-bg)!important;
+  color:#e6a09a!important;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-patient-more,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-history-more{
+  color:#aaa29a;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] [data-ref="dischargedPatientList"] .hf-bed,
+.hf[data-tool="handoff"][data-theme="dark"] [data-ref="dischargedPatientList"] .hf-mrn,
+.hf[data-tool="handoff"][data-theme="dark"] [data-ref="dischargedPatientList"] .hf-patient-row small{
+  color:#77716b;
+}
+.hf[data-tool="handoff"][data-theme="dark"] [data-ref="dischargedPatientList"] .hf-patient-item:hover .hf-bed{
+  color:#b8b0a7;
+}
+
+/* ---------- menus ---------- */
+.hf[data-tool="handoff"][data-theme="dark"] .hf-backup-menu,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-patient-menu,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-history-menu{
+  background:var(--control-bg);
+  border-color:var(--control-border-strong);
+  box-shadow:0 10px 28px #0008;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-backup-menu button,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-patient-menu button,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-history-menu button{
+  background:var(--control-bg);
+  color:var(--ink);
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-patient-menu-divider{
+  background:var(--line2);
+}
+
+/* ---------- symbol rail ---------- */
+.hf[data-tool="handoff"][data-theme="dark"] .hf-symbol-rail{
+  background:#3b3834ee;
+  border-color:#5d5751;
+  box-shadow:0 4px 16px #0005;
+  opacity:.94;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-symbol-rail button{
+  color:#ded7cf;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-symbol-rail button:hover{
+  background:#504b45!important;
+  color:#fff!important;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-symbol-rail-sep{
+  background:#625c55;
+}
+
+/* ---------- scrollbar ---------- */
+.hf[data-tool="handoff"][data-theme="dark"]{
+  scrollbar-color:#5a544e #242220;
+}
+.hf[data-tool="handoff"][data-theme="dark"] *::-webkit-scrollbar{
+  width:10px;
+  height:10px;
+}
+.hf[data-tool="handoff"][data-theme="dark"] *::-webkit-scrollbar-track{
+  background:#242220;
+}
+.hf[data-tool="handoff"][data-theme="dark"] *::-webkit-scrollbar-thumb{
+  background:#514b45;
+  border:2px solid #242220;
+  border-radius:999px;
+}
+.hf[data-tool="handoff"][data-theme="dark"] *::-webkit-scrollbar-thumb:hover{
+  background:#655e57;
+}
+
+/* ---------- selection: all editable dialog/main text ---------- */
+.hf[data-tool="handoff"][data-theme="dark"] input::selection,
+.hf[data-tool="handoff"][data-theme="dark"] textarea::selection{
+  background:#b8aea3!important;
+  color:#1f1d1b!important;
+  -webkit-text-fill-color:#1f1d1b!important;
+}
+
+/* Preview remains actual white paper / black print. */
+.hf[data-tool="handoff"][data-theme="dark"] .hf-preview-page,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-preview-page pre{
+  background:#fff!important;
+  color:#000!important;
+  -webkit-text-fill-color:#000!important;
+}
+
+
+/* ---------- consolidated final interaction states ---------- */
+.hf[data-tool="handoff"][data-theme="dark"] .hf-record-badge.is-final{
+  background:var(--control-focus);
+  color:#d4ccc3;
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-note-status.is-finalized,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-history-item span.is-final{
+  color:#c7beb4;
+}
+.hf[data-tool="handoff"][data-theme="dark"].is-finalized .hf-section{
+  border-color:var(--line);
+}
+.hf[data-tool="handoff"][data-theme="dark"].is-finalized .hf-section-heading{
+  background:var(--soft);
+}
+.hf[data-tool="handoff"][data-theme="dark"].is-finalized textarea:disabled,
+.hf[data-tool="handoff"][data-theme="dark"].is-finalized input:disabled{
+  background:var(--panel);
+  color:#c4bcb3;
+  -webkit-text-fill-color:#c4bcb3;
+  opacity:1;
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-alert-strip{
+  border-color:#76504c;
+  background:#2d2725;
+  color:#ded5cc;
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-alert-strip:hover{background:#332a28}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-alert-strip strong{background:#95605b;color:#fff}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-alert-strip small{color:#c98b85}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-search{
+  background:var(--control-bg);
+  color:#e8e3dc;
+  caret-color:#e8e3dc;
+  border-color:var(--control-border-strong);
+  -webkit-text-fill-color:#e8e3dc;
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-search::placeholder{
+  color:#77716b;
+  -webkit-text-fill-color:#77716b;
+  opacity:1;
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-search:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-search:focus{
+  background:#302d2a!important;
+  color:#f2eee9!important;
+  caret-color:#f2eee9!important;
+  -webkit-text-fill-color:#f2eee9!important;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-actions > button:not(.hf-primary):hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-preview-toggle:not(.is-active):hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-output-group button:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-date-group button:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-heading-action:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-template-btn:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-weekly-presets button:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog-actions button:not(.hf-primary):hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-print-patient-head button:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-history-head button:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-new-patient:hover{
+  background:var(--surface-hover)!important;
+  color:#f2eee9!important;
+  -webkit-text-fill-color:#f2eee9!important;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-metric input:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-system-name:hover{
+  background:#302d2a!important;
+  color:#e8e3dc!important;
+  -webkit-text-fill-color:#e8e3dc!important;
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-metric input:focus,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-system-name:focus{
+  background:var(--control-hover)!important;
+  color:#f2eee9!important;
+  -webkit-text-fill-color:#f2eee9!important;
+  caret-color:#f2eee9!important;
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-summary:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-large-text:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-support-row textarea:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-system-row textarea:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-summary:focus,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-large-text:focus,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-support-row textarea:focus,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-system-row textarea:focus{
+  background:var(--control-bg)!important;
+  color:#f2eee9!important;
+  -webkit-text-fill-color:#f2eee9!important;
+  caret-color:#f2eee9!important;
+}
+.hf[data-tool="handoff"][data-theme="dark"] input:disabled:hover,
+.hf[data-tool="handoff"][data-theme="dark"] textarea:disabled:hover{
+  background:var(--panel)!important;
+  color:#c4bcb3!important;
+  -webkit-text-fill-color:#c4bcb3!important;
+}
+
+
+/* =========================
+   DARK MODE CONTROL FIX
+   Keep segmented COPY/date controls dark in every interaction state.
+========================= */
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-output-group{
+  background:var(--control-bg)!important;
+  border-color:var(--control-border-strong)!important;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-output-group button{
+  background:var(--control-bg)!important;
+  color:#d8d1c9!important;
+  border-right-color:#4c4742!important;
+  -webkit-text-fill-color:#d8d1c9!important;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-output-group button:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-output-group button:focus,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-output-group button:focus-visible,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-output-group button:active{
+  background:var(--surface-hover)!important;
+  color:#f2eee9!important;
+  -webkit-text-fill-color:#f2eee9!important;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-date-group{
+  background:var(--control-bg)!important;
+  border-color:var(--control-border-strong)!important;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-date-group button,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-date-group input[type="date"]{
+  background:var(--control-bg)!important;
+  color:#e8e3dc!important;
+  border-right-color:#4c4742!important;
+  -webkit-text-fill-color:#e8e3dc!important;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-date-group button:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-date-group button:focus,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-date-group button:focus-visible,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-date-group button:active{
+  background:var(--surface-hover)!important;
+  color:#f2eee9!important;
+  -webkit-text-fill-color:#f2eee9!important;
+}
+
+.hf[data-tool="handoff"][data-theme="dark"] .hf-date-group input[type="date"]:hover,
+.hf[data-tool="handoff"][data-theme="dark"] .hf-date-group input[type="date"]:focus{
+  background:var(--control-hover)!important;
+  color:#f2eee9!important;
+  -webkit-text-fill-color:#f2eee9!important;
+}
+
 `;
 
 export default {render,init,destroy};
