@@ -781,7 +781,7 @@ export function init(root) {
       "Anti-HCV",
 
       // HIV
-      "HIV Ag/Ab Test","HIV-1 p24 Ag","HIV-1/2 Ab",
+      "HIV Ag/Ab","HIV-1 p24 Ag","HIV-1/2 Ab",
 
       // Other congenital / perinatal infection
       "ParvoB19 DNA"
@@ -1043,6 +1043,7 @@ export function init(root) {
       "lab_preset_gi",
       "lab_preset_inf",
       "lab_preset_hema",
+      "lab_preset_u10b10",
       "lab_preset_tpn_fixed",
     ];
 
