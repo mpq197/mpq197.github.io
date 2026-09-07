@@ -3,6 +3,10 @@
 // note:
 // - add U10B10 preset
 // - fix lab name
+// - refactor Order/Bar: anchored default bars + independent drag ordering
+// - fix orphan/duplicate bars when specimen selection changes
+// - move default Bar placement into per-preset configuration
+// - make preset items specimen-aware and authoritative for selection/order
 
 // Todo:
 // - review remaining drug-level naming/abbreviations
@@ -392,7 +396,11 @@ export function init(root) {
   // store ORIGINAL row indices, across specimen UI rebuilds
   let selectedItemIdxSet = new Set();
 
-  // token: { t:'item', idx:number } or { t:'bar', id:string }
+  // Order token:
+  // - item: { t:'item', idx:number }
+  // - bar:  { t:'bar', id:string, anchorIdx:number|null }
+  //   anchorIdx is only for lifecycle cleanup of default bars.
+  //   Bar position itself remains independent, so items can cross bars freely.
   let orderTokens = [];
   let barSeq = 0;
 
@@ -540,22 +548,230 @@ export function init(root) {
     ],
   };
 
-  const presetSelectionsMap = {
-    "lab_preset_TPN_minor": ["WBC","Hb","Hct","Plt","Na","K","Cl","Ca","Mg","P","BUN","Cr","AST","ALT","DB","TB","CRP","Pct"],
-    "lab_preset_TPN_major": ["TG","Chol","TP","Alb","ALP","γGT","iPTH"],
-    "lab_preset_gas": ["pH","pCO2","pO2","HCO3","SBE"],
-    "lab_preset_cv": ["CKMB","hs-TnI","Lactate","BNP","NT-ProBNP"],
-    "lab_preset_gi": ["BUN","Cr","AST","ALT","DB","TB","ALP","γGT","Amylase","Lipase","Na","K","Cl","iCa","Ca","Mg","P"],
-    "lab_preset_inf": ["WBC","Seg","Lym","ANC","CRP","Pct","Ferritin"],
-    "lab_preset_hema": ["Hb","Hct","Plt","PT","INR","aPTT","aPTT/m","Fibrinogen","D-dimer","FDP"],
-    "lab_preset_u10b10": ["Cr", "Na", "K", "Cl", "Ca", "Mg", "P", "Uric acid", "BUN", "Urea", "Osmo"],
+  // -----------------------------
+  // Preset configuration
+  // items = ordered selection rules:
+  //   { lab: "Na" }                  -> any specimen
+  //   { lab: "Na", specimen: "B" }  -> exact specimen
+  //
+  // The order of `items` is the preset's default Order.
+  // barsAfter uses the same lab/specimen matching model.
+  // -----------------------------
+  const presetConfig = {
+    "lab_preset_TPN_minor": {
+      items: [
+        { lab: "WBC", specimen: "B" },
+        { lab: "Hb",  specimen: "B" },
+        { lab: "Hct", specimen: "B" },
+        { lab: "Plt", specimen: "B" },
+        { lab: "Na",  specimen: "B" },
+        { lab: "K",   specimen: "B" },
+        { lab: "Cl",  specimen: "B" },
+        { lab: "Ca",  specimen: "B" },
+        { lab: "Mg",  specimen: "B" },
+        { lab: "P",   specimen: "B" },
+        { lab: "BUN", specimen: "B" },
+        { lab: "Cr",  specimen: "B" },
+        { lab: "AST", specimen: "B" },
+        { lab: "ALT", specimen: "B" },
+        { lab: "DB",  specimen: "B" },
+        { lab: "TB",  specimen: "B" },
+        { lab: "CRP", specimen: "B" },
+        { lab: "Pct", specimen: "B" },
+      ],
+      barsAfter: [
+        { lab: "Plt", specimen: "B" },
+        { lab: "P", specimen: "B" },
+        { lab: "TB", specimen: "B" },
+      ],
+    },
+
+    "lab_preset_TPN_major": {
+      items: [
+        { lab: "TG",   specimen: "B" },
+        { lab: "Chol", specimen: "B" },
+        { lab: "TP",   specimen: "B" },
+        { lab: "Alb",  specimen: "B" },
+        { lab: "ALP",  specimen: "B" },
+        { lab: "γGT",  specimen: "B" },
+        { lab: "iPTH", specimen: "B" },
+      ],
+      barsAfter: [],
+    },
+
+    "lab_preset_gas": {
+      items: [
+        { lab: "pH",   specimen: "B" },
+        { lab: "pCO2",   specimen: "B" },
+        { lab: "pO2",   specimen: "B" },
+        { lab: "HCO3",   specimen: "B" },
+        { lab: "SBE",   specimen: "B" },
+        { lab: "pH",   specimen: "BV" },
+        { lab: "pCO2",   specimen: "BV" },
+        { lab: "pO2",   specimen: "BV" },
+        { lab: "HCO3",   specimen: "BV" },
+        { lab: "SBE",   specimen: "BV" },
+      ],
+      barsAfter: [],
+    },
+
+    "lab_preset_cv": {
+      items: [
+        { lab: "CKMB", specimen: "B" },
+        { lab: "hs-TnI", specimen: "B" },
+        { lab: "Lactate", specimen: "B" },
+        { lab: "BNP", specimen: "B" },
+        { lab: "NT-ProBNP", specimen: "B" },
+      ],
+      barsAfter: [],
+    },
+
+    "lab_preset_gi": {
+      items: [
+        { lab: "Na", specimen: "B" },
+        { lab: "K", specimen: "B" },
+        { lab: "Cl", specimen: "B" },
+        { lab: "iCa", specimen: "B" },
+        { lab: "Ca", specimen: "B" },
+        { lab: "Mg", specimen: "B" },
+        { lab: "P", specimen: "B" },
+        { lab: "BUN", specimen: "B" },
+        { lab: "Cr", specimen: "B" },
+        { lab: "AST", specimen: "B" },
+        { lab: "ALT", specimen: "B" },
+        { lab: "DB", specimen: "B" },
+        { lab: "TB", specimen: "B" },
+        { lab: "ALP", specimen: "B" },
+        { lab: "γGT", specimen: "B" },
+        { lab: "Amylase", specimen: "B" },
+        { lab: "Lipase", specimen: "B" },
+        { lab: "Alb", specimen: "B" },
+      ],
+      barsAfter: [
+        { lab: "P", specimen: "B" },
+        { lab: "Cr", specimen: "B" },
+        { lab: "γGT", specimen: "B" },
+      ],
+    },
+
+    "lab_preset_inf": {
+      items: [
+        { lab: "WBC", specimen: "B" },
+        { lab: "Seg", specimen: "B" },
+        { lab: "Lym", specimen: "B" },
+        { lab: "ANC", specimen: "B" },
+        { lab: "CRP", specimen: "B" },
+        { lab: "Pct", specimen: "B" },
+        { lab: "Ferritin", specimen: "B" },
+      ],
+      barsAfter: [
+        { lab: "ANC", specimen: "B" },
+      ],
+    },
+
+    "lab_preset_hema": {
+      items: [
+        { lab: "Hb", specimen: "B" },
+        { lab: "Hct", specimen: "B" },
+        { lab: "Plt", specimen: "B" },
+        { lab: "PT", specimen: "B" },
+        { lab: "INR", specimen: "B" },
+        { lab: "aPTT", specimen: "B" },
+        { lab: "aPTT/m", specimen: "B" },
+        { lab: "Fibrinogen", specimen: "B" },
+        { lab: "D-dimer", specimen: "B" },
+        { lab: "FDP", specimen: "B" },
+      ],
+      barsAfter: [
+        { lab: "Plt", specimen: "B" },
+      ],
+    },
+
+    "lab_preset_u10b10": {
+      // Explicit B block followed by U block.
+      items: [
+        { lab: "Cr", specimen: "B" },
+        { lab: "Na", specimen: "B" },
+        { lab: "K", specimen: "B" },
+        { lab: "Cl", specimen: "B" },
+        { lab: "Ca", specimen: "B" },
+        { lab: "Mg", specimen: "B" },
+        { lab: "P", specimen: "B" },
+        { lab: "Uric acid", specimen: "B" },
+        { lab: "BUN", specimen: "B" },
+
+        { lab: "Cr", specimen: "U" },
+        { lab: "Na", specimen: "U" },
+        { lab: "K", specimen: "U" },
+        { lab: "Cl", specimen: "U" },
+        { lab: "Ca", specimen: "U" },
+        { lab: "Mg", specimen: "U" },
+        { lab: "P", specimen: "U" },
+        { lab: "Uric acid", specimen: "U" },
+        { lab: "Urea", specimen: "U" },
+        { lab: "Osmo", specimen: "U" },
+      ],
+      barsAfter: [],
+    },
   };
 
-  const uniq = (arr) => Array.from(new Set(arr));
-  presetSelectionsMap["lab_preset_tpn_fixed"] = uniq([
-    ...(presetSelectionsMap["lab_preset_TPN_minor"] || []),
-    ...(presetSelectionsMap["lab_preset_TPN_major"] || []),
-  ]);
+  function normalizePresetItem(item) {
+    if (typeof item === "string") return { lab: item };
+    return {
+      lab: String(item?.lab ?? "").trim(),
+      specimen: item?.specimen == null
+        ? null
+        : normalizeSpecimenKey(item.specimen),
+    };
+  }
+
+  function getPresetItems(presetId) {
+    return (presetConfig[presetId]?.items || [])
+      .map(normalizePresetItem)
+      .filter((item) => item.lab);
+  }
+
+  function getPresetBarRules(presetId) {
+    return (presetConfig[presetId]?.barsAfter || [])
+      .map(normalizePresetItem)
+      .filter((item) => item.lab);
+  }
+
+  function presetItemMatches(item, lab, specimen) {
+    const rule = normalizePresetItem(item);
+    if (rule.lab !== String(lab ?? "").trim()) return false;
+    if (!rule.specimen) return true;
+    return rule.specimen === normalizeSpecimenKey(specimen);
+  }
+
+  function presetItemKey(item) {
+    const rule = normalizePresetItem(item);
+    return `${rule.lab}__${rule.specimen || "*"}`;
+  }
+
+  const uniqPresetItems = (items) => {
+    const seen = new Set();
+    const out = [];
+
+    for (const item of items) {
+      const normalized = normalizePresetItem(item);
+      const key = presetItemKey(normalized);
+      if (!normalized.lab || seen.has(key)) continue;
+      seen.add(key);
+      out.push(normalized);
+    }
+
+    return out;
+  };
+
+  presetConfig["lab_preset_tpn_fixed"] = {
+    items: uniqPresetItems([
+      ...getPresetItems("lab_preset_TPN_minor"),
+      ...getPresetItems("lab_preset_TPN_major"),
+    ]),
+    // TPN fixed has its own formatting separators in buildTPNFixedText().
+    barsAfter: [],
+  };
 
   const labOrder = [
     "WBC","Hb","Hct","Plt","Seg","Band","Lym","Mono","Eos","Baso","Atyp-Lym","Meta-Mye","Myelocyte","Promyelocyte","Blast","Megakaryocyte","ANC","nRBC",
@@ -1048,8 +1264,18 @@ export function init(root) {
     ];
 
     for (const pid of presetIds) {
-      const allow = new Set(presetSelectionsMap[pid] || []);
-      const matched = cbs.every((cb) => cb.checked === allow.has(cb.dataset.lab || ""));
+      const rules = getPresetItems(pid);
+      const matched = cbs.every((cb) => {
+        const shouldBeChecked = rules.some((rule) =>
+          presetItemMatches(
+            rule,
+            cb.dataset.lab || "",
+            cb.dataset.specimen || ""
+          )
+        );
+        return cb.checked === shouldBeChecked;
+      });
+
       if (matched) return pid;
     }
 
@@ -1072,10 +1298,15 @@ export function init(root) {
       return;
     }
 
-    const allow = new Set(presetSelectionsMap[presetId] || []);
+    const rules = getPresetItems(presetId);
     cbs.forEach((cb) => {
-      const lab = cb.dataset.lab || "";
-      cb.checked = allow.has(lab);
+      cb.checked = rules.some((rule) =>
+        presetItemMatches(
+          rule,
+          cb.dataset.lab || "",
+          cb.dataset.specimen || ""
+        )
+      );
     });
   }
 
@@ -1230,6 +1461,41 @@ export function init(root) {
 
   function getDefaultOrderedSelectedItemIndices() {
     const selected = Array.from(selectedItemIdxSet).filter(Number.isFinite);
+    const presetId = getCheckedRadioId("lab_presets_selection");
+    const presetItems = getPresetItems(presetId);
+
+    // Named presets: item rules are authoritative for both lab and specimen order.
+    if (presetItems.length) {
+      const orderMap = new Map(
+        presetItems.map((item, index) => [presetItemKey(item), index])
+      );
+
+      selected.sort((a, b) => {
+        const labA = getRowLabName(a);
+        const labB = getRowLabName(b);
+        const spA = String(rowSpecimens?.[a] ?? "").trim();
+        const spB = String(rowSpecimens?.[b] ?? "").trim();
+
+        const exactA = orderMap.get(
+          presetItemKey({ lab: labA, specimen: normalizeSpecimenKey(spA) })
+        );
+        const exactB = orderMap.get(
+          presetItemKey({ lab: labB, specimen: normalizeSpecimenKey(spB) })
+        );
+        const anyA = orderMap.get(presetItemKey({ lab: labA }));
+        const anyB = orderMap.get(presetItemKey({ lab: labB }));
+
+        const ia = exactA ?? anyA ?? Infinity;
+        const ib = exactB ?? anyB ?? Infinity;
+
+        if (ia !== ib) return ia - ib;
+        return a - b;
+      });
+
+      return selected;
+    }
+
+    // Custom / All / None: global fallback order.
     selected.sort((a, b) => {
       const la = getRowLabName(a);
       const lb = getRowLabName(b);
@@ -1238,21 +1504,53 @@ export function init(root) {
       if (ia !== ib) return ia - ib;
       return a - b;
     });
+
     return selected;
   }
 
   function buildDefaultTokensWithBars() {
-    const items = getDefaultOrderedSelectedItemIndices().map((idx) => ({ t: "item", idx }));
+    const presetId = getCheckedRadioId("lab_presets_selection");
+    const barRules = getPresetBarRules(presetId);
     const out = [];
-    const barAfterLabs = new Set(["Plt", "P", "TB"]);
 
-    for (const tok of items) {
-      out.push(tok);
-      const lab = getRowLabName(tok.idx);
-      if (barAfterLabs.has(lab)) {
-        out.push({ t: "bar", id: `bar${++barSeq}` });
+    for (const idx of getDefaultOrderedSelectedItemIndices()) {
+      out.push({ t: "item", idx });
+
+      const lab = getRowLabName(idx);
+      const specimen = String(rowSpecimens?.[idx] ?? "").trim() || "(空)";
+
+      const shouldAddBar = barRules.some((rule) =>
+        presetItemMatches(rule, lab, specimen)
+      );
+
+      if (shouldAddBar) {
+        out.push({
+          t: "bar",
+          id: `bar${++barSeq}`,
+          anchorIdx: idx,
+        });
       }
     }
+
+    return compactBars(out);
+  }
+
+  function compactBars(tokens) {
+    const out = [];
+    let prevWasBar = false;
+
+    for (const tok of tokens) {
+      if (tok.t === "bar") {
+        // no leading bar and no consecutive bars
+        if (out.length === 0 || prevWasBar) continue;
+        out.push(tok);
+        prevWasBar = true;
+      } else {
+        out.push(tok);
+        prevWasBar = false;
+      }
+    }
+
     return out;
   }
 
@@ -1267,45 +1565,39 @@ export function init(root) {
       return;
     }
 
-    const selectedSet = new Set(Array.from(selectedItemIdxSet).filter(Number.isFinite));
+    const selectedSet = new Set(
+      Array.from(selectedItemIdxSet).filter(Number.isFinite)
+    );
 
     const kept = [];
     const seenItems = new Set();
 
     for (const tok of orderTokens) {
       if (tok.t === "bar") {
+        // Default bars follow the lifecycle of the item that created them.
+        // Manual bars have anchorIdx === null and remain until the user removes them.
+        if (Number.isFinite(tok.anchorIdx) && !selectedSet.has(tok.anchorIdx)) {
+          continue;
+        }
+
         kept.push(tok);
         continue;
       }
+
       if (selectedSet.has(tok.idx)) {
         kept.push(tok);
         seenItems.add(tok.idx);
       }
     }
 
-    const missing = getDefaultOrderedSelectedItemIndices().filter((idx) => !seenItems.has(idx));
-    for (const idx of missing) kept.push({ t: "item", idx });
+    const missing = getDefaultOrderedSelectedItemIndices()
+      .filter((idx) => !seenItems.has(idx));
 
-    orderTokens = compactBars(kept);
-  }
-
-  function compactBars(tokens) {
-    const out = [];
-    let prevWasBar = false;
-
-    for (const tok of tokens) {
-      if (tok.t === "bar") {
-        if (out.length === 0) continue;
-        if (prevWasBar) continue;
-        out.push(tok);
-        prevWasBar = true;
-      } else {
-        out.push(tok);
-        prevWasBar = false;
-      }
+    for (const idx of missing) {
+      kept.push({ t: "item", idx });
     }
 
-    return out;
+    orderTokens = compactBars(kept);
   }
 
   function rebuildOrderUI() {
@@ -1342,6 +1634,7 @@ export function init(root) {
         chip.className = "lab-order-chip";
         chip.draggable = true;
         chip.dataset.role = "orderChip";
+        chip.dataset.kind = "item";
         chip.dataset.tok = tokenId(tok);
         chip.textContent = label;
 
@@ -1351,6 +1644,7 @@ export function init(root) {
         chip.className = "lab-order-chip is-bar";
         chip.draggable = true;
         chip.dataset.role = "orderChip";
+        chip.dataset.kind = "bar";
         chip.dataset.tok = tokenId(tok);
         chip.textContent = "|";
 
@@ -1367,17 +1661,41 @@ export function init(root) {
   }
 
   function readTokensFromOrderDOM() {
-    const els = Array.from(orderListEl?.querySelectorAll?.('[data-role="orderChip"]') || []);
+    const els = Array.from(
+      orderListEl?.querySelectorAll?.('[data-role="orderChip"]') || []
+    );
+
+    const oldBarsById = new Map(
+      orderTokens
+        .filter((tok) => tok.t === "bar")
+        .map((tok) => [tok.id, tok])
+    );
+
     const next = [];
 
     for (const el of els) {
       const s = String(el.dataset.tok || "");
+
       if (s.startsWith("i:")) {
         const idx = Number(s.slice(2));
-        if (Number.isFinite(idx)) next.push({ t: "item", idx });
-      } else if (s.startsWith("b:")) {
+        if (Number.isFinite(idx)) {
+          next.push({ t: "item", idx });
+        }
+        continue;
+      }
+
+      if (s.startsWith("b:")) {
         const id = s.slice(2);
-        if (id) next.push({ t: "bar", id });
+        if (!id) continue;
+
+        const oldBar = oldBarsById.get(id);
+        next.push({
+          t: "bar",
+          id,
+          anchorIdx: Number.isFinite(oldBar?.anchorIdx)
+            ? oldBar.anchorIdx
+            : null,
+        });
       }
     }
 
@@ -1386,14 +1704,27 @@ export function init(root) {
 
   function addBarTokenAtEnd() {
     if (isTPNFixed()) return;
+
     syncOrderTokensFromSelection({ reset: false });
-    orderTokens.push({ t: "bar", id: `bar${++barSeq}` });
+
+    // A trailing bar already represents the same boundary.
+    if (orderTokens.at(-1)?.t === "bar") {
+      rebuildOrderUI();
+      return;
+    }
+
+    orderTokens.push({
+      t: "bar",
+      id: `bar${++barSeq}`,
+      anchorIdx: null, // manual bar
+    });
+
     orderTokens = compactBars(orderTokens);
     rebuildOrderUI();
   }
 
   function clearAllBars() {
-    orderTokens = orderTokens.filter((t) => t.t !== "bar");
+    orderTokens = orderTokens.filter((tok) => tok.t !== "bar");
     rebuildOrderUI();
   }
 
@@ -1403,15 +1734,26 @@ export function init(root) {
   }
 
   // drag & drop
+  // Lab and Bar are independent tokens. The DOM order is the live drag preview;
+  // dragend serializes it back to state while preserving each Bar's anchorIdx.
   let draggingEl = null;
 
   function getDragAfterElement(container, x) {
-    const draggableEls = [...container.querySelectorAll('[data-role="orderChip"]:not(.dragging)')];
-    let closest = { offset: Number.NEGATIVE_INFINITY, element: null };
+    const draggableEls = [
+      ...container.querySelectorAll(
+        '[data-role="orderChip"]:not(.dragging)'
+      ),
+    ];
+
+    let closest = {
+      offset: Number.NEGATIVE_INFINITY,
+      element: null,
+    };
 
     for (const child of draggableEls) {
-      const boxRect = child.getBoundingClientRect();
-      const offset = x - (boxRect.left + boxRect.width / 2);
+      const rect = child.getBoundingClientRect();
+      const offset = x - (rect.left + rect.width / 2);
+
       if (offset < 0 && offset > closest.offset) {
         closest = { offset, element: child };
       }
@@ -1424,31 +1766,50 @@ export function init(root) {
     orderListEl.addEventListener("dragstart", (e) => {
       const t = e.target;
       if (!t?.matches?.('[data-role="orderChip"]')) return;
+
       draggingEl = t;
       t.classList.add("dragging");
-      e.dataTransfer?.setData?.("text/plain", t.dataset.tok || "");
-      e.dataTransfer?.setDragImage?.(t, 10, 10);
+
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", t.dataset.tok || "");
+        e.dataTransfer.setDragImage?.(t, 10, 10);
+      }
+    });
+
+    orderListEl.addEventListener("dragover", (e) => {
+      if (!draggingEl) return;
+
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+
+      const afterEl = getDragAfterElement(orderListEl, e.clientX);
+
+      if (afterEl == null) {
+        orderListEl.appendChild(draggingEl);
+      } else if (afterEl !== draggingEl) {
+        orderListEl.insertBefore(draggingEl, afterEl);
+      }
+    });
+
+    orderListEl.addEventListener("drop", (e) => {
+      if (!draggingEl) return;
+      e.preventDefault();
     });
 
     orderListEl.addEventListener("dragend", (e) => {
       const t = e.target;
       if (!t?.matches?.('[data-role="orderChip"]')) return;
+
       t.classList.remove("dragging");
       draggingEl = null;
 
       readTokensFromOrderDOM();
-      scheduleOutput();
-    });
 
-    orderListEl.addEventListener("dragover", (e) => {
-      if (!draggingEl) return;
-      e.preventDefault();
-      const afterEl = getDragAfterElement(orderListEl, e.clientX);
-      if (afterEl == null) {
-        orderListEl.appendChild(draggingEl);
-      } else {
-        orderListEl.insertBefore(draggingEl, afterEl);
-      }
+      // Normalize invalid positions such as a Bar dragged to the far left or
+      // two Bars dropped next to each other, then redraw from canonical state.
+      rebuildOrderUI();
+      scheduleOutput();
     });
   }
 
@@ -1804,21 +2165,36 @@ export function init(root) {
 
     // build row tokens for current output
     syncOrderTokensFromSelection({ reset: false });
-    const rowTokensForOutput = [];
+
+    const selectedRowSet = new Set(selectedRowsOrdered);
+    const rawRowTokensForOutput = [];
+
     for (const tok of orderTokens) {
       if (tok.t === "bar") {
-        rowTokensForOutput.push(tok);
+        rawRowTokensForOutput.push(tok);
         continue;
       }
-      if (selectedRowsOrdered.includes(tok.idx)) rowTokensForOutput.push(tok);
+
+      if (selectedRowSet.has(tok.idx)) {
+        rawRowTokensForOutput.push(tok);
+      }
     }
+
+    // Hidden specimens/items may make a Bar become leading or consecutive.
+    // Normalize only the output projection; do not mutate the user's full Order.
+    const rowTokensForOutput = compactBars(rawRowTokensForOutput);
 
     // if selectedRowsOrdered has missing items not in tokens, append
     const included = new Set(
-      rowTokensForOutput.filter((t) => t.t === "item").map((t) => t.idx)
+      rowTokensForOutput
+        .filter((t) => t.t === "item")
+        .map((t) => t.idx)
     );
+
     for (const idx of selectedRowsOrdered) {
-      if (!included.has(idx)) rowTokensForOutput.push({ t: "item", idx });
+      if (!included.has(idx)) {
+        rowTokensForOutput.push({ t: "item", idx });
+      }
     }
 
     // first build a vertical matrix
@@ -2017,19 +2393,11 @@ export function init(root) {
         });
       });
 
-      body.sort((a, b) => {
-        const la = String(a[0] ?? "").split("(")[0];
-        const lb = String(b[0] ?? "").split("(")[0];
-        const ia = labOrder.indexOf(la) === -1 ? Infinity : labOrder.indexOf(la);
-        const ib = labOrder.indexOf(lb) === -1 ? Infinity : labOrder.indexOf(lb);
-        return ia - ib;
-      });
-
       return [headerFiltered, ...body];
     }
 
-    const minorItems = presetSelectionsMap["lab_preset_TPN_minor"] || [];
-    const majorItems = presetSelectionsMap["lab_preset_TPN_major"] || [];
+    const minorItems = getPresetItems("lab_preset_TPN_minor").map((item) => item.lab);
+    const majorItems = getPresetItems("lab_preset_TPN_major").map((item) => item.lab);
 
     const minorV = buildForcedVerticalBlock(minorItems);
     const majorV = buildForcedVerticalBlock(majorItems);
@@ -2441,6 +2809,8 @@ export function init(root) {
       const detected = detectPresetFromCurrentSelection();
       setPresetRadio(detected);
 
+      // Keep manual Order, but remove default Bars whose anchor item
+      // disappeared with the specimen/filter change.
       syncOrderTokensFromSelection({ reset: false });
       rebuildOrderUI();
 
