@@ -1,19 +1,10 @@
 // tools/handoff.js
-// updated: 2026-09-08
+// updated: 2026-09-09
 // NeoAssist Clinical Handoff — Patient-centric V1
 //
 // Changelog:
-// - 新增：Standalone Handoff 左下角 NeoAssist 返回按鈕；離開前先 flush 未儲存內容。
-// - 新增：Dark Mode；Header 可切換 Light / Dark，主題偏好自動保存，Preview / PRINT 維持白底列印樣式。
-// - 新增：即時 PRINT Preview；採 60:40 編輯／預覽配置，可調整字體、行距與邊距，並支援目前病人直接列印。
-// - 新增：Preview auto-follow；編輯 Summary / Clinical / Assessment / Plan 時，自動定位至對應預覽區段。
-// - 改善：PRINT / Preview 採 section-aware pagination；短區塊盡量保持同頁，避免 section heading 落在頁尾。
-// - 改善：Preview 改為 viewport-sticky，頁面向下編輯時仍持續顯示；窄螢幕自動切換為上下排列。
-// - 改善：左側病人清單新增今日 Note 狀態；✓ = FINAL、• = DRAFT，無今日紀錄則留白。
-// - 改善：Header PRINT 改為 PRINT ALL；單一病人列印整合至 Preview，並共用 Preview 的排版設定。
-// - 改善：PRINT 字體與行距提供更多選項，Preview 與 PRINT 共用顯示設定。
-// - 修正：Dark Mode 下 COPY、日期列與各控制元件的 hover / focus 樣式一致性。
-// - 維護：重構 Light / Dark semantic CSS variables，整併重複 theme overrides 與共用 surface / control / dialog / alert 樣式。
+// - 改善：AI weekly summary prompt，要求生成 1–2 段精簡摘要，避免逐日敘述。
+
 
 const TOOL_KEY="handoff";
 const DB_NAME="neoassist-clinical-handoff";
@@ -2505,15 +2496,20 @@ class HandoffApp{
       "Generate a concise NICU weekly clinical summary from the longitudinal records below.",
       "",
       "INSTRUCTIONS",
-      "- Synthesize the clinical course; do not simply reproduce records day by day.",
-      "- Organize the final summary by clinical problem/system.",
-      "- Identify meaningful changes, trends, escalation/de-escalation, procedures, investigations, and unresolved issues.",
-      "- Repeated information may represent carried-forward documentation and should not be interpreted as a new event each day.",
-      "- Use dates when they clarify important events or transitions.",
-      "- Do not invent or infer undocumented clinical information.",
-      "- End with:",
-      "  1. Current Status",
-      "  2. Ongoing Issues / Plan",
+      "- Write a concise NICU weekly clinical course summary in paragraph form.",
+      "- Use 1–2 coherent paragraphs rather than headings, bullet points, or system-by-system sections.",
+      "- Synthesize the longitudinal clinical course; do not reproduce the records day by day.",
+      "- Prioritize meaningful events and changes during this reporting period over unchanged background information.",
+      "- Integrate respiratory, cardiovascular, feeding, neurologic, infectious, hematologic, procedural, and other relevant issues naturally into the narrative.",
+      "- Clearly describe meaningful trends, escalation or de-escalation of support, procedures, investigations, treatment changes, and important follow-up plans.",
+      "- Repeated information may represent carried-forward documentation and must not be described as a new event unless the records show a change.",
+      "- Mention dates only when they help clarify an important event or transition.",
+      "- Include relevant background only when needed to understand the current clinical course.",
+      "- End the narrative with the patient's current clinical status and the main ongoing issues or plans.",
+      "- Do not use headings such as RESP, CV, GI, Current Status, or Ongoing Issues / Plan.",
+      "- Do not use bullet points.",
+      "- Do not invent, infer, or add undocumented clinical information.",
+      "- Return only the final clinical summary.",
       "",
       "PERIOD",
       `${from} to ${to}`
@@ -2711,7 +2707,7 @@ class HandoffApp{
     lines.push("END OF SOURCE RECORDS");
     lines.push("");
     lines.push(
-      "Return only the synthesized weekly clinical summary. Do not describe the summarization process."
+      "Return only a concise, polished 1–2 paragraph NICU weekly clinical course summary unless the clinical course requires more detail. Synthesize meaningful clinical changes rather than recounting each day. Do not use headings or bullet points."
     );
 
     return cleanOutput(lines);
