@@ -52,10 +52,68 @@ export function updateCopyList(container, lines) {
 
 
 /**
+ * Copy text with HTTP-compatible fallback.
+ *
+ * Strategy:
+ * 1. Secure context (HTTPS) -> modern Clipboard API
+ * 2. HTTP / unavailable / Clipboard API failure -> execCommand fallback
+ *
+ * @param {string} text
+ * @returns {Promise<boolean>}
+ */
+async function copyText(text) {
+  // Modern Clipboard API
+  if (window.isSecureContext && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (err) {
+      console.warn(
+        "[NeoAssist] Clipboard API failed, trying fallback:",
+        err
+      );
+    }
+  }
+
+  // HTTP / legacy fallback
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+
+  // Keep it out of view without affecting layout
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  textarea.style.top = "0";
+  textarea.style.opacity = "0";
+  textarea.style.pointerEvents = "none";
+
+  document.body.appendChild(textarea);
+
+  textarea.focus();
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+
+  let success = false;
+
+  try {
+    success = document.execCommand("copy");
+  } catch (err) {
+    console.warn("[NeoAssist] Clipboard fallback failed:", err);
+  } finally {
+    textarea.remove();
+  }
+
+  return success;
+}
+
+
+/**
  * Copy binding (event delegation)
  * - Bind once per root
  * - Works for dynamically added .copy-item
- * - Dispatches "neo:copy" after successful copy
+ * - HTTPS: uses Clipboard API
+ * - HTTP: automatically falls back to execCommand("copy")
+ * - Dispatches "neo:copy" only after successful copy
  */
 export function bindCopyItems(root) {
   if (!root) return;
@@ -69,14 +127,20 @@ export function bindCopyItems(root) {
     let content = item.hasAttribute("data-content")
       ? item.dataset.content ?? ""
       : item.innerHTML ?? "";
-      
+
     content = content.replace(/<br\s*\/?>/gi, "\n");
     content = content.replace(/<[^>]*>/g, "");
     content = decodeHTMLEntities(content);
+
     if (!content.trim()) return;
 
     try {
-      await navigator.clipboard.writeText(content);
+      const success = await copyText(content);
+
+      if (!success) {
+        console.warn("[NeoAssist] Clipboard copy failed.");
+        return;
+      }
 
       // Notify tool-specific listeners after successful copy
       item.dispatchEvent(
@@ -86,7 +150,7 @@ export function bindCopyItems(root) {
         })
       );
     } catch (err) {
-      console.warn("Clipboard copy failed:", err);
+      console.warn("[NeoAssist] Clipboard copy failed:", err);
     }
   });
 }
