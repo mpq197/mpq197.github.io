@@ -1,9 +1,19 @@
 // tools/handoff.js
-// updated: 2026-09-09
+// updated: 2026-09-11
 // NeoAssist Clinical Handoff — Patient-centric V1
-//
+
 // Changelog:
-// - 改善：AI weekly summary prompt，要求生成 1–2 段精簡摘要，避免逐日敘述。
+//
+// * 歷史紀錄改為唯讀：過去日期的 Daily Record 不再允許修改或重新儲存，並以當日 patient snapshot 顯示病人背景與 Clinical System 配置。
+// * 日期限制調整：交班紀錄僅允許建立至今天，不再允許預先建立未來日期紀錄。
+// * 停用 Revision snapshots：autosave、manual save、background/system 更新及 finalize 不再建立 revision；既有 revisions 保留於資料庫，可由備份選單手動清理。
+// * Backup 升級至 v2：備份內容保留 patients、dailyRecords 與 settings，不再匯出 revisions；仍相容匯入舊版 v1 backup。
+// * 改善 Backup/Restore：新增備份狀態、定期備份提醒、拖放匯入，以及安全合併模式；合併時僅套用新增或較新的資料，避免較舊備份覆蓋較新的本機資料。
+// * 改善歷史 System 顯示：歷史紀錄依當日 snapshot 保留當時的 System 名稱、順序與配置，不受目前病人的 System 修改影響。
+// * 歷程介面調整：歷史紀錄統一標示為 HISTORY 並移除單日紀錄刪除操作。
+// * 修正 Backup 拖放事件生命週期：拖放匯入改用可解除綁定的 event handlers，避免 Handoff 重複初始化後累積事件監聽器。
+// * 程式碼整理：移除 Backup/Restore 重構後未使用的 UI/CSS 與 comparison helper 殘留。
+
 
 
 const TOOL_KEY="handoff";
@@ -11,6 +21,8 @@ const DB_NAME="neoassist-clinical-handoff";
 const DB_VERSION=3;
 const AUTOSAVE_DELAY_MS=650;
 const COPY_WIDTH=100;
+const BACKUP_REMINDER_DAYS=3;
+const BACKUP_SNOOZE_HOURS=24;
 
 const DEFAULT_SYSTEMS=[
   {key:"resp",label:"RESP"},
@@ -31,6 +43,8 @@ export function render(){
     <header class="hf-app-header">
       <h1>交班單</h1>
       <div class="hf-header-actions">
+
+        <button type="button" class="hf-backup-status" data-action="exportBackup" data-ref="backupStatus">Backup · —</button>
 
         <button
           class="hf-theme-toggle"
@@ -55,8 +69,10 @@ export function render(){
           >⋯</button>
 
           <div class="hf-backup-menu" data-ref="backupMenu" hidden>
-            <button data-action="exportBackup">匯出備份</button>
-            <button data-action="importBackup">匯入備份</button>
+            <button data-action="exportBackup">下載備份</button>
+            <button data-action="importBackup">從備份還原</button>
+            <div class="hf-backup-menu-divider"></div>
+            <button data-action="cleanupLegacyRevisions">整理舊版revision資料</button>
           </div>
 
           <input
@@ -107,7 +123,7 @@ export function render(){
                 aria-label="前一天"
               >‹</button>
 
-              <input data-ref="date" type="date" max="${addDays(todayISO(),1)}">
+              <input data-ref="date" type="date" max="${todayISO()}">
 
               <button
                 class="hf-date-arrow"
@@ -346,10 +362,6 @@ export function render(){
             <input data-ref="newTeam" type="text">
           </label>
 
-          <label>
-            <span>DOB</span>
-            <input data-ref="newBirthDate" type="date" value="${todayISO()}">
-          </label>
         </div>
 
         <div class="hf-dialog-actions">
@@ -504,24 +516,39 @@ export function render(){
       </div>
     </dialog>
 
+    <div class="hf-backup-drop-overlay" data-ref="backupDropOverlay" hidden><div><strong>↑ 放開以匯入 Handoff 備份</strong><span>支援 .json / .txt · 一次一個檔案</span></div></div>
+    <dialog class="hf-dialog" data-ref="backupReminderDialog">
+      <div class="hf-dialog-card hf-backup-reminder-card">
+        <div class="hf-backup-reminder-head"><h3>備份提醒</h3><p data-ref="backupReminderText">備份狀態</p></div>
+        <div class="hf-dialog-actions">
+          <button type="button" data-action="snoozeBackupReminder">稍後</button>
+          <button type="button" class="hf-primary" data-action="backupNow">立即備份</button>
+        </div>
+      </div>
+    </dialog>
+
     <dialog class="hf-dialog" data-ref="restoreDialog">
       <div class="hf-dialog-card hf-restore-card">
-        <div class="hf-history-head">
-          <div>
-            <h3>還原 Handoff 備份</h3>
-            <p class="hf-weekly-sub" data-ref="restoreInfo"></p>
-          </div>
-          <button type="button" data-action="closeDialog">關閉</button>
+        <div class="hf-restore-head">
+          <h3>還原 Handoff 備份</h3>
+          <button type="button" class="hf-restore-close" data-action="closeDialog" aria-label="關閉">×</button>
+        </div>
+        <div class="hf-restore-meta">
+          <strong data-ref="restoreInfo"></strong>
+          <span data-ref="restoreOverview"></span>
         </div>
         <div class="hf-restore-options">
           <label><input type="radio" name="hfRestoreMode" value="merge" data-ref="restoreMerge" checked>
-            <span><strong>合併</strong><small>保留目前資料；同 ID 的備份資料會更新現有資料。</small></span></label>
+            <span><span class="hf-restore-option-title"><strong>安全合併</strong><em>建議</em></span><small data-ref="restoreMergeSummary">加入新資料與較新的版本；本機較新的資料會保留。</small></span></label>
           <label><input type="radio" name="hfRestoreMode" value="replace" data-ref="restoreReplace">
-            <span><strong>完整覆蓋</strong><small>清除目前 Handoff 資料後，以備份內容完整取代。</small></span></label>
+            <span><strong>完整覆蓋</strong><small>完全回到這份備份的狀態。</small></span></label>
+        </div>
+        <div class="hf-restore-replace-warning" data-ref="restoreReplaceWarning" hidden>
+          目前 Handoff 資料將被取代。
         </div>
         <div class="hf-dialog-actions">
           <button type="button" data-action="closeDialog">取消</button>
-          <button type="button" class="hf-primary" data-action="confirmRestore">開始還原</button>
+          <button type="button" class="hf-primary" data-action="confirmRestore" data-ref="restoreConfirmBtn">安全合併</button>
         </div>
       </div>
     </dialog>
@@ -666,6 +693,7 @@ class HandoffApp{
     this.patients=[];
     this.patient=null;
     this.record=null;
+    this.recordExists=false;
     this.previousRecord=null;
     this.recordCache=new Map();
     this.searchIndex=new Map();
@@ -689,9 +717,13 @@ class HandoffApp{
     this.onDragOver=this.onDragOver.bind(this);
     this.onDrop=this.onDrop.bind(this);
     this.onDragEnd=this.onDragEnd.bind(this);
+    this.onBackupDragOver=this.onBackupDragOver.bind(this);
+    this.onBackupDragLeave=this.onBackupDragLeave.bind(this);
+    this.onBackupDrop=this.onBackupDrop.bind(this);
     this.dragSystemKey=null;
     this.pendingSystem=null;
     this.pendingBackup=null;
+    this.backupReminderTimer=null;
   }
 
   async init(){
@@ -732,6 +764,9 @@ class HandoffApp{
       :(this.patients.find(p=>p.status==="active")?.id||this.patients[0].id);
 
     await this.selectPatient(firstId,false);
+    await this.updateBackupStatus();
+    await this.checkBackupReminder();
+    this.backupReminderTimer=setInterval(()=>this.checkBackupReminder().catch(console.error),60*60*1000);
     this.setSaveState("已載入");
   }
 
@@ -760,13 +795,20 @@ class HandoffApp{
       alertStrip:q('[data-ref="alertStrip"]'),
       addAlertBtn:q('[data-ref="addAlertBtn"]'),
       alertDialog:q('[data-ref="alertDialog"]'),
-      copyMenu:q('[data-ref="copyMenu"]'),
       backupMenu:q('[data-ref="backupMenu"]'),
+      backupStatus:q('[data-ref="backupStatus"]'),
+      backupDropOverlay:q('[data-ref="backupDropOverlay"]'),
+      backupReminderDialog:q('[data-ref="backupReminderDialog"]'),
+      backupReminderText:q('[data-ref="backupReminderText"]'),
       backupFileInput:q('[data-ref="backupFileInput"]'),
       restoreDialog:q('[data-ref="restoreDialog"]'),
       restoreInfo:q('[data-ref="restoreInfo"]'),
+      restoreOverview:q('[data-ref="restoreOverview"]'),
       restoreMerge:q('[data-ref="restoreMerge"]'),
       restoreReplace:q('[data-ref="restoreReplace"]'),
+      restoreReplaceWarning:q('[data-ref="restoreReplaceWarning"]'),
+      restoreConfirmBtn:q('[data-ref="restoreConfirmBtn"]'),
+      restoreMergeSummary:q('[data-ref="restoreMergeSummary"]'),
       historyDialog:q('[data-ref="historyDialog"]'),
       historyList:q('[data-ref="historyList"]'),
       weeklyDialog:q('[data-ref="weeklyDialog"]'),
@@ -807,10 +849,14 @@ class HandoffApp{
     this.root.addEventListener("dragover",this.onDragOver);
     this.root.addEventListener("drop",this.onDrop);
     this.root.addEventListener("dragend",this.onDragEnd);
+    this.root.addEventListener("dragover",this.onBackupDragOver);
+    this.root.addEventListener("dragleave",this.onBackupDragLeave);
+    this.root.addEventListener("drop",this.onBackupDrop);
   }
 
   destroy(){
     clearTimeout(this.saveTimer);
+    clearInterval(this.backupReminderTimer);
     this.root.removeEventListener("input",this.onInput);
     this.root.removeEventListener("change",this.onChange);
     this.root.removeEventListener("click",this.onClick);
@@ -821,7 +867,47 @@ class HandoffApp{
     this.root.removeEventListener("dragover",this.onDragOver);
     this.root.removeEventListener("drop",this.onDrop);
     this.root.removeEventListener("dragend",this.onDragEnd);
+    this.root.removeEventListener("dragover",this.onBackupDragOver);
+    this.root.removeEventListener("dragleave",this.onBackupDragLeave);
+    this.root.removeEventListener("drop",this.onBackupDrop);
     if(this.root.__handoffApp===this)delete this.root.__handoffApp;
+  }
+
+  onBackupDragOver(e){
+    if(!Array.from(e.dataTransfer?.types||[]).includes("Files"))return;
+    e.preventDefault();
+    if(this.r.backupDropOverlay)this.r.backupDropOverlay.hidden=false;
+  }
+
+  onBackupDragLeave(e){
+    if(e.relatedTarget&&!this.root.contains(e.relatedTarget)&&this.r.backupDropOverlay)
+      this.r.backupDropOverlay.hidden=true;
+  }
+
+  async onBackupDrop(e){
+    if(!Array.from(e.dataTransfer?.types||[]).includes("Files"))return;
+    e.preventDefault();
+    e.stopPropagation();
+    if(this.r.backupDropOverlay)this.r.backupDropOverlay.hidden=true;
+
+    const files=[...(e.dataTransfer?.files||[])];
+    if(files.length!==1){
+      alert("一次只能匯入一個 Handoff 備份檔。");
+      return;
+    }
+
+    const file=files[0];
+    if(!/\.(json|txt)$/i.test(file.name)){
+      alert("僅支援 .json 或 .txt 備份檔。");
+      return;
+    }
+
+    try{
+      await this.prepareBackupRestore(file);
+    }catch(err){
+      console.error(err);
+      alert(err.message||String(err));
+    }
   }
 
   onFocusIn(e){
@@ -887,10 +973,15 @@ class HandoffApp{
 
   renderSystems(){
     if(!this.r.systems)return;
-    const layout=getPatientSystemLayout(this.patient);
+
+    // Each Daily Record keeps the System layout that belonged to that date.
+    // This preserves removed/renamed Systems when viewing historical notes.
+    const layout=this.record
+      ?systemEntriesForRecord(this.record,this.patient)
+      :getPatientSystemLayout(this.patient);
     const rows=[...layout];
 
-    if(this.pendingSystem){
+    if(this.pendingSystem&&this.canEditSystemLayout()){
       rows.push({
         key:this.pendingSystem.key,
         label:this.pendingSystem.label||"",
@@ -919,7 +1010,7 @@ class HandoffApp{
 
         <textarea rows="2" data-field="systems.${escapeAttr(key)}"
           ${pending?"disabled":""}
-          placeholder="# ...")}"></textarea>
+          placeholder="# ..."></textarea>
       </div>
     `).join("")+`
       <button type="button" class="hf-add-system-row" data-action="addSystem">＋ Add system</button>
@@ -936,18 +1027,18 @@ class HandoffApp{
     if(this.r.search)this.r.search.value="";
     this.updateSearchSidebar();
     this.renderPatientLists();
-    this.renderSystems();
 
     // Clinical handoff always opens the selected patient on today's note.
+    // loadDate() renders Systems after the correct Daily Record is loaded.
     await this.loadDate(todayISO(),false);
   }
 
   async loadDate(date,save=true){
     this.pendingSystem=null;
-    const maxDate=addDays(todayISO(),1);
+    const maxDate=todayISO();
 
     if(date>maxDate){
-      throw new Error("最多只能建立到明天的交班單。");
+      throw new Error("不能建立未來日期的交班單。");
     }
     
     if(save)await this.flush();
@@ -958,19 +1049,34 @@ class HandoffApp{
     const id=recordId(this.patient.id,date);
     const found=await get(this.db,"dailyRecords",id);
 
-    this.record=found
-      ?normalizeRecord(found)
-      :blankRecord(this.patient,date,this.previousRecord);
+    // Past dates are history only. If no Daily Record was actually saved for
+    // that date, do not synthesize one from carried-forward data. This prevents
+    // an empty historical date from looking like it had a real clinical note.
+    this.recordExists=!!found;
+
+    if(!found && date<maxDate){
+      this.record=blankHistoricalRecord(this.patient,date);
+    }else{
+      this.record=found
+        ?normalizeRecord(found)
+        :blankRecord(this.patient,date,this.previousRecord);
+    }
 
     this.dirty=false;
     this.patientDirty=false;
     this.backgroundEditing=false;
 
-    await setSetting(this.db,`lastDate:${this.patient.id}`,date);
-
+    // Date switching changes which patientSnapshot/systemLayout should be shown.
+    // Rebuild the Clinical Systems DOM BEFORE fill(), so historical Systems
+    // from that Daily Record's snapshot are actually present on screen.
+    this.renderSystems();
     this.fill();
     this.renderAll();
-    this.setSaveState(found?`已載入 ${formatDate(date)}`:`${formatDate(date)} 新紀錄`);
+    this.setSaveState(
+      this.isHistorical()
+        ?(found?`歷史紀錄 · 唯讀`:`${formatDate(date)} · 此日無紀錄`)
+        :(found?`已載入 ${formatDate(date)}`:`${formatDate(date)} 新紀錄`)
+    );
   }
 
   async getPatientRecords(patientId,force=false){
@@ -1053,14 +1159,18 @@ class HandoffApp{
       if(file)await this.prepareBackupRestore(file);
       return;
     }
+    if(e.target===this.r.restoreMerge||e.target===this.r.restoreReplace){
+      this.updateRestoreModeView();
+      return;
+    }
     if(e.target===this.r.date){
       if(!e.target.value)return;
 
-      const maxDate=addDays(todayISO(),1);
+      const maxDate=todayISO();
 
       if(e.target.value>maxDate){
         e.target.value=this.record?.date||todayISO();
-        this.setSaveState("最多只能建立到明天");
+        this.setSaveState("不能建立未來日期");
         return;
       }
 
@@ -1132,7 +1242,7 @@ class HandoffApp{
         this.syncReadonly();
         this.setSaveState("已取消新增 System");
       }else{
-        const item=getPatientSystemLayout(this.patient).find(x=>x.key===key);
+        const item=systemEntriesForRecord(this.record,this.patient).find(x=>x.key===key);
         input.value=item?.label||"";
         input.blur();
       }
@@ -1140,6 +1250,8 @@ class HandoffApp{
   }
 
   async onClick(e){
+    if(this.r.backupMenu&&!this.r.backupMenu.hidden&&!e.target.closest(".hf-backup-wrap"))this.r.backupMenu.hidden=true;
+
     const symbolBtn=e.target.closest("[data-symbol]");
     if(symbolBtn){
       e.preventDefault();
@@ -1176,6 +1288,12 @@ class HandoffApp{
         return;
       }
       if(a==="confirmRestore")return this.restoreBackup();
+      if(a==="cleanupLegacyRevisions"){
+        if(this.r.backupMenu)this.r.backupMenu.hidden=true;
+        return this.cleanupLegacyRevisions();
+      }
+      if(a==="snoozeBackupReminder")return this.snoozeBackupReminder();
+      if(a==="backupNow"){this.r.backupReminderDialog?.close();return this.exportBackup();}
 
       if(a==="editAlert")return this.openAlertEditor();
       if(a==="saveAlert")return this.saveAlert();
@@ -1209,10 +1327,10 @@ class HandoffApp{
       if(a==="prevDay")return this.loadDate(addDays(this.record.date,-1),true);
       if(a==="nextDay"){
         const next=addDays(this.record.date,1);
-        const maxDate=addDays(todayISO(),1);
+        const maxDate=todayISO();
 
         if(next>maxDate){
-          this.setSaveState("最多只能建立到明天");
+          this.setSaveState("不能建立未來日期");
           return;
         }
 
@@ -1229,25 +1347,7 @@ class HandoffApp{
         this.r.historyDialog?.close();
         return this.loadDate(b.dataset.date,true);
       }
-      if(a==="toggleHistoryMenu"){
-        e.stopPropagation();
-        const date=b.dataset.date;
-        this.root.querySelectorAll("[data-history-menu]").forEach(menu=>{
-          menu.hidden=menu.dataset.historyMenu!==date ? true : !menu.hidden;
-        });
-        return;
-      }
-      if(a==="deleteHistoryDate"){
-        e.stopPropagation();
-        this.root.querySelectorAll("[data-history-menu]").forEach(menu=>menu.hidden=true);
-        return this.deleteHistoryDate(b.dataset.date);
-      }
-      if(a==="toggleCopyMenu"){
-        if(this.r.copyMenu)this.r.copyMenu.hidden=!this.r.copyMenu.hidden;
-        return;
-      }
       if(a==="weeklySummary"){
-        if(this.r.copyMenu)this.r.copyMenu.hidden=true;
         return this.openWeeklySummary();
       }
       if(a==="weeklyPreset"){
@@ -1276,7 +1376,6 @@ class HandoffApp{
       if(a==="copyMode"){
         const mode=b.dataset.copyMode||"full";
         await copyText(this.outputText(mode));
-        if(this.r.copyMenu)this.r.copyMenu.hidden=true;
         
         const copyLabels={
           full:"完整交班",
@@ -1284,8 +1383,7 @@ class HandoffApp{
           o:"O",
           a:"A",
           p:"P",
-          duty:"Duty Note",
-          changes:"今日變更"
+          duty:"Duty Note"
         };
 
         this.setSaveState(`已複製 ${copyLabels[mode]||""}`.trim());
@@ -1293,7 +1391,7 @@ class HandoffApp{
         setTimeout(()=>this.setSaveState(`已儲存 ${timeHHMM()}`),1200);
         return;
       }
-      if(a==="save")return this.saveNow("manual");
+      if(a==="save")return this.saveNow();
       if(a==="finalize")return this.finalize();
       if(a==="editBackground")return this.openBackgroundEditor();
       if(a==="saveBackground")return this.saveBackground();
@@ -1330,8 +1428,13 @@ class HandoffApp{
     if(this.db)await setSetting(this.db,"theme",next);
   }
 
+  canEditSystemLayout(){
+    if(!this.record)return false;
+    return !this.isReadOnly() && this.record.date===todayISO();
+  }
+
   async addSystem(){
-    if(!this.patient||this.isReadOnly())return;
+    if(!this.patient||!this.canEditSystemLayout())return;
 
     // Only one unnamed temporary row at a time. It exists in the DOM only and
     // is not written to patient.systemLayout / IndexedDB until a valid name is committed.
@@ -1354,7 +1457,7 @@ class HandoffApp{
   }
 
   updateSystemName(key,value){
-    if(!this.patient||this.isReadOnly())return;
+    if(!this.patient||!this.canEditSystemLayout())return;
 
     if(this.pendingSystem?.key===key){
       // Pending names are UI-only. Do not dirty or autosave the patient yet.
@@ -1401,15 +1504,6 @@ class HandoffApp{
     const rows=await getByIndex(this.db,"dailyRecords","patientId",this.patient.id);
     rows.forEach(raw=>remember(raw?.patientSnapshot?.systemLayout,raw?.date,raw?.updatedAt));
 
-    const revisions=await getAll(this.db,"revisions");
-    revisions
-      .filter(rev=>rev?.patientId===this.patient.id)
-      .forEach(rev=>remember(
-        rev?.snapshot?.patientSnapshot?.systemLayout,
-        rev?.date||rev?.snapshot?.date,
-        rev?.savedAt
-      ));
-
     if(candidates.length){
       candidates.sort((a,b)=>
         b.date.localeCompare(a.date)||b.savedAt.localeCompare(a.savedAt)
@@ -1429,7 +1523,7 @@ class HandoffApp{
   }
 
   async commitSystemName(key,input){
-    if(!this.patient||this.isReadOnly())return;
+    if(!this.patient||!this.canEditSystemLayout())return;
 
     const label=normalizeSystemLabel(input?.value);
 
@@ -1459,7 +1553,7 @@ class HandoffApp{
       layout.push({key:finalKey,label});
 
       this.pendingSystem=null;
-      await this.saveSystemLayout(layout,existingKey?"system-restore":"system-add");
+      await this.saveSystemLayout(layout);
       if(existingKey)this.setSaveState(`已恢復 System「${label}」`);
       return;
     }
@@ -1509,14 +1603,14 @@ class HandoffApp{
     }
 
     item.label=label;
-    await this.saveSystemLayout(layout,restored?"system-restore":"system-rename");
+    await this.saveSystemLayout(layout);
 
     if(restored)this.setSaveState(`已恢復 System「${label}」`);
   }
 
   onDragStart(e){
     const handle=e.target.closest?.(".hf-system-drag");
-    if(!handle||this.isReadOnly())return;
+    if(!handle||!this.canEditSystemLayout())return;
     const row=handle.closest(".hf-system-row");
     if(!row)return;
 
@@ -1561,7 +1655,7 @@ class HandoffApp{
     layout.splice(to+(after?1:0),0,moved);
 
     this.onDragEnd();
-    await this.saveSystemLayout(layout,"system-drag");
+    await this.saveSystemLayout(layout);
     this.setSaveState("System 順序已更新");
   }
 
@@ -1572,7 +1666,7 @@ class HandoffApp{
   }
 
   async deleteSystem(key){
-    if(!this.patient||this.isReadOnly())return;
+    if(!this.patient||!this.canEditSystemLayout())return;
 
     if(this.pendingSystem?.key===key){
       this.pendingSystem=null;
@@ -1588,23 +1682,24 @@ class HandoffApp{
     if(!item)return;
 
     if(!confirm(`從這位病人的交班版面移除 ${item.label}？\n\n既有歷史紀錄不會被刪除。`))return;
-    await this.saveSystemLayout(layout.filter(x=>x.key!==key),"system-remove");
+    await this.saveSystemLayout(layout.filter(x=>x.key!==key));
   }
 
-  async saveSystemLayout(layout,reason){
+  async saveSystemLayout(layout){
     this.patient.systemLayout=normalizeSystemLayout(layout);
     this.patient.updatedAt=nowISO();
     this.patientDirty=true;
 
     // Keep any already-entered system text in the record object.
     // Removing a system only changes the patient-level layout.
-    await this.saveNow(reason);
+    await this.saveNow();
     this.renderSystems();
     this.fill();
     this.renderAll();
   }
 
   insertSymbol(symbol){
+    if(this.isReadOnly())return;
     const el=this.lastTextField;
     if(!symbol||!el||el.disabled||!this.root.contains(el))return;
 
@@ -1622,18 +1717,81 @@ class HandoffApp{
     el.dispatchEvent(new Event("input",{bubbles:true}));
   }
 
+  async cleanupLegacyRevisions(){
+    const count=await countStore(this.db,"revisions");
+
+    if(!count){
+      alert("目前沒有舊版本資料需要整理。");
+      return;
+    }
+
+    const ok=confirm(
+      `目前有 ${count} 筆舊版本資料。\n\n`+
+      `這些是舊版 NeoAssist 自動建立的歷史快照，目前介面沒有使用它們。\n`+
+      `病人資料與每日交班紀錄不會被刪除。\n\n`+
+      `建議先下載一份備份，再進行整理。\n\n`+
+      `確定要清除這 ${count} 筆舊版本資料嗎？`
+    );
+    if(!ok)return;
+
+    await clearStore(this.db,"revisions");
+    this.setSaveState(`已整理 ${count} 筆舊版本資料`);
+  }
+
+  async checkBackupReminder(){
+    if(!this.db||!this.r.backupReminderDialog||this.r.backupReminderDialog.open)return;
+    const now=Date.now();
+    const snoozedUntil=Date.parse(await getSetting(this.db,"backupReminderSnoozedUntil")||"");
+    if(Number.isFinite(snoozedUntil)&&snoozedUntil>now)return;
+    const last=await getSetting(this.db,"lastBackupAt");
+    if(last){
+      const ageMs=Math.max(0,now-Date.parse(last));
+      if(ageMs<BACKUP_REMINDER_DAYS*86400000)return;
+      const days=Math.max(BACKUP_REMINDER_DAYS,Math.floor(ageMs/86400000));
+      this.r.backupReminderText.innerHTML=
+        `已 ${days} 天未備份<br><span class="hf-backup-reminder-last">上次備份：${formatDateTime(last)}</span>`;
+      this.r.backupReminderDialog.showModal();
+      return;
+    }
+    const records=await getAll(this.db,"dailyRecords");
+    if(!records.length)return;
+    let firstDataAt=await getSetting(this.db,"backupFirstDataAt");
+    if(!firstDataAt){firstDataAt=nowISO();await setSetting(this.db,"backupFirstDataAt",firstDataAt);return;}
+    const firstMs=Date.parse(firstDataAt);
+    if(!Number.isFinite(firstMs)||now-firstMs<86400000)return;
+    this.r.backupReminderText.textContent="目前已有 Handoff 資料，但尚未備份";
+    this.r.backupReminderDialog.showModal();
+  }
+
+  async snoozeBackupReminder(){
+    await setSetting(this.db,"backupReminderSnoozedUntil",new Date(Date.now()+BACKUP_SNOOZE_HOURS*3600000).toISOString());
+    this.r.backupReminderDialog?.close();
+    this.setSaveState(`備份提醒已延後 ${BACKUP_SNOOZE_HOURS} 小時`);
+  }
+
+  async updateBackupStatus(){
+    const last=await getSetting(this.db,"lastBackupAt");
+    if(!this.r.backupStatus)return;
+    if(!last){this.r.backupStatus.textContent="⚠ 尚未備份";this.r.backupStatus.classList.add("is-overdue");return;}
+    const ms=Math.max(0,Date.now()-Date.parse(last));
+    const days=Math.floor(ms/86400000);
+    const d=new Date(last);
+    const hm=`${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+    this.r.backupStatus.textContent=days===0?`Backup · 今天 ${hm}`:days===1?`Backup · 昨天 ${hm}`:`${days>=BACKUP_REMINDER_DAYS?"⚠ ":""}Backup · ${days} 天前`;
+    this.r.backupStatus.classList.toggle("is-overdue",days>=BACKUP_REMINDER_DAYS);
+  }
+
   async exportBackup(){
     await this.flush();
     const backup={
       app:"NeoAssist Handoff",
-      backupVersion:1,
+      backupVersion:2,
       databaseName:DB_NAME,
       databaseVersion:DB_VERSION,
       exportedAt:nowISO(),
       data:{
         patients:await getAll(this.db,"patients"),
         dailyRecords:await getAll(this.db,"dailyRecords"),
-        revisions:await getAll(this.db,"revisions"),
         settings:await getAll(this.db,"settings")
       }
     };
@@ -1650,6 +1808,8 @@ class HandoffApp{
     document.body.appendChild(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),1000);
     await setSetting(this.db,"lastBackupAt",nowISO());
+    await del(this.db,"settings","backupReminderSnoozedUntil");
+    await this.updateBackupStatus();
     this.setSaveState("備份已匯出");
   }
 
@@ -1662,36 +1822,110 @@ class HandoffApp{
 
     if(backup?.app!=="NeoAssist Handoff"||!Number.isInteger(backup?.backupVersion)||
       !backup?.data||!Array.isArray(backup.data.patients)||
-      !Array.isArray(backup.data.dailyRecords)||!Array.isArray(backup.data.revisions)||
+      !Array.isArray(backup.data.dailyRecords)||
       !Array.isArray(backup.data.settings)){
       throw new Error("這不是有效的 NeoAssist Handoff 備份檔。");
     }
-    if(backup.backupVersion>1)
+    if(backup.backupVersion>2)
       throw new Error(`此備份版本 v${backup.backupVersion} 比目前程式新，無法安全還原。`);
 
-    this.pendingBackup=backup;
+    // Backup v1 contained revision snapshots. v2 intentionally does not.
+    // Keep v1 import compatibility, but revisions are ignored.
     const d=backup.data;
-    this.r.restoreInfo.textContent=
-      `備份時間：${backup.exportedAt?formatDateTime(backup.exportedAt):"未知"} · ${d.patients.length} 位病人 · ${d.dailyRecords.length} 筆每日紀錄`;
+    const currentPatients=await getAll(this.db,"patients");
+    const currentRecords=await getAll(this.db,"dailyRecords");
+
+    const patientAnalysis=analyzeMergeRowsDetailed(currentPatients,d.patients);
+    const recordAnalysis=analyzeMergeRowsDetailed(currentRecords,d.dailyRecords);
+    const analysis={patients:patientAnalysis,records:recordAnalysis};
+
+    // Keep the validated backup in memory until the user confirms restore.
+    // The minimal-dialog refactor must not remove this assignment.
+    this.pendingBackup={backup,analysis};
+
+    const dates=d.dailyRecords
+      .map(row=>String(row?.date||""))
+      .filter(Boolean)
+      .sort();
+
+    const dateRange=dates.length
+      ?(dates[0]===dates.at(-1)
+        ?formatDate(dates[0])
+        :`${formatDate(dates[0])}–${formatDate(dates.at(-1))}`)
+      :"";
+
+    const addedPatients=patientAnalysis.added;
+    const updatedPatients=patientAnalysis.incomingNewer;
+    const changeParts=[];
+
+    if(addedPatients||recordAnalysis.added)
+      changeParts.push(`新增 ${addedPatients} 位病人 · ${recordAnalysis.added} 筆紀錄`);
+
+    if(updatedPatients||recordAnalysis.incomingNewer)
+      changeParts.push(`更新 ${updatedPatients} 位病人 · ${recordAnalysis.incomingNewer} 筆紀錄`);
+
+    let mergeSummary=changeParts.join("；");
+    if(!mergeSummary)mergeSummary="沒有需要加入或更新的紀錄";
+
+    if(patientAnalysis.localNewer||recordAnalysis.localNewer)
+      mergeSummary+="；本機較新的資料會保留";
+    else
+      mergeSummary+="；本機資料不會被較舊備份覆蓋";
+
+    if(this.r.restoreInfo)
+      this.r.restoreInfo.textContent=backup.exportedAt?formatDateTime(backup.exportedAt):"備份時間未知";
+
+    if(this.r.restoreOverview)
+      this.r.restoreOverview.textContent=
+        `${d.patients.length} 位病人 · ${d.dailyRecords.length} 筆紀錄${dateRange?` · ${dateRange}`:""}`;
+
+    if(this.r.restoreMergeSummary)
+      this.r.restoreMergeSummary.textContent=mergeSummary+"。";
+
     if(this.r.restoreMerge)this.r.restoreMerge.checked=true;
+    if(this.r.restoreReplace)this.r.restoreReplace.checked=false;
+    this.updateRestoreModeView();
     this.r.restoreDialog?.showModal();
   }
 
+  updateRestoreModeView(){
+    const replace=this.r.restoreReplace?.checked===true;
+    if(this.r.restoreReplaceWarning)this.r.restoreReplaceWarning.hidden=!replace;
+
+    if(this.r.restoreConfirmBtn){
+      this.r.restoreConfirmBtn.textContent=replace?"完整還原":"安全合併";
+      this.r.restoreConfirmBtn.classList.toggle("hf-danger-action",replace);
+    }
+  }
+
   async restoreBackup(){
-    const backup=this.pendingBackup;
-    if(!backup)throw new Error("沒有可還原的備份資料。");
+    const pending=this.pendingBackup;
+    if(!pending)throw new Error("沒有可還原的備份資料。");
+    const backup=pending.backup||pending;
     const replace=this.r.restoreReplace?.checked===true;
 
     if(replace&&!confirm("完整覆蓋會刪除目前所有 Handoff 資料，再以備份內容取代。\n\n確定要繼續嗎？"))return;
 
     await this.flush();
-    const stores=["patients","dailyRecords","revisions","settings"];
+    // Keep the revisions store itself for future features, but current restore
+    // only restores active Handoff data.
+    const stores=["patients","dailyRecords","settings"];
     if(replace)for(const store of stores)await clearStore(this.db,store);
 
-    for(const row of backup.data.patients)await put(this.db,"patients",normalizePatient(row));
-    for(const row of backup.data.dailyRecords)await put(this.db,"dailyRecords",normalizeRecord(row));
-    for(const row of backup.data.revisions)await put(this.db,"revisions",row);
-    for(const row of backup.data.settings)await put(this.db,"settings",row);
+    if(replace){
+      for(const row of backup.data.patients)await put(this.db,"patients",normalizePatient(row));
+      for(const row of backup.data.dailyRecords)await put(this.db,"dailyRecords",normalizeRecord(row));
+      for(const row of backup.data.settings)await put(this.db,"settings",row);
+    }else{
+      await safeMergeStore(this.db,"patients",backup.data.patients,normalizePatient);
+      await safeMergeStore(this.db,"dailyRecords",backup.data.dailyRecords,normalizeRecord);
+      // Legacy v1 revision snapshots are intentionally ignored.
+      const protectedKeys=new Set(["lastBackupAt","lastRestoreAt","backupReminderSnoozedUntil","backupFirstDataAt","currentPatientId","theme","printSettings"]);
+      for(const row of backup.data.settings){
+        if(!row?.key||protectedKeys.has(row.key))continue;
+        if(!(await get(this.db,"settings",row.key)))await put(this.db,"settings",row);
+      }
+    }
 
     await setSetting(this.db,"lastRestoreAt",nowISO());
     this.pendingBackup=null;
@@ -1710,11 +1944,11 @@ class HandoffApp{
 
     this.r.restoreDialog?.close();
     await this.selectPatient(id,false);
-    this.setSaveState(replace?"備份已完整還原":"備份已合併");
+    this.setSaveState(replace?"備份已完整還原":"備份已安全合併");
   }
 
   openAlertEditor(){
-    if(this.record?.status==="finalized")return;
+    if(this.isReadOnly())return;
 
     this.backgroundEditing=true;
     this.fill();
@@ -1723,14 +1957,14 @@ class HandoffApp{
   }
 
   async saveAlert(){
-    await this.saveNow("alert");
+    await this.saveNow();
     this.backgroundEditing=false;
     this.r.alertDialog?.close();
     this.renderAll();
   }
 
   openBackgroundEditor(){
-    if(this.record?.status==="finalized")return;
+    if(this.isReadOnly())return;
     this.backgroundEditing=true;
     this.fill();
     this.renderApgarFields();
@@ -1739,7 +1973,7 @@ class HandoffApp{
   }
 
   async saveBackground(){
-    await this.saveNow("background");
+    await this.saveNow();
     this.backgroundEditing=false;
     this.r.backgroundDialog.close();
     this.renderAll();
@@ -1747,7 +1981,6 @@ class HandoffApp{
 
   async createPatient(){
     const p=blankPatient();
-    p.birthDate=todayISO();
     p.bed=this.r.newBed.value.trim();
     p.mrn=this.r.newMrn.value.trim();
     p.name=this.r.newName.value.trim();
@@ -1800,7 +2033,7 @@ class HandoffApp{
     if(!p)return;
 
     const mrn=String(p.mrn||"").trim();
-    if(!confirm(`永久刪除 ${patientLabel(p)}？\n\n這會刪除病人資料、所有 Daily Records 與 Revision History，無法復原。`))return;
+    if(!confirm(`永久刪除 ${patientLabel(p)}？\n\n這會刪除病人資料與所有每日交班紀錄，無法復原。`))return;
 
     if(mrn){
       const typed=prompt(`請輸入病歷號 ${mrn} 以確認刪除：`,"");
@@ -1828,15 +2061,24 @@ class HandoffApp{
   markDirty(){
     this.setSaveState("尚未儲存");
     clearTimeout(this.saveTimer);
-    this.saveTimer=setTimeout(()=>this.saveNow("autosave"),AUTOSAVE_DELAY_MS);
+    this.saveTimer=setTimeout(()=>this.saveNow(),AUTOSAVE_DELAY_MS);
   }
 
   async flush(){
-    if(this.dirty||this.patientDirty)await this.saveNow("autosave");
+    if(this.dirty||this.patientDirty)await this.saveNow();
   }
 
-  async saveNow(reason="manual"){
+  async saveNow(){
     if(!this.record||!this.patient)return;
+
+    // Past Daily Records are immutable history. Never write them again.
+    if(this.isHistorical()){
+      clearTimeout(this.saveTimer);
+      this.dirty=false;
+      this.patientDirty=false;
+      this.setSaveState(`歷史紀錄 · 唯讀`);
+      return;
+    }
 
     clearTimeout(this.saveTimer);
     this.setSaveState("正在儲存…");
@@ -1853,15 +2095,11 @@ class HandoffApp{
     this.record.updatedAt=nowISO();
 
     await put(this.db,"dailyRecords",this.record);
-    await put(this.db,"revisions",{
-      id:`${this.record.id}::${Date.now()}`,
-      recordId:this.record.id,
-      patientId:this.record.patientId,
-      date:this.record.date,
-      reason,
-      savedAt:nowISO(),
-      snapshot:clone(this.record)
-    });
+    this.recordExists=true;
+
+    // Revision snapshots are intentionally disabled for now.
+    // The "revisions" store remains in IndexedDB for future version-history features,
+    // but routine autosave/manual/background/system saves no longer create snapshots.
 
     this.dirty=false;
     this.patientDirty=false;
@@ -1876,37 +2114,36 @@ class HandoffApp{
   async finalize(){
     if(!this.record)return;
 
+    if(this.record.date<todayISO()){
+      this.setSaveState("歷史紀錄 · 唯讀");
+      return;
+    }
+
     if(this.record.date>todayISO()){
-      alert("明日暫存紀錄不能提前完成。");
+      alert("未來日期的交班紀錄不可使用。");
       return;
     }
 
     if(this.record.status==="finalized"){
-      if(!confirm("此日已完成。要重新開啟編輯嗎？"))return;
+      if(!confirm("今日紀錄已完成。要重新開啟編輯嗎？"))return;
       this.record.status="draft";
-      this.record.revision=(this.record.revision||1)+1;
       this.record.finalizedAt="";
       this.dirty=true;
-      await this.saveNow("reopen");
+      await this.saveNow();
       return;
     }
 
-    await this.saveNow("before-finalize");
+    await this.saveNow();
 
     this.record.status="finalized";
     this.record.finalizedAt=nowISO();
     this.record.updatedAt=nowISO();
 
     await put(this.db,"dailyRecords",this.record);
-    await put(this.db,"revisions",{
-      id:`${this.record.id}::final::${Date.now()}`,
-      recordId:this.record.id,
-      patientId:this.record.patientId,
-      date:this.record.date,
-      reason:"finalize",
-      savedAt:nowISO(),
-      snapshot:clone(this.record)
-    });
+    this.recordExists=true;
+
+    // Finalize no longer creates a separate revision snapshot.
+    // The finalized state itself is stored on the daily record.
 
     this.recordCache.delete(this.patient.id);
     await this.updateSearchIndexForPatient(this.patient.id);
@@ -1915,7 +2152,13 @@ class HandoffApp{
     this.setSaveState("今日已完成");
   }
 
-  isReadOnly(){return this.record?.status==="finalized";}
+  isHistorical(){
+    return !!this.record?.date && this.record.date<todayISO();
+  }
+
+  isReadOnly(){
+    return this.isHistorical() || this.record?.status==="finalized";
+  }
 
   renderAll(){
     this.renderPatientHeader();
@@ -2062,10 +2305,15 @@ class HandoffApp{
     }
   }
 
-  renderPatientHeader(){
-    if(!this.patient)return;
+  displayPatient(){
+    return this.isHistorical() && this.record?.patientSnapshot
+      ?this.record.patientSnapshot
+      :this.patient;
+  }
 
-    const p=this.patient;
+  renderPatientHeader(){
+    const p=this.displayPatient();
+    if(!p)return;
     const parts=[];
 
     if(p.team){
@@ -2090,7 +2338,7 @@ class HandoffApp{
   }
 
   renderBackground(){
-    const p=this.patient;
+    const p=this.displayPatient();
     if(!p)return;
 
     const first=[
@@ -2125,15 +2373,17 @@ class HandoffApp{
   }
 
   renderAlert(){
-    if(!this.r.alertStrip||!this.patient)return;
+    const p=this.displayPatient();
+    if(!this.r.alertStrip||!p)return;
 
-    const alert=this.patient.alert?.trim()||"";
+    const alert=p.alert?.trim()||"";
+    const historical=this.isHistorical();
 
     this.r.alertStrip.hidden=!alert;
-    this.r.alertStrip.dataset.action=alert?"editAlert":"";
-    this.r.alertStrip.title=alert?"點擊編輯重要提醒":"";
+    this.r.alertStrip.dataset.action=alert&&!historical?"editAlert":"";
+    this.r.alertStrip.title=alert&&!historical?"點擊編輯重要提醒":"";
     this.r.alertStrip.innerHTML=alert
-      ?`<strong>!</strong><span>${escapeHTML(alert)}</span><small>編輯</small>`
+      ?`<strong>!</strong><span>${escapeHTML(alert)}</span>${historical?"":"<small>編輯</small>"}`
       :"";
 
     if(this.r.addAlertBtn){
@@ -2145,83 +2395,41 @@ class HandoffApp{
   async openHistory(){
     await this.flush();
     const list=await this.getPatientRecords(this.patient.id,true);
+    const today=todayISO();
 
     this.r.historyList.innerHTML=list.length
-      ?list.map(r=>`
-        <div class="hf-history-entry ${r.date===this.record.date?"is-current":""}">
-          <button class="hf-history-item"
-            data-action="historyDate"
-            data-date="${escapeAttr(r.date)}">
-            <strong>${escapeHTML(formatDate(r.date))}</strong>
-            <span class="${r.status==="finalized"?"is-final":""}">
-              ${r.status==="finalized"?"FINAL":"DRAFT"}
-            </span>
-            <small>${escapeHTML(trimOneLine(r.summary)||"無 summary")}</small>
-          </button>
+      ?list.map(r=>{
+        const historical=r.date<today;
+        const statusLabel=historical
+          ?"HISTORY"
+          :(r.status==="finalized"?"FINAL":"DRAFT");
+        const statusClass=!historical&&r.status==="finalized"?"is-final":"";
 
-          <div class="hf-history-menu-wrap">
-            <button class="hf-history-more"
-              data-action="toggleHistoryMenu"
-              data-date="${escapeAttr(r.date)}"
-              aria-label="歷程操作">⋯</button>
-
-            <div class="hf-history-menu"
-              data-history-menu="${escapeAttr(r.date)}"
-              hidden>
-              <button class="hf-danger-text"
-                data-action="deleteHistoryDate"
-                data-date="${escapeAttr(r.date)}">
-                刪除此日紀錄
-              </button>
-            </div>
+        return `
+          <div class="hf-history-entry ${r.date===this.record.date?"is-current":""}">
+            <button class="hf-history-item"
+              data-action="historyDate"
+              data-date="${escapeAttr(r.date)}">
+              <strong>${escapeHTML(formatDate(r.date))}</strong>
+              <span class="${statusClass}">
+                ${statusLabel}
+              </span>
+              <small>${escapeHTML(trimOneLine(r.summary)||"無 summary")}</small>
+            </button>
           </div>
-        </div>
-      `).join("")
+        `;
+      }).join("")
       :`<div class="hf-empty-list">尚無歷程</div>`;
 
     this.r.historyDialog.showModal();
   }
 
-  async deleteHistoryDate(date){
-    if(!date||!this.patient)return;
-
-    const id=recordId(this.patient.id,date);
-    const found=await get(this.db,"dailyRecords",id);
-    if(!found){
-      await this.openHistory();
-      return;
-    }
-
-    const status=found.status==="finalized"?"FINAL":"DRAFT";
-    if(!confirm(`刪除 ${formatDate(date)} 的交班紀錄？\n\n${status} 紀錄與其 Revision History 將永久刪除。`))return;
-
-    await deleteDailyRecordData(this.db,id);
-    this.recordCache.delete(this.patient.id);
-    await this.updateSearchIndexForPatient(this.patient.id);
-
-    const deletingCurrent=this.record?.id===id;
-    if(deletingCurrent){
-      const remaining=await this.getPatientRecords(this.patient.id,true);
-      this.r.historyDialog?.close();
-
-      if(remaining.length){
-        const next=remaining
-          .filter(r=>r.date<=todayISO())
-          .sort((a,b)=>b.date.localeCompare(a.date))[0];
-        if(next)return this.loadDate(next.date,false);
-      }
-
-      return this.loadDate(todayISO(),false);
-    }
-
-    await this.openHistory();
-    this.setSaveState(`已刪除 ${formatDate(date)} 紀錄`);
-  }
 
   renderDerived() {
-    if (!this.record || !this.patient) return;
+    const p=this.displayPatient();
+    if (!this.record || !p) return;
 
-    const age = deriveAge(this.patient, this.record.date);
+    const age = deriveAge(p, this.record.date);
 
     const date = formatDate(this.record.date);
 
@@ -2252,26 +2460,59 @@ class HandoffApp{
   }
 
   renderRecordState(){
+    const historical=this.isHistorical();
+    const missing=historical && !this.recordExists;
     const finalized=this.record?.status==="finalized";
-    this.r.recordBadge.textContent=finalized
-      ?`FINAL · ${formatDateTime(this.record.finalizedAt)}`
-      :`DRAFT · r${this.record?.revision||1}`;
-    this.r.recordBadge.className=
-      `hf-record-badge ${finalized?"is-final":"is-draft"}`;
-    this.root.classList.toggle("is-finalized",finalized);
-    this.r.finalizeBtn.textContent=finalized?"重新開啟":"完成";
+
+    if(missing){
+      this.r.recordBadge.textContent="NO RECORD";
+      this.r.recordBadge.className="hf-record-badge is-history";
+    }else if(historical){
+      this.r.recordBadge.textContent="HISTORY · 唯讀";
+      this.r.recordBadge.className="hf-record-badge is-history";
+    }else{
+      this.r.recordBadge.textContent=finalized
+        ?`FINAL · ${formatDateTime(this.record.finalizedAt)}`
+        :"DRAFT";
+      this.r.recordBadge.className=
+        `hf-record-badge ${finalized?"is-final":"is-draft"}`;
+    }
+
+    this.root.classList.toggle("is-finalized",finalized&&!historical);
+    this.root.classList.toggle("is-history",historical);
+
+    if(this.r.finalizeBtn){
+      this.r.finalizeBtn.hidden=historical;
+      this.r.finalizeBtn.disabled=historical;
+      if(!historical)this.r.finalizeBtn.textContent=finalized?"重新開啟":"完成";
+    }
   }
 
   syncReadonly(){
     const ro=this.isReadOnly();
+    const historical=this.isHistorical();
 
     this.root.querySelectorAll("[data-field]").forEach(el=>{
       const patientField=el.dataset.field?.startsWith("patient.");
       el.disabled=ro||(patientField&&!this.backgroundEditing);
     });
 
+    const systemLayoutLocked=!this.canEditSystemLayout();
     this.root.querySelectorAll("[data-system-name], .hf-system-drag, .hf-system-remove, .hf-add-system-row")
-      .forEach(el=>{el.disabled=ro;});
+      .forEach(el=>{
+        el.disabled=systemLayoutLocked;
+        if(historical)el.title="歷史紀錄為唯讀";
+      });
+
+    // These actions change Daily Record or Patient data and are unavailable in history.
+    this.root.querySelectorAll(
+      '[data-action="editBackground"],[data-action="editAlert"],[data-action="collectProblems"],[data-action="loadTemplate"]'
+    ).forEach(el=>{
+      el.disabled=historical||this.record?.status==="finalized";
+      if(historical)el.title="歷史紀錄為唯讀";
+    });
+
+    if(this.r.addAlertBtn)this.r.addAlertBtn.disabled=historical||this.record?.status==="finalized";
   }
 
   setSaveState(text){
@@ -2437,9 +2678,10 @@ class HandoffApp{
 
     const rows=await this.getPatientRecords(this.patient.id,true);
 
-    // Include the currently loaded record even if it was just saved.
+    // Only merge the current record when it actually exists in dailyRecords.
+    // A past NO RECORD placeholder must never become a Weekly Summary day.
     const merged=rows.filter(r=>r.id!==this.record?.id);
-    if(this.record)merged.push(normalizeRecord(this.record));
+    if(this.record && this.recordExists)merged.push(normalizeRecord(this.record));
 
     return merged
       .filter(r=>r.date>=from&&r.date<=to)
@@ -2898,14 +3140,13 @@ class HandoffApp{
   }
 
   outputText(mode="full"){
-    if(mode==="changes") return this.outputChangesText();
     if(mode==="s") return this.outputSText();
     if(mode==="o") return this.outputOText();
     if(mode==="a") return this.outputAText();
     if(mode==="p") return this.outputPText();
     if(mode==="duty") return this.outputDutyNoteText();
     
-    const p=this.patient;
+    const p=this.displayPatient()||this.patient;
     const r=this.record;
     const age=deriveAge(p,r.date);
     const lines=[];
@@ -3240,21 +3481,8 @@ class HandoffApp{
     return wrapCopyText(cleanOutput(lines));
   }
 
-  quickFactsText(r=this.record,age=deriveAge(this.patient,r.date)){
-    return [
-      formatDate(r.date),
-      age.ageLabel,
-      age.dol!==null?`DOL ${age.dol}`:"",
-      r.metrics.weightG!==""?`BW ${r.metrics.weightG} g`:"",
-      r.metrics.io!==""?`I/O ${r.metrics.io}`:"",
-      r.metrics.urineOutput!==""?`UO ${r.metrics.urineOutput}`:"",
-      r.metrics.kcal!==""?`kcal ${r.metrics.kcal}`:"",
-      r.metrics.stool!==""?`Stool ${r.metrics.stool}`:""
-    ].filter(Boolean).join(" · ");
-  }
-
   outputSText(){
-    const p=this.patient;
+    const p=this.displayPatient()||this.patient;
     const r=this.record;
     const age=deriveAge(p,r.date);
     const lines=[];
@@ -3342,7 +3570,7 @@ class HandoffApp{
 
 
   outputOText(){
-    const p=this.patient;
+    const p=this.displayPatient()||this.patient;
     const r=this.record;
     const lines=[];
 
@@ -3598,39 +3826,6 @@ class HandoffApp{
     }
   }
 
-  outputChangesText(){
-    const r=this.record, prev=this.previousRecord;
-    const head=[this.patient.bed,this.patient.name,this.patient.mrn].filter(Boolean).join(" · ");
-    const lines=[head,`[今日變更 · ${formatDate(r.date)}]`].filter(Boolean);
-    if(!prev){
-      lines.push("無前一日紀錄可比較。",this.quickFactsText());
-      return cleanOutput(lines);
-    }
-
-    const add=(label,path,formatter=v=>String(v??"").trim())=>{
-      const cur=getPath(r,path),old=getPath(prev,path);
-      if(normalizeComparable(cur)===normalizeComparable(old))return;
-      const a=formatter(old)||"∅", b=formatter(cur)||"∅";
-      lines.push(`${label}: ${a} → ${b}`);
-    };
-
-    add("BW","metrics.weightG",v=>v!==""&&v!=null?`${v} g`:"");
-    add("I/O","metrics.io");
-    add("UO","metrics.urineOutput");
-    add("kcal","metrics.kcal");
-    add("Stool","metrics.stool");
-    add("Summary","summary");
-    add("Vent","vent");
-    add("Line","line");
-    add("Fluids","fluids");
-    systemEntriesForComparison(r,prev,this.patient).forEach(({key,label})=>add(label,`systems.${key}`));
-    add("Assessment","assessment");
-    add("Plan","plan");
-
-    if(lines.length<3)lines.push("與前一日相比無內容變更。");
-    return cleanOutput(lines);
-  }
-
 }
 
 const FIELD_TEMPLATES={
@@ -3786,18 +3981,6 @@ function systemEntriesForRecord(record,fallbackPatient=null){
   return getPatientSystemLayout(record?.patientSnapshot||fallbackPatient);
 }
 
-function systemEntriesForComparison(current,previous,fallbackPatient=null){
-  const out=[];
-  const seen=new Set();
-  [...systemEntriesForRecord(current,fallbackPatient),...systemEntriesForRecord(previous,fallbackPatient)]
-    .forEach(item=>{
-      if(seen.has(item.key))return;
-      seen.add(item.key);
-      out.push(item);
-    });
-  return out;
-}
-
 function metric(label,path,suffix=""){
   return `
     <label class="hf-fact hf-metric">
@@ -3874,6 +4057,41 @@ function normalizePatient(x={}){
   return p;
 }
 
+function blankHistoricalRecord(patient,date){
+  // UI-only placeholder for a past date that has no saved Daily Record.
+  // Keep only identity for orientation; do not pretend current background or
+  // current Clinical System layout existed on that historical date.
+  const snapshot={
+    ...blankPatient(),
+    id:patient.id,
+    bed:patient.bed||"",
+    mrn:patient.mrn||"",
+    name:patient.name||"",
+    team:patient.team||"",
+    birthDate:"",
+    systemLayout:[]
+  };
+
+  return {
+    id:recordId(patient.id,date),
+    patientId:patient.id,
+    date,
+    status:"draft",
+    patientSnapshot:snapshot,
+    metrics:{weightG:"",io:"",urineOutput:"",kcal:"",stool:""},
+    summary:"",
+    vent:"",
+    line:"",
+    fluids:"",
+    systems:{},
+    assessment:"",
+    plan:"",
+    createdAt:"",
+    updatedAt:"",
+    finalizedAt:""
+  };
+}
+
 function blankRecord(patient,date,previous){
   const prev=previous?normalizeRecord(previous):null;
 
@@ -3883,7 +4101,6 @@ function blankRecord(patient,date,previous){
     patientId:patient.id,
     date,
     status:"draft",
-    revision:1,
     patientSnapshot:clone(patient),
 
     // Daily numeric metrics do NOT carry forward.
@@ -3936,7 +4153,6 @@ function normalizeRecord(x={}){
     patientId:x.patientId||"",
     date:x.date||todayISO(),
     status:x.status||"draft",
-    revision:Number(x.revision)||1,
     patientSnapshot:snapshot,
 
     metrics:{
@@ -4086,16 +4302,6 @@ function trimAroundMatch(raw,q){
   return `${start>0?"…":""}${text.slice(start,end)}${end<text.length?"…":""}`;
 }
 
-function normalizeComparable(v){
-  if(v==null)return "";
-  if(typeof v==="object")return JSON.stringify(v);
-  return String(v).replace(/\s+/g," ").trim();
-}
-function formatDiffValue(v){
-  if(v==null)return "";
-  if(typeof v==="object")return JSON.stringify(v);
-  return trimOneLine(String(v));
-}
 function trimOneLine(s){return String(s??"").replace(/\s+/g," ").trim().slice(0,100);}
 function cleanOutput(lines){return lines.filter((x,i,a)=>!(x===""&&a[i-1]==="")).join("\n").replace(/\n{3,}/g,"\n\n").trim()+"\n";}
 
@@ -4397,6 +4603,67 @@ function sortDischarged(a,b){
   return String(a.bed||"").localeCompare(String(b.bed||""),"zh-Hant",{numeric:true});
 }
 
+function rowTimestamp(row){
+  const ms=Date.parse(row?.updatedAt||row?.savedAt||row?.createdAt||"");
+  return Number.isFinite(ms)?ms:0;
+}
+function comparableRow(row){
+  if(!row)return "";
+  const x=clone(row);delete x.updatedAt;
+  return JSON.stringify(x);
+}
+function analyzeMergeRowsDetailed(localRows=[],incomingRows=[]){
+  const localMap=new Map(localRows.map(row=>[row.id,row]));
+  const out={
+    added:0,
+    incomingNewer:0,
+    localNewer:0,
+    same:0,
+    ids:{added:[],incomingNewer:[],localNewer:[],same:[]}
+  };
+
+  for(const row of incomingRows){
+    const id=row?.id;
+    const local=localMap.get(id);
+
+    if(!local){
+      out.added++;
+      out.ids.added.push(id);
+      continue;
+    }
+
+    if(comparableRow(local)===comparableRow(row)){
+      out.same++;
+      out.ids.same.push(id);
+      continue;
+    }
+
+    const incomingTime=rowTimestamp(row);
+    const localTime=rowTimestamp(local);
+
+    if(incomingTime>localTime){
+      out.incomingNewer++;
+      out.ids.incomingNewer.push(id);
+    }else{
+      // Timestamp tie with different content is intentionally conservative:
+      // keep local rather than silently overwrite it.
+      out.localNewer++;
+      out.ids.localNewer.push(id);
+    }
+  }
+
+  return out;
+}
+
+async function safeMergeStore(db,store,incomingRows,normalizer=x=>x){
+  for(const raw of incomingRows){
+    const incoming=normalizer(raw),local=await get(db,store,incoming.id);
+    if(!local){await put(db,store,incoming);continue;}
+    if(comparableRow(local)===comparableRow(incoming))continue;
+    if(rowTimestamp(incoming)>rowTimestamp(local))await put(db,store,incoming);
+  }
+}
+
 async function openDb(){
   return new Promise((res,rej)=>{
     const r=indexedDB.open(DB_NAME,DB_VERSION);
@@ -4437,14 +4704,10 @@ function tx(db,s,m="readonly"){return db.transaction(s,m).objectStore(s);}
 function req(r){return new Promise((res,rej)=>{r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
 function get(db,s,k){return req(tx(db,s).get(k));}
 function getAll(db,s){return req(tx(db,s).getAll());}
+function countStore(db,s){return req(tx(db,s).count());}
 function put(db,s,v){return req(tx(db,s,"readwrite").put(v));}
 function clearStore(db,s){return req(tx(db,s,"readwrite").clear());}
 function del(db,s,k){return req(tx(db,s,"readwrite").delete(k));}
-async function deleteDailyRecordData(db,recordIdValue){
-  const revisions=await getByIndex(db,"revisions","recordId",recordIdValue);
-  for(const r of revisions)await del(db,"revisions",r.id);
-  await del(db,"dailyRecords",recordIdValue);
-}
 
 async function deletePatientData(db,patientId){
   const records=await getByIndex(db,"dailyRecords","patientId",patientId);
@@ -4454,7 +4717,6 @@ async function deletePatientData(db,patientId){
     await del(db,"revisions",r.id);
   for(const r of records)await del(db,"dailyRecords",r.id);
   await del(db,"patients",patientId);
-  await del(db,"settings",`lastDate:${patientId}`);
   if((await getSetting(db,"currentPatientId"))===patientId)
     await del(db,"settings","currentPatientId");
 }
@@ -4855,6 +5117,13 @@ const STYLES=`
   background:#ffffff18;
 }
 
+.hf-backup-status{height:32px;padding:0 10px;border:1px solid #666;border-radius:6px;background:transparent;color:#ddd;font-size:11px;cursor:pointer}.hf-backup-status:hover{background:#ffffff18;color:#fff}.hf-backup-status.is-overdue{border-color:#a77a62;color:#f0c9b4}
+.hf-backup-drop-overlay{position:fixed;inset:0;z-index:5000;background:#242220d9;display:grid;place-items:center}.hf-backup-drop-overlay[hidden]{display:none}.hf-backup-drop-overlay>div{display:grid;gap:8px;text-align:center;padding:34px 48px;border:2px dashed #d6cec4;border-radius:12px;background:#33302dcc;color:#fff}.hf-backup-drop-overlay span{font-size:12px;color:#d0c8bf}
+.hf-backup-reminder-card{width:min(480px,92vw)}.hf-backup-reminder-head{margin-bottom:14px}.hf-backup-reminder-head h3{margin:0 0 5px;font-size:18px}.hf-backup-reminder-head p{margin:0;color:var(--muted);font-size:12px;line-height:1.55}.hf-backup-reminder-last{font-size:11px;color:var(--subtle-text)}
+.hf-restore-replace-warning{margin-top:12px;padding:10px 11px;border:1px solid #d7b2ae;border-radius:7px;background:var(--danger-bg);color:var(--danger);font-size:12px;line-height:1.5}
+.hf-restore-replace-warning[hidden]{display:none}
+.hf-dialog-actions .hf-danger-action{background:var(--danger)!important;border-color:var(--danger)!important;color:#fff!important}
+
 /* =========================
    BACKUP MENU
 ========================= */
@@ -4914,6 +5183,11 @@ const STYLES=`
 
 .hf-backup-menu button:hover{
   background:var(--surface-muted);
+}
+.hf-backup-menu-divider{
+  height:1px;
+  margin:4px 5px;
+  background:var(--line2);
 }
 
 /* =========================
@@ -5623,6 +5897,22 @@ const STYLES=`
   color:#54675a;
 }
 
+.hf-record-badge.is-history{
+  background:#eee9e3;
+  color:#6d6862;
+}
+
+.hf[data-tool="handoff"].is-history textarea:disabled,
+.hf[data-tool="handoff"].is-history input:disabled{
+  background:var(--panel);
+  color:var(--ink);
+  opacity:.78;
+}
+
+.hf[data-tool="handoff"].is-history .hf-background{
+  cursor:default;
+}
+
 /* =========================
    ALERT
 ========================= */
@@ -5714,30 +6004,6 @@ const STYLES=`
 
   margin-bottom:10px;
   overflow:hidden;
-}
-
-/* Clinical section 的 System menu 可以超出區塊 */
-.hf-section.hf-clinical{
-  overflow:visible;
-  position:relative;
-  z-index:10;
-}
-
-/* Clinical 下面的 section 保持較低層級 */
-.hf-clinical + .hf-section{
-  position:relative;
-  z-index:1;
-}
-
-/* System menu 必須浮在其他內容上面 */
-.hf-system-menu-wrap{
-  position:relative;
-  z-index:20;
-}
-
-.hf-system-menu{
-  position:absolute;
-  z-index:1000;
 }
 
 .hf-background{
@@ -6699,10 +6965,6 @@ const STYLES=`
     grid-template-columns:84px minmax(0,1fr);
   }
 
-  .hf-apgar-row{
-    gap:8px;
-  }
-
   .hf-apgar-cell{
     width:68px;
   }
@@ -6932,60 +7194,6 @@ const STYLES=`
 .hf-print-name,.hf-print-team{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hf-print-team{color:var(--muted)}
 
-/* =========================
-   RESTORE DIALOG
-========================= */
-
-.hf-restore-card{
-  width:min(560px,92vw);
-}
-
-.hf-restore-options{
-  display:grid;
-  gap:8px;
-
-  margin-top:14px;
-}
-
-.hf-restore-options label{
-  display:grid!important;
-  grid-template-columns:20px 1fr!important;
-
-  gap:9px!important;
-  align-items:start!important;
-
-  margin:0!important;
-  padding:11px;
-
-  border:1px solid var(--line);
-  border-radius:7px;
-
-  background:var(--control-bg);
-
-  cursor:pointer;
-}
-
-.hf-restore-options input{
-  width:15px!important;
-  height:15px!important;
-
-  margin:2px 0 0!important;
-}
-
-.hf-restore-options span{
-  display:grid;
-  gap:3px;
-}
-
-.hf-restore-options strong{
-  font-size:13px;
-}
-
-.hf-restore-options small{
-  font-size:11px;
-  color:var(--muted);
-  line-height:1.4;
-}
 
 /* =========================
    HISTORY
@@ -7024,7 +7232,7 @@ const STYLES=`
 .hf-history-entry{
   position:relative;
   display:grid;
-  grid-template-columns:minmax(0,1fr) 42px;
+  grid-template-columns:minmax(0,1fr);
   align-items:stretch;
   background:var(--control-bg);
   border-bottom:1px solid var(--line2);
@@ -7066,62 +7274,6 @@ const STYLES=`
   text-overflow:ellipsis;
   color:var(--muted);
 }
-
-.hf-history-menu-wrap{
-  position:relative;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-
-.hf-history-more{
-  width:30px;
-  height:30px;
-  padding:0;
-  border:0!important;
-  border-radius:5px!important;
-  background:transparent!important;
-  color:var(--subtle-text);
-  font-size:18px;
-  line-height:1;
-  cursor:pointer;
-}
-
-.hf-history-more:hover{
-  background:#e8e1d8!important;
-  color:var(--ink);
-}
-
-.hf-history-menu{
-  position:absolute;
-  top:34px;
-  right:4px;
-  z-index:60;
-  min-width:130px;
-  padding:5px;
-  background:var(--control-bg);
-  border:1px solid var(--line);
-  border-radius:7px;
-  box-shadow:0 8px 24px #0002;
-}
-
-.hf-history-menu[hidden]{display:none}
-
-.hf-history-menu button{
-  display:block;
-  width:100%;
-  min-height:34px;
-  padding:0 10px;
-  border:0;
-  border-radius:4px;
-  background:var(--control-bg);
-  text-align:left;
-  font-size:12px;
-  cursor:pointer;
-}
-
-.hf-history-menu .hf-danger-text{color:#9b4949}
-.hf-history-menu .hf-danger-text:hover{background:#fbefef}
 
 /* =========================
    FINALIZED
@@ -7231,12 +7383,6 @@ const STYLES=`
 .hf[data-tool="handoff"][data-theme="dark"] .hf-restore-options label,
 .hf[data-tool="handoff"][data-theme="dark"] .hf-history-head button,
 .hf[data-tool="handoff"][data-theme="dark"] .hf-history-entry,
-.hf[data-tool="handoff"][data-theme="dark"] .hf-history-menu,
-.hf[data-tool="handoff"][data-theme="dark"] .hf-history-menu button{
-  background:var(--control-bg);
-  color:var(--ink);
-  border-color:var(--control-border-strong);
-}
 
 .hf[data-tool="handoff"][data-theme="dark"] .hf-preview-toggle{
   background:var(--control-bg)!important;
@@ -7263,18 +7409,13 @@ const STYLES=`
 
 .hf[data-tool="handoff"][data-theme="dark"] .hf-patient-item:hover{background:#2c2926}
 .hf[data-tool="handoff"][data-theme="dark"] .hf-patient-more:hover,
-.hf[data-tool="handoff"][data-theme="dark"] .hf-history-more:hover{
-  background:#3a3632!important;
-  color:var(--ink);
-}
+
 .hf[data-tool="handoff"][data-theme="dark"] .hf-backup-menu button:hover,
 .hf[data-tool="handoff"][data-theme="dark"] .hf-patient-menu button:hover{
   background:var(--surface-hover);
 }
 .hf[data-tool="handoff"][data-theme="dark"] .hf-patient-menu .hf-danger-text,
-.hf[data-tool="handoff"][data-theme="dark"] .hf-history-menu .hf-danger-text{color:#d88f89}
 .hf[data-tool="handoff"][data-theme="dark"] .hf-patient-menu .hf-danger-text:hover,
-.hf[data-tool="handoff"][data-theme="dark"] .hf-history-menu .hf-danger-text:hover,
 .hf[data-tool="handoff"][data-theme="dark"] .hf-system-remove:hover{
   background:#422d2c;
   color:#efa49d;
@@ -7697,6 +7838,16 @@ const STYLES=`
 .hf[data-tool="handoff"][data-theme="dark"] .hf-restore-options small{
   color:var(--muted);
 }
+.hf[data-tool="handoff"][data-theme="dark"] .hf-restore-replace-warning{
+  background:var(--danger-bg);
+  border-color:#76504c;
+  color:#e6a09a;
+}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-dialog-actions .hf-danger-action{
+  background:#8f514c!important;
+  border-color:#8f514c!important;
+  color:#fff!important;
+}
 
 /* ---------- history ---------- */
 .hf[data-tool="handoff"][data-theme="dark"] .hf-history-list{
@@ -7754,9 +7905,7 @@ const STYLES=`
 }
 
 .hf[data-tool="handoff"][data-theme="dark"] .hf-patient-more,
-.hf[data-tool="handoff"][data-theme="dark"] .hf-history-more{
-  color:#aaa29a;
-}
+
 
 .hf[data-tool="handoff"][data-theme="dark"] [data-ref="dischargedPatientList"] .hf-bed,
 .hf[data-tool="handoff"][data-theme="dark"] [data-ref="dischargedPatientList"] .hf-mrn,
@@ -7770,18 +7919,9 @@ const STYLES=`
 /* ---------- menus ---------- */
 .hf[data-tool="handoff"][data-theme="dark"] .hf-backup-menu,
 .hf[data-tool="handoff"][data-theme="dark"] .hf-patient-menu,
-.hf[data-tool="handoff"][data-theme="dark"] .hf-history-menu{
-  background:var(--control-bg);
-  border-color:var(--control-border-strong);
-  box-shadow:0 10px 28px #0008;
-}
 
 .hf[data-tool="handoff"][data-theme="dark"] .hf-backup-menu button,
 .hf[data-tool="handoff"][data-theme="dark"] .hf-patient-menu button,
-.hf[data-tool="handoff"][data-theme="dark"] .hf-history-menu button{
-  background:var(--control-bg);
-  color:var(--ink);
-}
 
 .hf[data-tool="handoff"][data-theme="dark"] .hf-patient-menu-divider{
   background:var(--line2);
@@ -8000,6 +8140,35 @@ const STYLES=`
   color:#f2eee9!important;
   -webkit-text-fill-color:#f2eee9!important;
 }
+
+
+
+/* =========================
+   RESTORE DIALOG — MINIMAL
+========================= */
+.hf-restore-card{width:min(520px,92vw);padding:20px 20px 18px}
+.hf-restore-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.hf-restore-head h3{margin:0;font-size:17px}
+.hf-restore-close{width:28px;height:28px;padding:0;border:0!important;border-radius:5px;background:transparent!important;color:var(--muted);font-size:20px;line-height:1;cursor:pointer}
+.hf-restore-close:hover{background:var(--surface-muted)!important;color:var(--ink)}
+.hf-restore-meta{display:grid;gap:3px;margin-top:14px;padding-bottom:15px;border-bottom:1px solid var(--line2)}
+.hf-restore-meta strong{font-size:12px;font-weight:600}
+.hf-restore-meta span{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.hf-restore-options{display:grid;gap:2px;margin-top:12px}
+.hf-restore-options label{display:grid!important;grid-template-columns:20px minmax(0,1fr)!important;gap:9px!important;align-items:start!important;margin:0!important;padding:10px 8px!important;border:0!important;border-radius:6px;background:transparent!important;cursor:pointer}
+.hf-restore-options label:hover{background:var(--surface-muted)!important}
+.hf-restore-options input{width:15px!important;height:15px!important;margin:2px 0 0!important}
+.hf-restore-options span{display:grid;gap:3px}
+.hf-restore-options strong{font-size:13px}
+.hf-restore-options small{font-size:11px;color:var(--muted);line-height:1.45}
+.hf-restore-option-title{display:flex!important;align-items:center;gap:7px}
+.hf-restore-option-title em{padding:1px 5px;border-radius:999px;background:var(--surface-muted);color:var(--muted);font-size:9px;font-style:normal;font-weight:600}
+.hf-restore-replace-warning{margin:5px 8px 0 37px!important;padding:0!important;border:0!important;background:transparent!important;color:var(--danger)!important;font-size:11px;line-height:1.45}
+.hf-restore-replace-warning[hidden]{display:none}
+.hf-dialog-actions .hf-danger-action{background:var(--danger)!important;border-color:var(--danger)!important;color:#fff!important}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-restore-options label{background:transparent!important}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-restore-options label:hover{background:var(--surface-hover)!important}
+.hf[data-tool="handoff"][data-theme="dark"] .hf-restore-replace-warning{background:transparent!important;color:#e6a09a!important}
 
 `;
 
