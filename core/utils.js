@@ -124,6 +124,12 @@ export function bindCopyItems(root) {
     const item = e.target?.closest?.(".copy-item");
     if (!item || !root.contains(item)) return;
 
+    const selection = window.getSelection();
+    
+    if (selection && !selection.isCollapsed) {
+      return;
+    }
+
     let content = item.hasAttribute("data-content")
       ? item.dataset.content ?? ""
       : item.innerHTML ?? "";
