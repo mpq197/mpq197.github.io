@@ -192,37 +192,3 @@ export function init(root) {
   calculate();
 }
 
-
-/* =========================================================
-   core/app.js 修改
-   =========================================================
-
-在 grp-growth 的 items 中加入：
-
-{ key: "growthTrend", label: "身體測量趨勢", module: "../tools/growthTrend.js" },
-
-建議：
-
-{
-  id: "grp-growth",
-  title: "測量",
-  items: [
-    { key: "growth", label: "生長測量", module: "../tools/growth.js" },
-    { key: "growthTrend", label: "身體測量趨勢", module: "../tools/growthTrend.js" },
-    { key: "age", label: "年齡計算", module: "../tools/age.js" },
-    { key: "umbilical_cath_len", label: "UA/UV 深度", module: "../tools/umbilical_cath_len.js" },
-  ],
-},
-
-其他檔案：
-- core/utils.js：不用修改
-- index.html：不用修改
-  目前 NeoAssist 已載入 Chart.js 4.4.3，可直接使用 window.Chart。
-
-重要：
-- X 軸不是 category axis。
-- dataset 使用 { x: Unix timestamp, y: value }。
-- x scale 使用 type: "linear"。
-- 所以時間間距是真正按比例。
-- module 監聽 neo:restore，可配合你現有 TOOL_STATE_CACHE；切換工具再回來會重新解析及繪圖。
-- parsing 全部 client-side；本 module 沒有 fetch / upload / API call。
