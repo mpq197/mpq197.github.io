@@ -17,6 +17,7 @@ const GROUPS = [
       { key: "calorie", label: "熱量計算", module: "../tools/calories.js" },
       { key: "handoff", label: "交班單", module: "../tools/handoff.js"  },
       { key: "vitals", label: "生命徵象", module: "../tools/vitals.js"  },
+      { key: "growthTrend", label: "身體測量趨勢", module: "../tools/growthTrend.js" },
       // { key: "heartecho", label: "心超", module: "../tools/heartEchoPlane.js"  },
     ],
   },
